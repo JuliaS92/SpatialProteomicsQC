@@ -1,5 +1,6 @@
 class SpatialDataSet:
 
+
     def __init__(self, filename):
         """reading the data considering the seperation-mode and comments"""
         self.df = pd.read_csv(filename, sep="\t", comment="#")
@@ -22,7 +23,7 @@ class SpatialDataSet:
         """
 
 
-        def filterdf_SILAC(df, regex):
+        def filterdf_silac(df, regex):
             """"filtering the data in terms of removing entries caracterized by potential contaminants, etc.
 
             Args:
@@ -36,7 +37,7 @@ class SpatialDataSet:
                                            bool(re.match(regex["filter3"], col))][0]] != "+"]
             return df_filt
 
-        def indexingdf_SILAC(df_filt, regex):
+        def indexingdf_silac(df_filt, regex):
             """ a multiindex will be generated, containing Map, Fraction and Type,
             allowing the stacking and unstacking of the dataframe;
             the dataset is then subjected to 0:1-normalization and filtering processes
@@ -54,7 +55,7 @@ class SpatialDataSet:
             df_index = df_filt.copy()
             # es wird eine Kopie des Dataframes angelegt
             col_to_index = [col for col in df_filt.columns if re.match(regex["index_col"], col)]
-            # pro column, für jede re: schaut ob spaltenname zu re passt: list out of 1*true and x*false,
+            # pro column, fuer jede re: schaut ob spaltenname zu re passt: list out of 1*true and x*false,
             df_index = df_index.set_index(col_to_index)
             # es werden die colum names als index festgelegt
             df_index = df_index.drop([column for column in df_index.columns if not column.startswith("Ratio")], axis=1)
@@ -70,9 +71,9 @@ class SpatialDataSet:
             df_filt2 = df_stack.loc[[count >= 3 or (count >= 2 and var < 30) for var, count in
                                      zip(df_stack["Ratio H/L variability [%]"], df_stack['Ratio H/L count'])]]
 
-            df_normSILAC = df_filt2["Ratio H/L"].unstack(["Fraction", "Map"]).apply(
+            df_normsilac = df_filt2["Ratio H/L"].unstack(["Fraction", "Map"]).apply(
                 lambda x: x / np.median([el for el in x if not np.isnan(el)]), axis=0).stack(["Map", "Fraction"])
-            df_filt3 = df_filt2[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame(df_normSILAC,
+            df_filt3 = df_filt2[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame(df_normsilac,
                                                                                                     columns=[
                                                                                                         "Ratio H/L"]))
             df_filt3 = df_filt3.groupby(["Map", "id"]).filter(lambda x: len(x) >= 5)
@@ -86,8 +87,8 @@ class SpatialDataSet:
             return df_final
 
         if acquisition == "SILAC":
-            df_filt = filterdf_SILAC(self.df, self.regex)
-            df_final = indexingdf_SILAC(df_filt, self.regex)
+            df_filt = filterdf_silac(self.df, self.regex)
+            df_final = indexingdf_silac(df_filt, self.regex)
             self.df_final = df_final
             fractions = df_final.index.get_level_values("Fraction").unique()
             self.fractions = fractions
@@ -101,25 +102,34 @@ class SpatialDataSet:
         else:
             return "I don't know this"
 
-    def plottingdf_SILAC(self):
 
+    def plottingdf(self):
+        """
+        The function allows the plotting of filtered spatial proteomic data using plotly.express
+
+        Args:
+            requires processed data
+            f.e. SILAC-data:
+                 Dataframe with multiindex and the column names: Ratio H/L count | Ratio H/L variability [%] | Ratio H/L
+
+        Returns:
+            line chart of proteasomal genes of MAP1
+        """
+
+        df_complex = pd.DataFrame()
         df_plot = self.df_final
-        df_plot = df_plot.reset_index()
-        plot_try = df_plot.xs("PSMA1", "MAP1"), level("Gene names", "Map")
+        markerproteins = self.markerproteins
+        for marker in markerproteins["Proteasome"]:
+            plot_try = df_plot.xs((marker, "MAP1"), level=["Gene names", "Map"], drop_level=False)
+            plot_try = plot_try.reset_index()
+            df_complex = df_complex.append(plot_try)
+        fig = px.line(df_complex, x="Fraction", y="Ratio H/L", color="Gene names", title='Relative abundance profile')
+        return fig
 
-        # goi=loc[df_plot["Gene names"] == self.markerproteins["Proteasome"][0]
-        # g = sns.catplot(data = df_plot[df_plot["Gene names"] == gene], x = "Fraction", y = "Ratio H/L")
-        # fig = px.line(plot_try, x="", y="Ratio H/L", title='Relative abundance profile')
-
-        # fig = px.line(df_plot['Ratio H/L count','MAP1',df_plot["Gene names"] == markerproteins["Proteasome"],
-        #                     x="Fraction", y="Ratio H/L", title='Relative abundance profile')
-
-        #  df_long=pd.melt(df_plot, id_vars=['Ratio H/L count'], value_vars=[markerproteins["Proteasome"]])
-        return plot_try
 
     def __repr__(self):
         return "This is a spatial dataset with {} lines.".format(len(self.df))
 
     # try catch system
-    # try: code block wird ausgeführt
+    # try: code block wird ausgefuehrt
     # except: wenn try Fehler erzeugt hat
