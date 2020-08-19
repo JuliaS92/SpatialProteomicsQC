@@ -1,248 +1,481 @@
 class SpatialDataSet:
 
-
     def __init__(self, filename):
-        """reading the data considering the seperation-mode and comments"""
-        self.filename = filename
-        self.df_long = pd.read_csv(filename, sep="\t", comment="#")
-        self.df = pd.read_csv(filename, sep="\t", comment="#")
-        self.regex = {
-            "index_col_silac": "[Pp]rotein.[Ii][Dd]s|[Mm]ajority.[Pp]rotein.[Ii][Dd]s|[Pp]rotein.[Nn]ames|[Gg]ene.[Nn]ames|[Ii][Dd]",
-            "Map_silac": ".*([Mm][Aa][pP]\d+).*",
-            "Fraction_silac": ".*_(\d+[Kk])",
-            "Type_silac": "(.*).[Mm][Aa][pP].*",
-            "filter1": "[Pp]otential.[cC]ontaminant",
-            "filter2": "[Oo]nly.[iI]dentified.[bB]y.[sS]ite",
-            "filter3": "[Rr]everse",
+        """Import of the raw file of interest. Dataframe will be generated, which contains only the data of desired
+        column names, specified by the dictionary entry regex["col_shortened"]
 
-            "col_shortened" : "id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue",
-            "index_col_lfq" : ".*[Pp][rR].*[Ii][Dd]s.*|.*[nN]ames.*|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue|MS/MS.count$",
-            "LFQ_nan": "[Ll][Ff][Qq].*",
-            "Map_lfq": ".*[nNTt]{1}[yYtT]{1}[ .](.*)_\d+[Kk]$",
-            "Fraction_lfq": ".*_(\d+[Kk])",
-            "Type_lfq": "(.*[nNTt]{1}[yYtT]{1})[ .].*_\d+[Kk]$"        }
+        Dictionaries are created, that ate used for filtering and plotting, respectively.
+
+        Args:
+            filename: raw file obtained by the LFQ/SILAC approach (Protein Groups Files), processed by MaxQuant
+
+        Returns:
+            df_original: shortened data frame, contains only the information, which was determined due to
+            the values of the key "col_shortened"
+        """
+        # df_original contains all information of the raw file; tab separated file is imported,
+        # without considering comments, marked with #
+        self.filename = filename
+        self.regex = {
+            "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue",
+            "index_col_silac": "[Pp]rotein.[Ii][Dd]s|[Mm]ajority.[Pp]rotein.[Ii][Dd]s|[Pp]rotein.[Nn]ames|[Gg]ene.[Nn]ames|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue",
+            "index_col_lfq": ".*[Pp][rR].*[Ii][Dd]s.*|.*[nN]ames.*|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue|MS/MS.count$",
+
+            "map": ".*[ .](.*)_.*K",
+
+            "fraction_silac": ".*_(\d+[Kk])",
+            "fraction_lfq": ".*_(\d+[Kk])",
+
+            "type_count_silac": "([Rr]atio.[Hh]/[Ll].[cC]ount)[ .].*_.*K",
+            "type_var_silac": "([Rr]atio.[Hh]/[Ll].[Vv]ariability....)[ .].*_.*K",
+            "type_ratio_silac": "([rR]atio.[Hh]/[Ll])[ .](?![cC]ount|[Vv]ariability).*_.*K",
+
+            "type_count_lfq": "([Rr]atio.[Hh]/[Ll].[cC]ount)[ .].*_.*K",
+            "type_var_lfq": "([Rr]atio.[Hh]/[Ll].[Vv]ariability....)[ .].*_.*K",
+            "type_ratio_silac": "([rR]atio.[Hh]/[Ll])[ .](?![cC]ount|[Vv]ariability).*_.*K",
+
+            "type_msms_lfq": "([Mm][Ss]/[Mm][Ss].[cC]ount)[ .].*_.*K",
+            "type_intensity_lfq": "([Ll][Ff][Qq].[Ii]ntensity)[ .].*_.*K",
+
+            # "type_lfq": "(.*[nNTt]{1}[yYtT]{1})[ .].*_\d+[Kk]$",
+
+            "lfq_nan": "[Ll][Ff][Qq].*",
+
+            "contaminants": "[Pp]otential.[cC]ontaminant",
+            "sites": "[Oo]nly.[iI]dentified.[bB]y.[sS]ite",
+            "reverse": "[Rr]everse"
+        }
+        self.lfq_filter_param = {"summed MS/MS counts": 2, "consecutive LFQ_I": 4}
         self.markerproteins = {"Proteasome": ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1",
                                               "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"]}
-        self.lfq_filter_param={"summed MS/MS counts" : 2, "consecutive LFQ_I" : 4}
+
+        self.df_original = pd.read_csv(filename, sep="\t", comment="#",
+                                       usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
 
     def analyze(self, acquisition):
-        """
+        """Analysis of the SILAC/LFQ data will be performed.
+
+        The dataframe will be filtered, normalized and converted into a dataframe, characterized by a flat column index,
+        which can be used for plotting
+
         Args:
-            acquisition mode: SILAC, LFQ
+            acquisition mode: "SILAC" or "LFQ", which is referring to the acquisition method
+
+        Returns:
+            A dataframe, in which "Fraction" and "Map" are stacked, containing "normalized profile" as column,
+            additionally "Ratio H/L count", "Ratio H/L variability [%]" is found for SILAC data and "MS/MS count"
+            for LFQ data; represented as a flat column index
         """
 
-
-        def filterdf_silac(df, regex):
-            """"filtering the data in terms of removing entries caracterized by potential contaminants, etc.
+        def filterdf(df_original, regex):
+            """"The dataframe will be filtered by removing matches to the reverse database, matches only identified by
+            site, and potential contaminants.
 
             Args:
-                df: dataframe
-                regex: dictionary, in which the values represent the regular expressions
+                df_original: raw dataframe, MaxQuant returns as the primary output the "protein groups" file,
+                used as the basis for the analysis
+                regex: dictionary, unique keys, that correspond to regular expressions, that allow the identification
+                of the dataframe entries "Only identified by site", "Reverse" and "Potential contaminant", respectively
             """
-            df_filt = df.loc[df[[col for col in df.columns if bool(re.match(regex["filter1"], col))][0]] != "+"]
+
+            # f.e. matches to the reverse database are depicted with "+". Therefore only entries without the "+" (!=+)
+            # are taken over into the new dataframe
+            df_filt = df_original.loc[df_original[[col for col in df_original.columns if
+                                                   bool(re.match(regex["contaminants"], col))][0]] != "+"]
             df_filt = df_filt.loc[df_filt[[col for col in df_filt.columns if
-                                           bool(re.match(regex["filter2"], col))][0]] != "+"]
+                                           bool(re.match(regex["sites"], col))][0]] != "+"]
             df_filt = df_filt.loc[df_filt[[col for col in df_filt.columns if
-                                           bool(re.match(regex["filter3"], col))][0]] != "+"]
+                                           bool(re.match(regex["reverse"], col))][0]] != "+"]
+
             return df_filt
 
         def indexingdf_silac(df_filt, regex):
-            """ a multiindex will be generated, containing Map, Fraction and Type,
+            """ A multiindex will be generated, characterized by Map, Fraction and Type as level labels,
             allowing the stacking and unstacking of the dataframe;
-            the dataset is then subjected to 0:1-normalization and filtering processes
-            considering the Ratio H/L count and Ratio H/L variability;
 
             Args:
-                filtered dataset
-                regular expressions can be accessed by:  SpatialDataSet().regex["key"]="value"
+                df_filt: dataframe, that was filtered for matches to the reverse database, matches only identified by
+                site, and potential contaminants.
 
             Returns:
-                dataframe, which contains 3 columns (Ratio H/L count,Ratio H/L variability [%], Ratio H/L),
-                rest of the information is stored in the index
+                df_index: multiindex dataframe, which contains 3 level labels: Map (e.g. MAP1, MAP2, ...)
+                Fraction (03K, 06K, 12K, 24K, 80K), Type (Ratio H/L count,Ratio H/L variability [%], Ratio H/L),
+                rest of the information is stored in the index (Protein IDs, Majority protein IDs,
+                Protein names, Gene names, id)
             """
 
+            # deep copy of the dataframe
             df_index = df_filt.copy()
-            # es wird eine Kopie des Dataframes angelegt
+
+            # iteration through the column names, and searches for column names that are mentioned in the dictionary
+            # entry regex["index_col_silac"]
             col_to_index = [col for col in df_filt.columns if re.match(regex["index_col_silac"], col)]
-            # pro column, fuer jede re: schaut ob spaltenname zu re passt: list out of 1*true and x*false,
+
+            # column names are defined as index
             df_index = df_index.set_index(col_to_index)
-            # es werden die colum names als index festgelegt
-            df_index = df_index.drop([column for column in df_index.columns if not column.startswith("Ratio")], axis=1)
+
+            # all other columns, that are not needed for data processing (they do not start with "Ratio") are removed
+
+            list_drop_col = [column for column in df_index.columns if not column.startswith("Ratio ")]
+            list_endcount = [column for column in df_index.columns if column.endswith("count")]
+            list_endpct = [column for column in df_index.columns if column.endswith("[%]")]
+
+            list_drop_col.extend(list_endcount)
+            list_drop_col.extend(list_endpct)
+
+            df_index = df_index.drop(list_drop_col, axis=1)
+            # df_index = df_index.drop([column for column in df_index.columns if not column.startswith("Ratio")], axis=1)
+
+            # multindex will be generated, by isolating the information about the Map, Fraction and Type from each
+            # individual column name
+            # names=["Map", "Fraction", "Type"] defines the label of the multiindex
+
+            desired_columns_types = [e1 for e1 in [
+                re.findall(regex["type_count_silac"], column) or re.findall(regex["type_var_silac"],
+                                                                            column) or re.findall(
+                    regex["type_ratio_silac"], column) for column in df_index.columns] if e1]
+            col_list_type_silac = [item for sublist in desired_columns_types for item in sublist]
 
             columns = pd.MultiIndex.from_arrays([
-                [re.findall(regex["Map_silac"], colum)[0] for colum in df_index.columns],
-                [re.findall(regex["Fraction_silac"], colum)[0] for colum in df_index.columns],
-                [re.findall(regex["Type_silac"], colum)[0] for colum in df_index.columns]],
+                [re.findall(regex["map"], column)[0] for column in df_index.columns],
+                [re.findall(regex["fraction_silac"], column)[0] for column in df_index.columns],
+                col_list_type_silac],
+                # [re.findall(regex["type_silac"], column)[0] for column in df_index.columns],
+                # [re.findall(regex["type_count_silac"], column)[0] or re.findall(regex["type_var_silac"], column)[0] or re.findall(regex["type_ratio_silac"], column)[0] for column in df_index.columns]],
                 names=["Map", "Fraction", "Type"])
             df_index.columns = columns
 
-            df_stack = df_index.stack(["Fraction", 'Map'])
-            df_filt2 = df_stack.loc[[count >= 3 or (count >= 2 and var < 30) for var, count in
-                                     zip(df_stack["Ratio H/L variability [%]"], df_stack['Ratio H/L count'])]]
+            return df_index
 
-            df_normsilac = df_filt2["Ratio H/L"].unstack(["Fraction", "Map"]).apply(
-                lambda x: x / np.median([el for el in x if not np.isnan(el)]), axis=0).stack(["Map", "Fraction"])
-            df_filt3 = df_filt2[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame(df_normsilac,
-                                                                                                    columns=[
-                                                                                                        "Ratio H/L"]))
-            df_filt3 = df_filt3.groupby(["Map", "id"]).filter(lambda x: len(x) >= 5)
-            df_unstack = df_filt3["Ratio H/L"].unstack("Fraction").transform(lambda x: 1 / x)
-
-            df_norm2 = df_unstack.div(df_unstack.sum(axis=1), axis=0)
-
-            df_final = df_filt3[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame
-                                                                                       (df_norm2.stack("Fraction"),
-                                                                                        columns=["Ratio H/L"]))
-            df_final.columns = [col if col != "Ratio H/L" else "normalized profile" for col in df_final.columns]
-            return df_final
-
-
-        def filterdf_lfq(df, regex):
-            """"filtering the data in terms of removing entries caracterized by potential contaminants, etc.
+        def stringency_silac(df_index):
+            """The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are
+            considered (a set of f.e. 5 SILAC ratios in case you have 5 fractions / any proteins with missing values
+            were rejected). Proteins were retained with 3 or more quantifications in each subfraction (=count). Furthermore,
+            proteins with only 2 quantification events in one or more subfraction were retained, if their ratio
+            variability for ratios obtained with 2 quantification events was below 30% (=var). Subsequently normalization
+            to SILAC loading was performed.
 
             Args:
-                df: dataframe
-                regex: dictionary, in which the values represent the regular expressions
-            """
-            df_filt = df.loc[df[[col for col in df.columns if bool(re.match(regex["filter1"], col))][0]] != "+"]
-            df_filt = df_filt.loc[df_filt[[col for col in df_filt.columns if
-                                           bool(re.match(regex["filter2"], col))][0]] != "+"]
-            df_filt = df_filt.loc[df_filt[[col for col in df_filt.columns if
-                                           bool(re.match(regex["filter3"], col))][0]] != "+"]
-
-            return df_filt
-
-        def readingdf_lfq(filename, df_long, regex):
-            """Creation of a data frame, which contains only desired information
-
-            Args:
-                filename: Data, which is supposed to be analysed
-                df_long: original data frame, containing all information ("Protein groups")
-                regex: regular expression as dictionary: Key (col_shortened) refers to desired column names
+                df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Type
 
             Returns:
-                df_shortened: shortened data frame, contains only the information, which was determined via the Values of the Key col_shortened)
-                """
+                df_filteredjoint_stacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                the columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
+            """
 
-            col_list_in_list = []
-            col_list_in_list = [e1 for e1 in [re.findall(regex["col_shortened"], colum) for colum in df_long.columns] if
-                                e1]
-            col_list = [item for sublist in col_list_in_list for item in sublist]
-            df = pd.read_csv(filename, sep="\t", comment="#", usecols=col_list)
-            return df
+            # Fraction and Map will be stacked
+            df_stack = df_index.stack(["Fraction", 'Map'])
 
-        def filterdf_lfq(df, regex):
-            """"filtering the data in terms of removing entries caracterized by potential contaminants, etc.
+            # filtering for sufficient number of quantifications (count in 'Ratio H/L count'), taken
+            # variability (var in Ratio H/L variability [%]) into account
+            # zip: allows direct comparison of count and var
+            # only if the filtering parameters are fulfilled the data will be introduced into df_countvarfiltered_stacked
+            df_countvarfiltered_stacked = df_stack.loc[[count >= 3 or (count >= 2 and var < 30) for var, count in
+                                                        zip(df_stack["Ratio H/L variability [%]"],
+                                                            df_stack['Ratio H/L count'])]]
+
+            # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
+            # np.median([...]): only entries, that are not NANs are considered
+            df_normsilac_stacked = df_countvarfiltered_stacked["Ratio H/L"].unstack(["Fraction", "Map"]).apply(
+                lambda x: x / np.median([el for el in x if not np.isnan(el)]), axis=0).stack(["Map", "Fraction"])
+
+            df_filteredjoint_stacked = df_countvarfiltered_stacked[["Ratio H/L count",
+                                                                    "Ratio H/L variability [%]"]].join(
+                pd.DataFrame(df_normsilac_stacked, columns=["Ratio H/L"]))
+
+            # dataframe is grouped (Map, id), that allows the filtering for complete profiles
+            df_filteredjoint_stacked = df_filteredjoint_stacked.groupby(["Map", "id"]).filter(lambda x: len(x) >= 5)
+
+            # Ratio H/L is converted into Ratio L/H
+            df_filteredjoint_stacked["Ratio H/L"] = df_filteredjoint_stacked["Ratio H/L"].transform(lambda x: 1 / x)
+
+            return df_filteredjoint_stacked
+
+        def normalization_01_silac(df_filteredjoint_stacked):
+            """The multiindex dataframe, that was subjected to stringency filtering, is 0-1 normalized ("Ratio H/L").
 
             Args:
-                df: raw dataframe as protein groups file, produced by MaxQuant
-                regex: dictionary, in which the values represent the regular expressions
-            """
-            df_filt = df.loc[df[[col for col in df.columns if bool(re.match(regex["filter1"], col))][0]] != "+"]
-            df_filt = df_filt.loc[df_filt[[col for col in df_filt.columns if
-                                           bool(re.match(regex["filter2"], col))][0]] != "+"]
-            df_filt = df_filt.loc[df_filt[[col for col in df_filt.columns if
-                                           bool(re.match(regex["filter3"], col))][0]] != "+"]
+                df_filteredjoint_stacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                the columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
 
-            return df_filt
+            Returns:
+                df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column
+                "Ratio H/L" is 0-1 normalized; the columns "Ratio H/L count", "Ratio H/L variability [%]",
+                and "Ratio H/L" stored as single level indices; plotting is possible now
+            """
+
+            df_01norm_unstacked = df_filteredjoint_stacked["Ratio H/L"].unstack("Fraction")
+
+            # 0:1 normalization of Ratio L/H
+            df_01norm_unstacked = df_01norm_unstacked.div(df_01norm_unstacked.sum(axis=1), axis=0)
+
+            df_01_stacked = df_filteredjoint_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame
+                                                                                                            (
+                                                                                                                df_01norm_unstacked.stack(
+                                                                                                                    "Fraction"),
+                                                                                                                columns=[
+                                                                                                                    "Ratio H/L"]))
+
+            # "Ratio H/L" will be renamed to "normalized profile"
+            df_01_stacked.columns = [col if col != "Ratio H/L" else "normalized profile" for col in
+                                     df_01_stacked.columns]
+
+            return df_01_stacked
+
+        def conversion_to_log_silac(df_filteredjoint_stacked):
+            """The multiindex dataframe, that was subjected to stringency filtering, is logarithmized ("Ratio H/L").
+
+            Args:
+                df_filteredjoint_stacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                the columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
+
+            Returns:
+                df_log_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column
+                "log profile" originates from logarithmized "Ratio H/L" data; the columns "Ratio H/L count",
+                "Ratio H/L variability [%]" and  "log profile" are stored as single level indices; PCA is possible now
+
+            """
+            # logarithmizing, basis of 2
+            df_lognorm_ratio_stacked = df_filteredjoint_stacked["Ratio H/L"].transform(np.log2)
+            df_log_stacked = df_filteredjoint_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(
+                pd.DataFrame
+                (df_lognorm_ratio_stacked, columns=["Ratio H/L"]))
+
+            # "Ratio H/L" will be renamed to "normalized profile"
+            df_log_stacked.columns = [col if col != "Ratio H/L" else "log profile" for col in df_log_stacked.columns]
+
+            return df_log_stacked
 
         def indexingdf_lfq(df_filt, regex):
-            """
+            """ A multiindex will be generated, characterized by Map, Fraction and Type as level labels,
+            allowing the stacking and unstacking of the dataframe;
 
+            Args:
+                df_filt: dataframe, that was filtered for matches to the reverse database, matches only identified by
+                site, and potential contaminants.
+
+            Returns:
+                df_index: multiindex dataframe, which contains 3 level labels: Map (f.e. EGF_rep1, nt_rep1)
+                Fraction (03K, 06K, 12K, 24K, 80K), Type (LFQ intensity, MS/MS count),
+                rest of the information is stored in the index (Protein IDs, Majority protein IDs, Protein names,
+                Gene names, Q-value, Score, id)
+            ##same for SILAC
             """
+            # deep copy of the dataframe
             df_index = df_filt.copy()
+
+            # iteration through the column names, and searches for column names that are mentioned in the dictionary
+            # entry regex["index_col_lfq"]
             col_to_index = [col for col in df_filt.columns if re.match(regex["index_col_lfq"], col)]
+
+            # column names are defined as index
             df_index = df_index.set_index(col_to_index)
-            df_index = df_index.drop([column for column in df_index.columns if not column.startswith(("LFQ", "MS"))],
-                                     axis=1)
-                                    #df_indexx.columns was there before
-            df_index[[col for col in df_index.columns if re.match(regex["LFQ_nan"], col)]] = df_index[[col
-                                for col in df_index.columns if re.match(regex["LFQ_nan"], col)]].replace(0, np.nan)
+
+            # all other columns, that do not start with "LFQ" and "MS" (essentially "Only identified by site",
+            # "Reverse", "Potential contaminant") are removed
+            df_index = df_index.drop([column for column in df_index.columns
+                                      if not column.startswith(("LFQ", "MS"))], axis=1)
+
+            # "LFQ intensity"-values: converting 0 into NAN
+            # iteration through the column names, and searches for column names (LFQ intensity, deposited as regular
+            # expression in the dictionary entry regex["lfq_nan"]
+            df_index[[col for col in df_index.columns if re.match(regex["lfq_nan"], col)]] = \
+                df_index[[col for col in df_index.columns if re.match(regex["lfq_nan"], col)]].replace(0, np.nan)
+
+            # multindex will be generated, by isolating the information about the Map, Fraction and Type from each
+            # individual column name
+            # names=["Map", "Fraction", "Type"] defines the label of the multiindex
+
+            desired_columns_types = [e1 for e1 in [
+                re.findall(regex["type_msms_lfq"], column) or re.findall(regex["type_intensity_lfq"], column) for column
+                in df.columns] if e1]
+            col_list_type_lfq = [item for sublist in desired_columns_types for item in sublist]
 
             columns = pd.MultiIndex.from_arrays([
-                [re.findall(regex["Map_lfq"], colum)[0] for colum in df_index.columns],
-                [re.findall(regex["Fraction_lfq"], colum)[0] for colum in df_index.columns],
-                [re.findall(regex["Type_lfq"], colum)[0] for colum in df_index.columns]],
+                [re.findall(regex["map"], column)[0] for column in df_index.columns],
+                [re.findall(regex["fraction_lfq"], column)[0] for column in df_index.columns],
+                col_list_type_lfq],
                 names=["Map", "Fraction", "Type"])
             df_index.columns = columns
 
-            df_test = df_index.copy().stack("Fraction")
-            number_fractions = len(df_test.index.get_level_values("Fraction").unique())
-            # self.number_fractions=number_fractions
+            return df_index
+
+        def stringency_lfq(df_index):
+            """The multiindex dataframe is subjected to stringency filtering. Only Proteins which were identified with
+            at least [4] consecutive data points regarding the "LFQ intensity", and if summed MS/MS counts >= n(fractions)*[2]
+            (LFQ5: min 10 and LFQ6: min 12, respectively; coverage filtering) were included.
+
+            Args:
+                df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Typ
+
+            Returns:
+                df_consecutive_mapstacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                the columns "normalized profile" and "MS/MS count" stored as single level indices
+                """
+
+            # retrieve number of fractions that are present in the dataset
+            df_fractionnumber_stacked = df_index.copy().stack("Fraction")
+            number_fractions = len(df_fractionnumber_stacked.index.get_level_values("Fraction").unique())
 
             df_index = df_index.stack("Map")
+
+            # level 0 = Fraction, level 1 = Type is converted into level 0 = Type, level 1 = Fraction
             df_index.columns = df_index.columns.swaplevel(0, 1)
+
+            # sorting the level 0, in order to have LFQ intensity -	MS/MS count instead of continuous alternation
             df_index.sort_index(axis=1, level=0, inplace=True)
 
-            df_ms = df_index.loc[df_index[('MS/MS count')].apply(np.sum,axis=1) >= (
-                                             number_fractions * self.lfq_filter_param["summed MS/MS counts"])]
-            # for the column MS/MS count, you have to generate the sum, and if the sum is larger than n[fraction]*2, you take it into new f
-            df_lfq = df_ms.copy()
-            df_lfq = df_lfq.loc[df_lfq[("LFQ intensity")].apply(lambda x: any(
-                np.invert(np.isnan(x)).rolling(window=self.lfq_filter_param["consecutive LFQ_I"]).sum() >=
-                self.lfq_filter_param["consecutive LFQ_I"]), axis=1)]
-            # series no DF; if there are at least i.e. 4 consecutive non-NANs
-            df_norm = df_lfq["LFQ intensity"].div(df_lfq["LFQ intensity"].sum(axis=1), axis=0)
-            # 0-1 normalization but only for LFQ intensity
-            df_ms_lfq = df_lfq.copy()
-            df_ms_lfq["LFQ intensity"] = df_norm
-            # you overwrite the column ["LFQ intensity"] with df_norm, which contains only the data for LFQ intensity
-            df_ms_lfq = df_ms_lfq.fillna(0).stack("Fraction")
-            # NAN will be replaced with 0
-            df_ms_lfq.columns = [col if col != "LFQ intensity" else "normalized profile" for col in df_ms_lfq.columns]
-            # rename columns: "LFQ intensity" into "normalized profile"
-            return df_ms_lfq
+            # "MS/MS count"-column: take the sum over the fractions;
+            # if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
+            df_mscount_mapstacked = df_index.loc[df_index[('MS/MS count')].apply(np.sum, axis=1) >= (
+                    number_fractions * self.lfq_filter_param["summed MS/MS counts"])]
 
+            df_consecutive_mapstacked = df_mscount_mapstacked.copy()
+
+            # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
+            df_consecutive_mapstacked = df_consecutive_mapstacked.loc[
+                df_consecutive_mapstacked[("LFQ intensity")].apply(lambda x: any(
+                    np.invert(np.isnan(x)).rolling(window=self.lfq_filter_param["consecutive LFQ_I"]).sum() >=
+                    self.lfq_filter_param["consecutive LFQ_I"]), axis=1)]
+
+            return df_consecutive_mapstacked
+
+        def normalization_01_lfq(df_consecutive_mapstacked):
+            """The multiindex dataframe, that was subjected to stringency filtering, is 0-1 normalized ("LFQ intensity").
+
+            Args:
+                df_consecutive_mapstacked: dataframe, in which "Map" is stacked; the column names are stored as
+                2 level labels: Fraction (03K, 06K, 12K, 24K, 80K), Type (LFQ intensity, MS/MS count)
+
+
+            Returns:
+                df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column
+                "LFQ intensity" is 0-1 normalized; the columns "LFQ intensity" and "MS/MS count" are stored as
+                single level indices; plotting is possible now
+
+            """
+
+            # 0-1 normalization but only for LFQ intensity
+            df_01norm_mapstacked = df_consecutive_mapstacked["LFQ intensity"].div(
+                df_consecutive_mapstacked["LFQ intensity"].sum(axis=1), axis=0)
+
+            df_01_stacked = df_consecutive_mapstacked.copy()
+
+            # you overwrite the column ["LFQ intensity"] with df_01norm_mapstacked, which contains only the data for LFQ intensity
+            df_01_stacked["LFQ intensity"] = df_01norm_mapstacked
+
+            # Replace missing values in the remaining maps with 0
+            df_01_stacked = df_01_stacked.fillna(0).stack("Fraction")
+
+            # rename columns: "LFQ intensity" into "normalized profile"
+            df_01_stacked.columns = [col if col != "LFQ intensity" else "normalized profile" for col in
+                                     df_01_stacked.columns]
+
+            return df_01_stacked
+
+        def conversion_to_log_lfq(df_consecutive_mapstacked):
+            """The multiindex dataframe, that was subjected to stringency filtering, is logarithmized ("LFQ intensity").
+
+            Args:
+                df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                the columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
+
+            Returns:
+                df_log_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column "log profile"
+                originates from logarithmized  "LFQ intensity"; the columns "log profile" and "MS/MS count" are
+                stored as single level indices; PCA is possible now
+            """
+
+            df_lognorm_mapstacked = df_consecutive_mapstacked["LFQ intensity"].transform(np.log2)
+            df_log_stacked = df_consecutive_mapstacked.copy()
+            df_log_stacked["LFQ intensity"] = df_lognorm_mapstacked
+            df_log_stacked = df_log_stacked.fillna(0).stack("Fraction")
+            df_log_stacked.columns = [col if col != "LFQ intensity" else "log profile" for col in
+                                      df_log_stacked.columns]
+            return df_log_stacked
 
         if acquisition == "SILAC":
-            df_filter = filterdf_silac(self.df, self.regex)
-            df_final = indexingdf_silac(df_filter, self.regex)
-            self.df_final = df_final
-            fractions = df_final.index.get_level_values("Fraction").unique()
+            df_filter = filterdf(self.df_original, self.regex)
+            df_index = indexingdf_silac(df_filter, self.regex)
+            df_filteredjoint_stacked = stringency_silac(df_index)
+            df_01_stacked = normalization_01_silac(df_filteredjoint_stacked)
+            df_log_stacked = conversion_to_log_silac(df_filteredjoint_stacked)
+            self.df_log_stacked = df_log_stacked
+            self.df_01_stacked = df_01_stacked
+            fractions = df_01_stacked.index.get_level_values("Fraction").unique()
             self.fractions = fractions
-            # fractions als return value
-            return df_final
 
+            return df_log_stacked
+            # return df_index
 
         elif acquisition == "LFQ":
-            df = readingdf_lfq(self.filename, self.df_long, self.regex)
-            df_filter = filterdf_lfq(df, self.regex)
-            df_ms_lfq = indexingdf_lfq(df_filter, self.regex)
-            self.df_final = df_ms_lfq
-            return df_ms_lfq
+            df_filter = filterdf(self.df_original, self.regex)
+            df_index = indexingdf_lfq(df_filter, self.regex)
+            df_consecutive_mapstacked = stringency_lfq(df_index)
+            df_01_stacked = normalization_01_lfq(df_consecutive_mapstacked)
+            df_log_stacked = conversion_to_log_lfq(df_consecutive_mapstacked)
+            self.df_log_stacked = df_log_stacked
+            self.df_01_stacked = df_01_stacked
+            fractions = df_01_stacked.index.get_level_values("Fraction").unique()
+            self.fractions = fractions
+
+            return df_log_stacked
 
         else:
             return "I don't know this"
 
-
-    def plottingdf(self):
+    def plottingdf(self, map):
         """
         The function allows the plotting of filtered spatial proteomic data using plotly.express
 
         Args:
-            requires processed data
-            f.e. SILAC-data:
-                 Dataframe with multiindex and the column names: Ratio H/L count | Ratio H/L variability [%] | Ratio H/L
+            map: data from the specified map (e.g. "MAP1" or ""EGF_rep1") is used for plotting
+            requires dataframe (df_01_stacked, single level indices), stored as attribute (self.df_01_stacked),
+            in which "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting.
+            Additionally the columns "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are
+            found in LFQ and SILAC data respectively
+            markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
 
         Returns:
-            line chart of proteasomal genes of MAP1
+            line chart of desired markerproteins (e.g. proteasomal genes)
         """
 
-        df_complex = pd.DataFrame()
-        df_plot = self.df_final
+        df_setofproteins = pd.DataFrame()
+        df_01_stacked = self.df_01_stacked
         markerproteins = self.markerproteins
+
+        # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
         for marker in markerproteins["Proteasome"]:
-            plot_try = df_plot.xs((marker, "EGF_rep1"), level=["Gene names", "Map"], drop_level=False)
-     #       plot_try = df_plot.xs((marker, "MAP1"), level=["Gene names", "Map"], drop_level=False)
+            plot_try = df_01_stacked.xs((marker, map), level=["Gene names", "Map"], drop_level=False)
             plot_try = plot_try.reset_index()
-            df_complex = df_complex.append(plot_try)
-        fig = px.line(df_complex, x="Fraction", y="normalized profile", color="Gene names", title='Relative abundance profile')
+            df_setofproteins = df_setofproteins.append(plot_try)
+        fig = px.line(df_setofproteins, x="Fraction", y="normalized profile", color="Gene names",
+                      title='Relative abundance profile')
+
         return fig
 
+    def perform_pca(self):
+        """PCA will be performed, using logarithmized data.
+
+        Args:
+            self.df_log_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column "log profile"
+                originates from logarithmized  "LFQ intensity" and "Ratio H/L", respectively; additionally the columns
+                "MS/MS count" and "Ratio H/L count|Ratio H/L variability [%]" are stored as single level indices
+
+        Returns:
+                df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
+        """
+
+        # isolate only logarithmized profile, and unstack "Fraction"
+        df_log_stacked = self.df_log_stacked
+        df_log_fracunstacked = df_log_stacked["log profile"].unstack("Fraction")
+
+        pca = PCA(n_components=3)
+        df_pca = pd.DataFrame(pca.fit_transform(df_log_fracunstacked))
+
+        df_pca.columns = ["PC1", "PC2", "PC3"]
+        df_pca.index = df_log_fracunstacked.index
+        return df_pca
 
     def __repr__(self):
         return "This is a spatial dataset with {} lines.".format(len(self.df))
-
-    # try catch system
-    # try: code block wird ausgefuehrt
-    # except: wenn try Fehler erzeugt hat
