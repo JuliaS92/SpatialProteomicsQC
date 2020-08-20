@@ -130,10 +130,8 @@ class SpatialDataSet:
             # individual column name
             # names=["Map", "Fraction", "Type"] defines the label of the multiindex
 
-            desired_columns_types = [e1 for e1 in [
-                re.findall(regex["type_count_silac"], column) or re.findall(regex["type_var_silac"],
-                                                                            column) or re.findall(
-                    regex["type_ratio_silac"], column) for column in df_index.columns] if e1]
+            desired_columns_types = [e1 for e1 in [re.findall(regex["type_count_silac"], column) or re.findall(regex["type_var_silac"],
+                                column) or re.findall(regex["type_ratio_silac"], column) for column in df_index.columns] if e1]
             col_list_type_silac = [item for sublist in desired_columns_types for item in sublist]
 
             columns = pd.MultiIndex.from_arrays([
@@ -288,7 +286,7 @@ class SpatialDataSet:
 
             desired_columns_types = [e1 for e1 in [
                 re.findall(regex["type_msms_lfq"], column) or re.findall(regex["type_intensity_lfq"], column) for column
-                in df.columns] if e1]
+                in df_index.columns] if e1]
             col_list_type_lfq = [item for sublist in desired_columns_types for item in sublist]
 
             columns = pd.MultiIndex.from_arrays([
@@ -424,9 +422,11 @@ class SpatialDataSet:
         else:
             return "I don't know this"
 
-    def plottingdf(self, map):
+
+    def analysis_01_df(self, map):
         """
-        The function allows the plotting of filtered spatial proteomic data using plotly.express
+        The function will generate a new dataframe called "df_setofproteins", which contains exclusively these data
+        of proteins, specified in  the dictionary markerproteins
 
         Args:
             map: data from the specified map (e.g. "MAP1" or ""EGF_rep1") is used for plotting
@@ -437,7 +437,7 @@ class SpatialDataSet:
             markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
 
         Returns:
-            line chart of desired markerproteins (e.g. proteasomal genes)
+            self.df_setofproteins: multiindex dataframe, containing the "normalized" of desired markerproteins (e.g. proteasomal genes)
         """
 
         df_setofproteins = pd.DataFrame()
@@ -447,14 +447,91 @@ class SpatialDataSet:
         # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
         for marker in markerproteins["Proteasome"]:
             plot_try = df_01_stacked.xs((marker, map), level=["Gene names", "Map"], drop_level=False)
-            plot_try = plot_try.reset_index()
             df_setofproteins = df_setofproteins.append(plot_try)
-        fig = px.line(df_setofproteins, x="Fraction", y="normalized profile", color="Gene names",
-                      title='Relative abundance profile')
 
-        return fig
+        self.df_setofproteins = df_setofproteins
 
-    def perform_pca(self):
+
+    def plottingdf(self):
+        """
+        The function allows the plotting of filtered spatial proteomic data using plotly.express
+
+        """
+        df_setofproteins = self.df_setofproteins.copy()
+        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+        df_setofproteins.reset_index(inplace=True)
+        fig_abundance_profiles = px.line(df_setofproteins, x="Fraction", y="normalized profile",
+                                         color="Gene names", title='Relative abundance profile')
+
+        # make it available for plotting
+        df_proteinset_median.name = "normalized profile"
+        df_proteinset_median = df_proteinset_median.reset_index()
+        df_proteinset_median.insert(0, "Gene names", np.repeat("Median profile", len(df_proteinset_median)))
+        # return df_proteinset_median
+        fig_abundance_profiles_and_median = fig_abundance_profiles.add_scatter(x=df_proteinset_median["Fraction"],
+                                                                               y=df_proteinset_median[
+                                                                                   "normalized profile"],
+                                                                               name="Median profile")
+
+        return fig_abundance_profiles_and_median
+
+
+    def cluster_analysis(self):
+        """
+
+
+        """
+        df_setofproteins = self.df_setofproteins.copy()
+        # calculate the median of the "normalized profile" of individual proteins over the fractions
+        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+
+        # substract the median individually from each entry (e.g. 03K_rotein_xy - 03K_median)
+        df_onlynorm_fracunstacked = df_setofproteins["normalized profile"].unstack("Fraction")
+        df_onlynorm_fracunstacked = df_onlynorm_fracunstacked.apply(lambda x: x - df_proteinset_median, axis=1)
+
+        self.df_onlynorm_fracunstacked = df_onlynorm_fracunstacked
+
+    def distance_boxplot(self):
+        """
+
+        """
+        markerproteins = self.markerproteins
+        df_onlynorm_fracunstacked = self.df_onlynorm_fracunstacked.copy()
+        # np.linalg.norm requires array; ord=1: Manhattan distance will be calculated over 5 dimensions (Fractions)
+        distance_array = np.linalg.norm(df_onlynorm_fracunstacked.to_numpy(), axis=1, ord=1)
+
+        df_distance_boxplot = pd.DataFrame(distance_array, columns=["Manhattan distance"],
+                                           index=markerproteins["Proteasome"]).sort_index()
+
+        distance_boxplot_figure = px.box(df_distance_boxplot, points="all")
+
+        # calculating range/mean/stdv
+        statistic_table = {"max-min": df_distance_boxplot.max(axis=0) - df_distance_boxplot.min(axis=0),
+                           "mean": df_distance_boxplot.mean(axis=0),
+                           "standardeviation": df_distance_boxplot.std(axis=0)}
+        df_statistic_distance_boxplot = pd.DataFrame(data=statistic_table)
+        self.df_statistic_distance_boxplot = df_statistic_distance_boxplot
+        return distance_boxplot_figure
+
+
+    def violinplot_distance_to_median(self):
+        """
+
+        """
+        df_onlynorm_fracunstacked = self.df_onlynorm_fracunstacked.copy()
+        # convert dataframe, such that the "Fractions" become to column name
+        df_onlynorm_fracstacked = df_onlynorm_fracunstacked.sort_index(level="Gene names").stack("Fraction")
+        # df_onlynorm_fracstackedseries  contains only one "column", which is renamed to "distance to median"
+        df_onlynorm_fracstacked.name = "distance to median"
+        df_distance_to_median_singleindex = df_onlynorm_fracstacked.reset_index()
+
+        violinplot_distance_to_median = px.violin(df_distance_to_median_singleindex, x="Fraction",
+                                                  y="distance to median")
+
+        return violinplot_distance_to_median
+
+
+    def perform_pca(self, map):
         """PCA will be performed, using logarithmized data.
 
         Args:
@@ -466,6 +543,8 @@ class SpatialDataSet:
                 df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         """
 
+        markerproteins = self.markerproteins
+
         # isolate only logarithmized profile, and unstack "Fraction"
         df_log_stacked = self.df_log_stacked
         df_log_fracunstacked = df_log_stacked["log profile"].unstack("Fraction")
@@ -475,7 +554,20 @@ class SpatialDataSet:
 
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_log_fracunstacked.index
-        return df_pca
+
+        df_setofproteins = pd.DataFrame()
+        for marker in markerproteins["Proteasome"]:
+            plot_try_pca = df_pca.xs((marker, map), level=["Gene names", "Map"], drop_level=False)
+            # plot_try_pca = plot_try_pca.reset_index()
+            df_setofproteins = df_setofproteins.append(plot_try_pca)
+
+        df_setofproteins.reset_index(inplace=True)
+        fig = go.Figure(data=[go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
+                                           hovertext=df_setofproteins["Gene names"])])
+
+        ##, mode="markers", marker=dict(color=[f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})' for _   in range(25)])
+        return fig
+
 
     def __repr__(self):
         return "This is a spatial dataset with {} lines.".format(len(self.df))
