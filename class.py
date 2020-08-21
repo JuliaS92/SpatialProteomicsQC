@@ -46,9 +46,16 @@ class SpatialDataSet:
             "reverse": "[Rr]everse"
         }
         self.lfq_filter_param = {"summed MS/MS counts": 2, "consecutive LFQ_I": 4}
-        self.markerproteins = {"Proteasome": ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1",
-                                              "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"]}
-
+        self.markerproteins = {
+            "Proteasome": ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3",
+                           "PSMB4", "PSMB5", "PSMB6", "PSMB7"],
+            "large protein complex - CCT": ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8"],
+            "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2",
+                                     "ATP6V1C1", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
+            "EMC complex": ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10"]
+            }
+        # ,"CCT6B", "TCP1"
+        # ,"EMC6","EMC9"
         self.df_original = pd.read_csv(filename, sep="\t", comment="#",
                                        usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
 
@@ -130,8 +137,10 @@ class SpatialDataSet:
             # individual column name
             # names=["Map", "Fraction", "Type"] defines the label of the multiindex
 
-            desired_columns_types = [e1 for e1 in [re.findall(regex["type_count_silac"], column) or re.findall(regex["type_var_silac"],
-                                column) or re.findall(regex["type_ratio_silac"], column) for column in df_index.columns] if e1]
+            desired_columns_types = [e1 for e1 in [
+                re.findall(regex["type_count_silac"], column) or re.findall(regex["type_var_silac"],
+                                                                            column) or re.findall(
+                    regex["type_ratio_silac"], column) for column in df_index.columns] if e1]
             col_list_type_silac = [item for sublist in desired_columns_types for item in sublist]
 
             columns = pd.MultiIndex.from_arrays([
@@ -208,11 +217,11 @@ class SpatialDataSet:
             df_01norm_unstacked = df_01norm_unstacked.div(df_01norm_unstacked.sum(axis=1), axis=0)
 
             df_01_stacked = df_filteredjoint_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame
-                                                                                                            (
-                                                                                                                df_01norm_unstacked.stack(
-                                                                                                                    "Fraction"),
-                                                                                                                columns=[
-                                                                                                                    "Ratio H/L"]))
+                (
+                df_01norm_unstacked.stack(
+                    "Fraction"),
+                columns=[
+                    "Ratio H/L"]))
 
             # "Ratio H/L" will be renamed to "normalized profile"
             df_01_stacked.columns = [col if col != "Ratio H/L" else "normalized profile" for col in
@@ -403,8 +412,9 @@ class SpatialDataSet:
             fractions = df_01_stacked.index.get_level_values("Fraction").unique()
             self.fractions = fractions
 
-            return df_log_stacked
+            return df_01_stacked
             # return df_index
+
 
         elif acquisition == "LFQ":
             df_filter = filterdf(self.df_original, self.regex)
@@ -419,117 +429,9 @@ class SpatialDataSet:
 
             return df_log_stacked
 
+
         else:
             return "I don't know this"
-
-
-    def analysis_01_df(self, map):
-        """
-        The function will generate a new dataframe called "df_setofproteins", which contains exclusively these data
-        of proteins, specified in  the dictionary markerproteins
-
-        Args:
-            map: data from the specified map (e.g. "MAP1" or ""EGF_rep1") is used for plotting
-            requires dataframe (df_01_stacked, single level indices), stored as attribute (self.df_01_stacked),
-            in which "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting.
-            Additionally the columns "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are
-            found in LFQ and SILAC data respectively
-            markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
-
-        Returns:
-            self.df_setofproteins: multiindex dataframe, containing the "normalized" of desired markerproteins (e.g. proteasomal genes)
-        """
-
-        df_setofproteins = pd.DataFrame()
-        df_01_stacked = self.df_01_stacked
-        markerproteins = self.markerproteins
-
-        # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
-        for marker in markerproteins["Proteasome"]:
-            plot_try = df_01_stacked.xs((marker, map), level=["Gene names", "Map"], drop_level=False)
-            df_setofproteins = df_setofproteins.append(plot_try)
-
-        self.df_setofproteins = df_setofproteins
-
-
-    def plottingdf(self):
-        """
-        The function allows the plotting of filtered spatial proteomic data using plotly.express
-
-        """
-        df_setofproteins = self.df_setofproteins.copy()
-        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
-        df_setofproteins.reset_index(inplace=True)
-        fig_abundance_profiles = px.line(df_setofproteins, x="Fraction", y="normalized profile",
-                                         color="Gene names", title='Relative abundance profile')
-
-        # make it available for plotting
-        df_proteinset_median.name = "normalized profile"
-        df_proteinset_median = df_proteinset_median.reset_index()
-        df_proteinset_median.insert(0, "Gene names", np.repeat("Median profile", len(df_proteinset_median)))
-        # return df_proteinset_median
-        fig_abundance_profiles_and_median = fig_abundance_profiles.add_scatter(x=df_proteinset_median["Fraction"],
-                                                                               y=df_proteinset_median[
-                                                                                   "normalized profile"],
-                                                                               name="Median profile")
-
-        return fig_abundance_profiles_and_median
-
-
-    def cluster_analysis(self):
-        """
-
-
-        """
-        df_setofproteins = self.df_setofproteins.copy()
-        # calculate the median of the "normalized profile" of individual proteins over the fractions
-        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
-
-        # substract the median individually from each entry (e.g. 03K_rotein_xy - 03K_median)
-        df_onlynorm_fracunstacked = df_setofproteins["normalized profile"].unstack("Fraction")
-        df_onlynorm_fracunstacked = df_onlynorm_fracunstacked.apply(lambda x: x - df_proteinset_median, axis=1)
-
-        self.df_onlynorm_fracunstacked = df_onlynorm_fracunstacked
-
-    def distance_boxplot(self):
-        """
-
-        """
-        markerproteins = self.markerproteins
-        df_onlynorm_fracunstacked = self.df_onlynorm_fracunstacked.copy()
-        # np.linalg.norm requires array; ord=1: Manhattan distance will be calculated over 5 dimensions (Fractions)
-        distance_array = np.linalg.norm(df_onlynorm_fracunstacked.to_numpy(), axis=1, ord=1)
-
-        df_distance_boxplot = pd.DataFrame(distance_array, columns=["Manhattan distance"],
-                                           index=markerproteins["Proteasome"]).sort_index()
-
-        distance_boxplot_figure = px.box(df_distance_boxplot, points="all")
-
-        # calculating range/mean/stdv
-        statistic_table = {"max-min": df_distance_boxplot.max(axis=0) - df_distance_boxplot.min(axis=0),
-                           "mean": df_distance_boxplot.mean(axis=0),
-                           "standardeviation": df_distance_boxplot.std(axis=0)}
-        df_statistic_distance_boxplot = pd.DataFrame(data=statistic_table)
-        self.df_statistic_distance_boxplot = df_statistic_distance_boxplot
-        return distance_boxplot_figure
-
-
-    def violinplot_distance_to_median(self):
-        """
-
-        """
-        df_onlynorm_fracunstacked = self.df_onlynorm_fracunstacked.copy()
-        # convert dataframe, such that the "Fractions" become to column name
-        df_onlynorm_fracstacked = df_onlynorm_fracunstacked.sort_index(level="Gene names").stack("Fraction")
-        # df_onlynorm_fracstackedseries  contains only one "column", which is renamed to "distance to median"
-        df_onlynorm_fracstacked.name = "distance to median"
-        df_distance_to_median_singleindex = df_onlynorm_fracstacked.reset_index()
-
-        violinplot_distance_to_median = px.violin(df_distance_to_median_singleindex, x="Fraction",
-                                                  y="distance to median")
-
-        return violinplot_distance_to_median
-
 
     def perform_pca(self, map):
         """PCA will be performed, using logarithmized data.
@@ -563,11 +465,429 @@ class SpatialDataSet:
 
         df_setofproteins.reset_index(inplace=True)
         fig = go.Figure(data=[go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
-                                           hovertext=df_setofproteins["Gene names"])])
+                                           hovertext=df_setofproteins["Gene names"], mode="markers",
+                                           marker=dict(color=[
+                                               f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})'
+                                               for _ in range(25)])
+                                           )])
 
-        ##, mode="markers", marker=dict(color=[f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})' for _   in range(25)])
+        fig.update_layout(autosize=False, width=500, height=500)
+
         return fig
 
+    def plottingdf(self):
+        """
+        The function allows the plotting of filtered spatial proteomic data using plotly.express.
+        Referring to the function "cluster_isolation_df",
+         df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+
+        Args:
+
+        """
+
+        map_names = df_01_stacked.index.get_level_values("Map").unique()
+        self.map_names = map_names
+
+        cluster_of_interest = "Proteasome"
+        self.cluster_of_interest = cluster_of_interest
+
+        map_of_interest = "MAP1"
+        self.map_of_interest = map_of_interest
+
+        df_setofproteins = self.cluster_isolation_df(map_of_interest, cluster_of_interest)
+
+        df_setofproteins = df_setofproteins.copy()
+        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+        df_setofproteins.reset_index(inplace=True)
+        fig_abundance_profiles = px.line(df_setofproteins, x="Fraction", y="normalized profile",
+                                         color="Gene names",
+                                         title="Relative abundance profile for <br>the protein cluster: {}".format(
+                                             cluster_of_interest))
+
+        # make it available for plotting
+        df_proteinset_median.name = "normalized profile"
+        df_proteinset_median = df_proteinset_median.reset_index()
+        df_proteinset_median.insert(0, "Gene names", np.repeat("Median profile", len(df_proteinset_median)))
+        # return df_proteinset_median
+        fig_abundance_profiles_and_median = fig_abundance_profiles.add_scatter(x=df_proteinset_median["Fraction"],
+                                                                               y=df_proteinset_median[
+                                                                                   "normalized profile"],
+                                                                               name="Median profile")
+
+        return fig_abundance_profiles_and_median
+
+    def multiple_iterations(self):
+        """
+        For each individual protein cluster and for each indiviual fraction the distance to the median will be calculated
+        and stored in a multiindex dataframe.
+
+        Args:
+            self:
+             requires dataframe (df_01_stacked, single level column), stored as attribute (self.df_01_stacked),
+             in which "MAP" and "Fraction" are stacked. Additionally the columns "MS/MS count" and
+             "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are found in LFQ and SILAC data respectively.
+             markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
+
+        Returns:
+            df_allclusters_onlynorm_fracunstacked: multiindex dataframe, that contains only the normalized data of individual
+            protein clusters substracted by the median of the respective protein cluster for each fraction. The fractions are
+            unstacked.
+        """
+
+        markerproteins = self.markerproteins
+        df_01_stacked = self.df_01_stacked
+
+        df_allclusters_onlynorm_fracunstacked = pd.DataFrame()
+
+        # individual map names are stored as an index
+        map_names = df_01_stacked.index.get_level_values("Map").unique()
+        self.map_names = map_names
+
+        # for each individual map, and each individual protein cluster, defined in the dictionary markerproteins,
+        # the functions "cluster_isolation_df" and "distance_to_median_calculation" will be performed
+        for maps in map_names:
+            for clusters in markerproteins:
+                df_setofproteins = self.cluster_isolation_df(maps, clusters)
+                df_distance_to_median_fracunstacked = self.distance_to_median_calculation(df_setofproteins)
+                # new column is introduced: Column name = "Cluster"; values: clustername, to wich the individual protein belongs to
+                df_distance_to_median_fracunstacked["Cluster"] = clusters
+                df_distance_to_median_fracunstacked.set_index("Cluster", inplace=True, append=True)
+                # the isolated and processed
+                df_allclusters_onlynorm_fracunstacked = df_allclusters_onlynorm_fracunstacked.append(
+                    df_distance_to_median_fracunstacked)
+
+        self.df_allclusters_onlynorm_fracunstacked = df_allclusters_onlynorm_fracunstacked
+        return df_allclusters_onlynorm_fracunstacked
+
+    def cluster_isolation_df(self, maps, clusters):
+        """
+        The function returns a dataframe for a specified proteincluster and map, that will be hand over to the
+        definition "distance_to_median_calculation"
+
+        Args:
+            maps: specified map (e.g. "MAP1")
+            clusters: protein cluster, specified in self.markerproteins (e.g. "Proteasome")
+            self:
+                requires dataframe (df_01_stacked, single level column), stored as attribute (self.df_01_stacked),
+            in which "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting.
+            Additionally the columns "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are
+            found in LFQ and SILAC data respectively
+                markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
+
+        Returns:
+            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+        """
+
+        df_setofproteins = pd.DataFrame()
+        df_01_stacked = self.df_01_stacked
+        markerproteins = self.markerproteins
+
+        # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
+        for marker in markerproteins[clusters]:
+            plot_try = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
+            df_setofproteins = df_setofproteins.append(plot_try)
+
+        return df_setofproteins
+
+    def distance_to_median_calculation(self, df_setofproteins):
+        """
+        A dataframe will be generated, in which the distances to the median profile will be stored.
+
+        Args:
+            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+
+        Returns:
+            df_distance_to_median_fracunstacked: multiindex dataframe, for each individual protein and fraction the distances
+            are claculated. The data is stored in single level columns (Column names: e.g. "03K", "06K", "12K", "24K", "80K")
+        """
+        # calculate the median of the "normalized profile" of individual proteins over the fractions
+        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+
+        # substract the median individually from each entry (e.g. 03K_protein_xy - 03K_median)
+        df_distance_to_median_fracunstacked = df_setofproteins["normalized profile"].unstack("Fraction")
+        df_distance_to_median_fracunstacked = df_distance_to_median_fracunstacked.apply(
+            lambda x: x - df_proteinset_median, axis=1)
+
+        return df_distance_to_median_fracunstacked
+
+    def violinplot_distance_to_median_manymaps(self):
+        """
+        A violin plot for 1 desired cluster, 1 desired fraction, and across all maps is generated displaying the
+        distribution of the distance to the median.
+
+        Args:
+            self:
+            df_allclusters_onlynorm_fracunstacked, dataframe with single level column, stored as attribute
+            (self.df_allclusters_onlynorm_fracunstacked), in which "Fraction" is unstacked. It contains only the
+            normalized data of individual protein clusters substracted by the median of the respective protein cluster
+            for each fraction.
+            map_names: individual map names are stored as an index
+
+        Returns:
+            violinplot_median_distance_manymaps: Violin plot. Along the x-axis, the maps are shown, along the y-axis
+            the fraction of interest is plotted
+        """
+
+        map_names = self.map_names
+        df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked
+
+        cluster_of_interest = "Proteasome"
+        self.cluster_of_interest = cluster_of_interest
+
+        fraction_of_interest = "03K"
+        self.fraction_of_interest = fraction_of_interest
+
+        df_violinplot_manymaps = pd.DataFrame()
+
+        # for each individual map and a defined cluster data will be extracted from the dataframe
+        # "df_allclusters_onlynorm_fracunstacked" and appended to the new dataframe df_violinplot_manymaps
+        for maps in map_names:
+            plot_try = df_allclusters_onlynorm_fracunstacked.xs((cluster_of_interest, maps),
+                                                                level=["Cluster", "Map"], drop_level=False)
+            df_violinplot_manymaps = df_violinplot_manymaps.append(plot_try)
+
+        # index will be reset, required by px.violin
+        df_violinplot_manymaps = df_violinplot_manymaps.reset_index()
+
+        # violin plot will be generated, only considering the "fraction_of_interest_violin"
+        violinplot_median_distance_manymaps = px.violin(df_violinplot_manymaps, x="Map",
+                                                        y=fraction_of_interest,
+                                                        title="Distribution of the distance to the median for <br>the protein cluster: {}".format(
+                                                            cluster_of_interest)
+                                                        )
+
+        # determine the layout
+        violinplot_median_distance_manymaps.update_layout(
+            autosize=False,
+            width=500,
+            height=500,
+
+            # setting a black boy around the graph
+            xaxis=go.layout.XAxis(linecolor='black',
+                                  linewidth=1,
+                                  title="Map",
+                                  mirror=True),
+
+            yaxis=go.layout.YAxis(linecolor='black',
+                                  linewidth=1,
+                                  title=fraction_of_interest,
+                                  mirror=True),
+        )
+
+        return violinplot_median_distance_manymaps
+
+    def violinplot_distance_to_median_manyfractions(self):
+        """
+        A violin plot for 1 desired cluster, 1 desired map, and across all fractions is generated displaying the
+        distribution of the distance to the median.
+
+        Args:
+            self:
+            requires dataframe (df_allclusters_onlynorm_fracunstacked, single level column), stored as attribute
+            (self.df_allclusters_onlynorm_fracunstacked), in which "Fraction" is unstacked. It contains only the
+            normalized data of individual protein clusters substracted by the median of the respective protein cluster
+            for each fraction.
+            fractions: individual fraction names are stored as an index
+
+        Returns:
+            violinplot_median_distance_manymaps: Violin plot. Along the x-axis, the fractions are shown, along the y-axis
+            the map of interest is plotted
+        """
+
+        map_names = self.map_names
+        fractions = self.fractions
+        df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked
+
+        # "Fration" will be unstacked, and "Map" stacked
+        df_allclusters_onlynorm_mapunstacked = df_allclusters_onlynorm_fracunstacked.unstack("Map").stack("Fraction")
+
+        cluster_of_interest = "Proteasome"
+        self.cluster_of_interest = cluster_of_interest
+
+        map_of_interest = "MAP1"
+        self.map_of_interest = map_of_interest
+
+        df_violinplot_manyfractions = pd.DataFrame()
+
+        # for each individual fraction and a defined cluster data will be extracted from the dataframe
+        # "df_allclusters_onlynorm_fracunstacked" and appended to the new dataframe df_violinplot_manyfractions
+        for fraction_number in fractions:
+            plot_try = df_allclusters_onlynorm_mapunstacked.xs((cluster_of_interest, fraction_number),
+                                                               level=["Cluster", "Fraction"], drop_level=False)
+            df_violinplot_manyfractions = df_violinplot_manyfractions.append(plot_try)
+
+        # index will be reset, required by px.violin
+        df_violinplot_manyfractions.reset_index(inplace=True)
+
+        # violin plot will be generated, only considering the "map_of_interest_violin"
+        violinplot_median_distance_manyfractions = px.violin(df_violinplot_manyfractions, x="Fraction",
+                                                             y=map_of_interest,
+                                                             title="Distribution of the distance to the median for <br>the protein cluster: {}".format(
+                                                                 cluster_of_interest)
+                                                             )
+
+        # determine the layout
+        violinplot_median_distance_manyfractions.update_layout(
+            autosize=False,
+            width=500,
+            height=500,
+
+            # setting a black boy around the graph
+            xaxis=go.layout.XAxis(linecolor='black',
+                                  linewidth=1,
+                                  title="Fractions",
+                                  mirror=True),
+
+            yaxis=go.layout.YAxis(linecolor='black',
+                                  linewidth=1,
+                                  title=map_of_interest,
+                                  mirror=True),
+        )
+
+        return violinplot_median_distance_manyfractions
+
+    def distance_calculation(self):
+        """
+        The distances to the median profile of the individual proteins, belonging to specified clusters, across the
+        fractions will be used to calculate the distance profile (e.g. Manhattan distance).
+
+        Args:
+            self:
+            requires dataframe (df_allclusters_onlynorm_fracunstacked, single level column), stored as attribute
+            (self.df_allclusters_onlynorm_fracunstacked), in which "Fraction" is unstacked. It contains only the
+            normalized data of individual protein clusters substracted by the median of the respective protein cluster
+            for each fraction.
+            markerproteins: dictionary, key: protein cluster, value: set of gene names, corresponding to a specific cluster
+
+        Returns:
+            df_distance_noindex: dataframe, index is reset. It contains the column name "distance", in which the e.g.
+            Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
+        """
+
+        # =df_class, df_allclusters_onlynorm_fracunstacked=df_class.df_allclusters_onlynorm_fracunstacked, markerproteins=df_class.markerproteins
+
+        markerproteins = self.markerproteins
+        df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked.copy()
+
+        # np.linalg.norm requires array; ord=1: Manhattan distance will be calculated over 5 dimensions (Fractions)
+        distance_array = np.linalg.norm(df_allclusters_onlynorm_fracunstacked.to_numpy(), axis=1, ord=1)
+
+        # series is created, that allows finally the formation of a dataframe again
+        distance_series = pd.Series(distance_array)
+
+        # new "Column" name = "Distance"
+        distance_series.name = "distance"
+        distance_series.index = df_allclusters_onlynorm_fracunstacked.index
+
+        # df is created
+        df_distance_noindex = distance_series.reset_index()
+
+        self.df_distance_noindex = df_distance_noindex
+
+        return df_distance_noindex
+
+    def distance_boxplot(self):
+        """
+        A box plot for 1 desired cluster, and across all maps is generated displaying the distribution of the e.g.
+        Manhattan distance.
+
+        Args:
+            self:
+            df_distance_noindex: stored as attribute (self.df_distance_noindex),index is reset.
+            It contains the column name "distance", in which the e.g. Manhattan distances for each individual protein
+            of the specified clusters (see self.markerproteins) are stored
+            map_names: individual map names are stored as an index
+
+        Returns:
+            distance_boxplot_figure: boxplot. Along the x-axis the maps, along the y-axis the distances are shown
+        """
+        # =df_class, df_distance_noindex=df_class.df_distance_noindex, markerproteins=df_class.markerproteins
+        map_names = self.map_names
+
+        df_distance_noindex = self.df_distance_noindex
+
+        # "Gene names", "Map", "Cluster" and transferred into the index
+        df_distance_map_cluster_gene_in_index = df_distance_noindex.set_index(["Gene names", "Map", "Cluster"])
+
+        cluster_of_interest = "Proteasome"
+        self.cluster_of_interest = cluster_of_interest
+
+        df_cluster_xmaps_distance_with_index = pd.DataFrame()
+
+        # for each individual map and a defined cluster data will be extracted from the dataframe
+        # "df_distance_map_cluster_gene_in_index" and appended to the new dataframe df_cluster_xmaps_distance_with_index
+        for maps in map_names:
+            plot_try = df_distance_map_cluster_gene_in_index.xs((cluster_of_interest, maps), level=["Cluster", "Map"],
+                                                                drop_level=False)
+            df_cluster_xmaps_distance_with_index = df_cluster_xmaps_distance_with_index.append(plot_try)
+
+        # index will be reset, required by px.box
+        df_cluster_xmaps_distance = df_cluster_xmaps_distance_with_index.reset_index()
+
+        # optinal: points=all (= next to each indiviual boxplot the corresponding datapoints are displayed)
+        distance_boxplot_figure = px.box(df_cluster_xmaps_distance, x="Map", y="distance",
+                                         title="Manhattan distance distribution for <br>the protein cluster: {}".format(
+                                             cluster_of_interest)
+                                         )
+
+        # determine the layout
+        distance_boxplot_figure.update_layout(
+            autosize=False,
+            width=500,
+            height=500,
+
+            # setting a black boy around the graph
+            xaxis=go.layout.XAxis(linecolor='black',
+                                  linewidth=1,
+                                  title="Map",
+                                  mirror=True),
+
+            yaxis=go.layout.YAxis(linecolor='black',
+                                  linewidth=1,
+                                  title="distance",
+                                  mirror=True),
+        )
+
+        return distance_boxplot_figure
+
+    def results_overview_table(self):
+        """
+        Dataframe will be created, that provides information about "range", "mean" and "standardeviation",
+        given as the column names, based on the data given in df_distance_noindex
+
+        Args:
+            df_distance_noindex: stored as attribute (self.df_distance_noindex),index is reset.
+            It contains the column name "distance", in which the e.g. Manhattan distances for each individual protein
+            of the specified clusters (see self.markerproteins) are stored
+            markerproteins
+        """
+        df_distance_noindex = self.df_distance_noindex
+        df_distance_map_cluster_gene_in_index = df_distance_noindex.set_index(["Gene names", "Map", "Cluster"])
+        map_names = self.map_names
+        markerproteins = self.markerproteins
+
+        df_overview = pd.DataFrame()
+
+        for maps in map_names:
+            for clusters in markerproteins:
+                plot_try = df_distance_map_cluster_gene_in_index.xs((clusters, maps), level=["Cluster", "Map"],
+                                                                    drop_level=False)
+                statistic_table = {"range": (plot_try["distance"].max(axis=0)) - (plot_try["distance"].min(axis=0)),
+                                   "mean": plot_try["distance"].mean(axis=0),
+                                   "standardeviation": plot_try["distance"].std(axis=0),
+                                   "Cluster": clusters,
+                                   "Map": maps}
+                statistic_series = pd.Series(data=statistic_table)
+                df_statistic_table_individual_cluster = pd.DataFrame(statistic_series).T
+                df_overview = df_overview.append(df_statistic_table_individual_cluster)
+
+        df_overview.set_index(["Map", "Cluster"], inplace=True)
+
+        return df_overview
 
     def __repr__(self):
         return "This is a spatial dataset with {} lines.".format(len(self.df))
+
