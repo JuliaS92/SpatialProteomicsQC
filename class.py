@@ -1,6 +1,6 @@
 class SpatialDataSet:
 
-    def __init__(self, filename):
+    def __init__(self, **kwargs):
         """Import of the raw file of interest. Dataframe will be generated, which contains only the data of desired
         column names, specified by the dictionary entry regex["col_shortened"]
 
@@ -15,16 +15,31 @@ class SpatialDataSet:
         """
         # df_original contains all information of the raw file; tab separated file is imported,
         # without considering comments, marked with #
-        self.filename = filename
+
+        self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
+
+        self.fraction_of_interest = "03K" if "fraction_of_interest" not in kwargs.keys() else kwargs[
+            "fraction_of_interest"]
+        self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
+        self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs[
+            "cluster_of_interest"]
+
+        self.map_index = ".*[ .](.*)_.*K" if "map_index" not in kwargs.keys() else kwargs["map_index"]
+        self.fraction_index = ".*_(\d+[Kk])" if "fraction_index" not in kwargs.keys() else kwargs["fraction_index"]
+
+        self.summed_MSMS_counts = 2 if "summed_MSMS_counts" not in kwargs.keys() else kwargs["summed_MSMS_counts"]
+        self.consecutive_LFQ_I = 4 if "consecutive_LFQ_I" not in kwargs.keys() else kwargs["consecutive_LFQ_I"]
+
+        # self.lfq_filter_param = {"summed MS/MS counts": 2, "consecutive LFQ_I": 4}
+
         self.regex = {
             "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue",
             "index_col_silac": "[Pp]rotein.[Ii][Dd]s|[Mm]ajority.[Pp]rotein.[Ii][Dd]s|[Pp]rotein.[Nn]ames|[Gg]ene.[Nn]ames|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue",
             "index_col_lfq": ".*[Pp][rR].*[Ii][Dd]s.*|.*[nN]ames.*|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue|MS/MS.count$",
 
-            "map": ".*[ .](.*)_.*K",
-
-            "fraction_silac": ".*_(\d+[Kk])",
-            "fraction_lfq": ".*_(\d+[Kk])",
+            # "map": ".*[ .](.*)_.*K",
+            # "fraction_silac": ".*_(\d+[Kk])",
+            # "fraction_lfq": ".*_(\d+[Kk])",
 
             "type_count_silac": "([Rr]atio.[Hh]/[Ll].[cC]ount)[ .].*_.*K",
             "type_var_silac": "([Rr]atio.[Hh]/[Ll].[Vv]ariability....)[ .].*_.*K",
@@ -45,7 +60,7 @@ class SpatialDataSet:
             "sites": "[Oo]nly.[iI]dentified.[bB]y.[sS]ite",
             "reverse": "[Rr]everse"
         }
-        self.lfq_filter_param = {"summed MS/MS counts": 2, "consecutive LFQ_I": 4}
+
         self.markerproteins = {
             "Proteasome": ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3",
                            "PSMB4", "PSMB5", "PSMB6", "PSMB7"],
@@ -56,10 +71,16 @@ class SpatialDataSet:
             }
         # ,"CCT6B", "TCP1"
         # ,"EMC6","EMC9"
-        self.df_original = pd.read_csv(filename, sep="\t", comment="#",
+
+        self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
+
+    def data_reading(self):
+        """Data import"""
+
+        self.df_original = pd.read_csv(self.filename, sep="\t", comment="#",
                                        usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
 
-    def analyze(self, acquisition):
+    def analyze(self):
         """Analysis of the SILAC/LFQ data will be performed.
 
         The dataframe will be filtered, normalized and converted into a dataframe, characterized by a flat column index,
@@ -96,7 +117,7 @@ class SpatialDataSet:
 
             return df_filt
 
-        def indexingdf_silac(df_filt, regex):
+        def indexingdf_silac(df_filt, regex, map_index, fraction_index):
             """ A multiindex will be generated, characterized by Map, Fraction and Type as level labels,
             allowing the stacking and unstacking of the dataframe;
 
@@ -144,8 +165,8 @@ class SpatialDataSet:
             col_list_type_silac = [item for sublist in desired_columns_types for item in sublist]
 
             columns = pd.MultiIndex.from_arrays([
-                [re.findall(regex["map"], column)[0] for column in df_index.columns],
-                [re.findall(regex["fraction_silac"], column)[0] for column in df_index.columns],
+                [re.findall(map_index, column)[0] for column in df_index.columns],
+                [re.findall(fraction_index, column)[0] for column in df_index.columns],
                 col_list_type_silac],
                 # [re.findall(regex["type_silac"], column)[0] for column in df_index.columns],
                 # [re.findall(regex["type_count_silac"], column)[0] or re.findall(regex["type_var_silac"], column)[0] or re.findall(regex["type_ratio_silac"], column)[0] for column in df_index.columns]],
@@ -173,6 +194,8 @@ class SpatialDataSet:
             # Fraction and Map will be stacked
             df_stack = df_index.stack(["Fraction", 'Map'])
 
+            len_fractions = len(df_stack.index.get_level_values("Fraction").unique())
+
             # filtering for sufficient number of quantifications (count in 'Ratio H/L count'), taken
             # variability (var in Ratio H/L variability [%]) into account
             # zip: allows direct comparison of count and var
@@ -191,7 +214,8 @@ class SpatialDataSet:
                 pd.DataFrame(df_normsilac_stacked, columns=["Ratio H/L"]))
 
             # dataframe is grouped (Map, id), that allows the filtering for complete profiles
-            df_filteredjoint_stacked = df_filteredjoint_stacked.groupby(["Map", "id"]).filter(lambda x: len(x) >= 5)
+            df_filteredjoint_stacked = df_filteredjoint_stacked.groupby(["Map", "id"]).filter(
+                lambda x: len(x) >= len_fractions)
 
             # Ratio H/L is converted into Ratio L/H
             df_filteredjoint_stacked["Ratio H/L"] = df_filteredjoint_stacked["Ratio H/L"].transform(lambda x: 1 / x)
@@ -253,7 +277,7 @@ class SpatialDataSet:
 
             return df_log_stacked
 
-        def indexingdf_lfq(df_filt, regex):
+        def indexingdf_lfq(df_filt, regex, map_index, fraction_index):
             """ A multiindex will be generated, characterized by Map, Fraction and Type as level labels,
             allowing the stacking and unstacking of the dataframe;
 
@@ -299,8 +323,8 @@ class SpatialDataSet:
             col_list_type_lfq = [item for sublist in desired_columns_types for item in sublist]
 
             columns = pd.MultiIndex.from_arrays([
-                [re.findall(regex["map"], column)[0] for column in df_index.columns],
-                [re.findall(regex["fraction_lfq"], column)[0] for column in df_index.columns],
+                [re.findall(map_index, column)[0] for column in df_index.columns],
+                [re.findall(fraction_index, column)[0] for column in df_index.columns],
                 col_list_type_lfq],
                 names=["Map", "Fraction", "Type"])
             df_index.columns = columns
@@ -335,15 +359,15 @@ class SpatialDataSet:
             # "MS/MS count"-column: take the sum over the fractions;
             # if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
             df_mscount_mapstacked = df_index.loc[df_index[('MS/MS count')].apply(np.sum, axis=1) >= (
-                    number_fractions * self.lfq_filter_param["summed MS/MS counts"])]
+                    number_fractions * self.summed_MSMS_counts)]
 
             df_consecutive_mapstacked = df_mscount_mapstacked.copy()
 
             # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
             df_consecutive_mapstacked = df_consecutive_mapstacked.loc[
                 df_consecutive_mapstacked[("LFQ intensity")].apply(lambda x: any(
-                    np.invert(np.isnan(x)).rolling(window=self.lfq_filter_param["consecutive LFQ_I"]).sum() >=
-                    self.lfq_filter_param["consecutive LFQ_I"]), axis=1)]
+                    np.invert(np.isnan(x)).rolling(window=self.consecutive_LFQ_I).sum() >=
+                    self.consecutive_LFQ_I), axis=1)]
 
             return df_consecutive_mapstacked
 
@@ -401,9 +425,9 @@ class SpatialDataSet:
                                       df_log_stacked.columns]
             return df_log_stacked
 
-        if acquisition == "SILAC":
+        if self.acquisition == "SILAC":
             df_filter = filterdf(self.df_original, self.regex)
-            df_index = indexingdf_silac(df_filter, self.regex)
+            df_index = indexingdf_silac(df_filter, self.regex, self.map_index, self.fraction_index)
             df_filteredjoint_stacked = stringency_silac(df_index)
             df_01_stacked = normalization_01_silac(df_filteredjoint_stacked)
             df_log_stacked = conversion_to_log_silac(df_filteredjoint_stacked)
@@ -416,9 +440,9 @@ class SpatialDataSet:
             # return df_index
 
 
-        elif acquisition == "LFQ":
+        elif self.acquisition == "LFQ":
             df_filter = filterdf(self.df_original, self.regex)
-            df_index = indexingdf_lfq(df_filter, self.regex)
+            df_index = indexingdf_lfq(df_filter, self.regex, self.map_index, self.fraction_index)
             df_consecutive_mapstacked = stringency_lfq(df_index)
             df_01_stacked = normalization_01_lfq(df_consecutive_mapstacked)
             df_log_stacked = conversion_to_log_lfq(df_consecutive_mapstacked)
@@ -427,13 +451,13 @@ class SpatialDataSet:
             fractions = df_01_stacked.index.get_level_values("Fraction").unique()
             self.fractions = fractions
 
-            return df_log_stacked
+            return df_01_stacked
 
 
         else:
             return "I don't know this"
 
-    def perform_pca(self, map):
+    def perform_pca(self):
         """PCA will be performed, using logarithmized data.
 
         Args:
@@ -444,6 +468,7 @@ class SpatialDataSet:
         Returns:
                 df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         """
+        map_of_interest = self.map_of_interest
 
         markerproteins = self.markerproteins
 
@@ -459,7 +484,7 @@ class SpatialDataSet:
 
         df_setofproteins = pd.DataFrame()
         for marker in markerproteins["Proteasome"]:
-            plot_try_pca = df_pca.xs((marker, map), level=["Gene names", "Map"], drop_level=False)
+            plot_try_pca = df_pca.xs((marker, map_of_interest), level=["Gene names", "Map"], drop_level=False)
             # plot_try_pca = plot_try_pca.reset_index()
             df_setofproteins = df_setofproteins.append(plot_try_pca)
 
@@ -489,13 +514,13 @@ class SpatialDataSet:
         map_names = df_01_stacked.index.get_level_values("Map").unique()
         self.map_names = map_names
 
-        cluster_of_interest = "Proteasome"
-        self.cluster_of_interest = cluster_of_interest
+        # cluster_of_interest = "Proteasome"
+        # self.cluster_of_interest = cluster_of_interest
 
-        map_of_interest = "MAP1"
-        self.map_of_interest = map_of_interest
+        # map_of_interest = "MAP1"
+        # self.map_of_interest = map_of_interest
 
-        df_setofproteins = self.cluster_isolation_df(map_of_interest, cluster_of_interest)
+        df_setofproteins = self.cluster_isolation_df(self.map_of_interest, self.cluster_of_interest)
 
         df_setofproteins = df_setofproteins.copy()
         df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
@@ -503,7 +528,7 @@ class SpatialDataSet:
         fig_abundance_profiles = px.line(df_setofproteins, x="Fraction", y="normalized profile",
                                          color="Gene names",
                                          title="Relative abundance profile for <br>the protein cluster: {}".format(
-                                             cluster_of_interest))
+                                             self.cluster_of_interest))
 
         # make it available for plotting
         df_proteinset_median.name = "normalized profile"
@@ -634,29 +659,29 @@ class SpatialDataSet:
         map_names = self.map_names
         df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked
 
-        cluster_of_interest = "Proteasome"
-        self.cluster_of_interest = cluster_of_interest
+        # cluster_of_interest="Proteasome"
+        # self.cluster_of_interest=cluster_of_interest
 
-        fraction_of_interest = "03K"
-        self.fraction_of_interest = fraction_of_interest
+        # fraction_of_interest="03K"
+        # self.fraction_of_interest=fraction_of_interest
 
         df_violinplot_manymaps = pd.DataFrame()
 
         # for each individual map and a defined cluster data will be extracted from the dataframe
         # "df_allclusters_onlynorm_fracunstacked" and appended to the new dataframe df_violinplot_manymaps
         for maps in map_names:
-            plot_try = df_allclusters_onlynorm_fracunstacked.xs((cluster_of_interest, maps),
+            plot_try = df_allclusters_onlynorm_fracunstacked.xs((self.cluster_of_interest, maps),
                                                                 level=["Cluster", "Map"], drop_level=False)
             df_violinplot_manymaps = df_violinplot_manymaps.append(plot_try)
 
         # index will be reset, required by px.violin
         df_violinplot_manymaps = df_violinplot_manymaps.reset_index()
 
-        # violin plot will be generated, only considering the "fraction_of_interest_violin"
+        # violin plot will be generated, only considering the "fraction_of_interest"
         violinplot_median_distance_manymaps = px.violin(df_violinplot_manymaps, x="Map",
-                                                        y=fraction_of_interest,
+                                                        y=self.fraction_of_interest,
                                                         title="Distribution of the distance to the median for <br>the protein cluster: {}".format(
-                                                            cluster_of_interest)
+                                                            self.cluster_of_interest)
                                                         )
 
         # determine the layout
@@ -673,7 +698,7 @@ class SpatialDataSet:
 
             yaxis=go.layout.YAxis(linecolor='black',
                                   linewidth=1,
-                                  title=fraction_of_interest,
+                                  title=self.fraction_of_interest,
                                   mirror=True),
         )
 
@@ -693,7 +718,7 @@ class SpatialDataSet:
             fractions: individual fraction names are stored as an index
 
         Returns:
-            violinplot_median_distance_manymaps: Violin plot. Along the x-axis, the fractions are shown, along the y-axis
+            violinplot_median_distance_manyfractions: Violin plot. Along the x-axis, the fractions are shown, along the y-axis
             the map of interest is plotted
         """
 
@@ -704,18 +729,18 @@ class SpatialDataSet:
         # "Fration" will be unstacked, and "Map" stacked
         df_allclusters_onlynorm_mapunstacked = df_allclusters_onlynorm_fracunstacked.unstack("Map").stack("Fraction")
 
-        cluster_of_interest = "Proteasome"
-        self.cluster_of_interest = cluster_of_interest
+        # cluster_of_interest = "Proteasome"
+        # self.cluster_of_interest=cluster_of_interest
 
-        map_of_interest = "MAP1"
-        self.map_of_interest = map_of_interest
+        # map_of_interest = "MAP1"
+        # self.map_of_interest = map_of_interest
 
         df_violinplot_manyfractions = pd.DataFrame()
 
         # for each individual fraction and a defined cluster data will be extracted from the dataframe
         # "df_allclusters_onlynorm_fracunstacked" and appended to the new dataframe df_violinplot_manyfractions
         for fraction_number in fractions:
-            plot_try = df_allclusters_onlynorm_mapunstacked.xs((cluster_of_interest, fraction_number),
+            plot_try = df_allclusters_onlynorm_mapunstacked.xs((self.cluster_of_interest, fraction_number),
                                                                level=["Cluster", "Fraction"], drop_level=False)
             df_violinplot_manyfractions = df_violinplot_manyfractions.append(plot_try)
 
@@ -724,9 +749,9 @@ class SpatialDataSet:
 
         # violin plot will be generated, only considering the "map_of_interest_violin"
         violinplot_median_distance_manyfractions = px.violin(df_violinplot_manyfractions, x="Fraction",
-                                                             y=map_of_interest,
+                                                             y=self.map_of_interest,
                                                              title="Distribution of the distance to the median for <br>the protein cluster: {}".format(
-                                                                 cluster_of_interest)
+                                                                 self.cluster_of_interest)
                                                              )
 
         # determine the layout
@@ -743,7 +768,7 @@ class SpatialDataSet:
 
             yaxis=go.layout.YAxis(linecolor='black',
                                   linewidth=1,
-                                  title=map_of_interest,
+                                  title=self.map_of_interest,
                                   mirror=True),
         )
 
@@ -812,16 +837,16 @@ class SpatialDataSet:
         # "Gene names", "Map", "Cluster" and transferred into the index
         df_distance_map_cluster_gene_in_index = df_distance_noindex.set_index(["Gene names", "Map", "Cluster"])
 
-        cluster_of_interest = "Proteasome"
-        self.cluster_of_interest = cluster_of_interest
+        # cluster_of_interest = "Proteasome"
+        # self.cluster_of_interest=cluster_of_interest
 
         df_cluster_xmaps_distance_with_index = pd.DataFrame()
 
         # for each individual map and a defined cluster data will be extracted from the dataframe
         # "df_distance_map_cluster_gene_in_index" and appended to the new dataframe df_cluster_xmaps_distance_with_index
         for maps in map_names:
-            plot_try = df_distance_map_cluster_gene_in_index.xs((cluster_of_interest, maps), level=["Cluster", "Map"],
-                                                                drop_level=False)
+            plot_try = df_distance_map_cluster_gene_in_index.xs((self.cluster_of_interest, maps),
+                                                                level=["Cluster", "Map"], drop_level=False)
             df_cluster_xmaps_distance_with_index = df_cluster_xmaps_distance_with_index.append(plot_try)
 
         # index will be reset, required by px.box
@@ -830,7 +855,7 @@ class SpatialDataSet:
         # optinal: points=all (= next to each indiviual boxplot the corresponding datapoints are displayed)
         distance_boxplot_figure = px.box(df_cluster_xmaps_distance, x="Map", y="distance",
                                          title="Manhattan distance distribution for <br>the protein cluster: {}".format(
-                                             cluster_of_interest)
+                                             self.cluster_of_interest)
                                          )
 
         # determine the layout
@@ -890,4 +915,3 @@ class SpatialDataSet:
 
     def __repr__(self):
         return "This is a spatial dataset with {} lines.".format(len(self.df))
-
