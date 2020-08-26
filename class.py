@@ -64,13 +64,13 @@ class SpatialDataSet:
         self.markerproteins = {
             "Proteasome": ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3",
                            "PSMB4", "PSMB5", "PSMB6", "PSMB7"],
-            "CCT complex": ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8"],
+            "CCT complex": ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
             "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2",
                                      "ATP6V1C1", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
-            "EMC complex": ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10"]
+            "EMC complex": ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
+            "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2"]
             }
-        # ,"CCT6B", "TCP1"
-        # ,"EMC6","EMC9"
+
 
         self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
 
@@ -458,7 +458,7 @@ class SpatialDataSet:
             return "I don't know this"
 
     def perform_pca(self):
-        """PCA will be performed, using logarithmized data.
+        """PCA will be performed for a cluster of interest across all maps, using logarithmized data.
 
         Args:
             self.df_log_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column "log profile"
@@ -466,9 +466,10 @@ class SpatialDataSet:
                 "MS/MS count" and "Ratio H/L count|Ratio H/L variability [%]" are stored as single level indices
 
         Returns:
-                df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
+                fig: PCA plot, that contains all scatter points of a protein cluster, defined in the dictionary markerproteins["Proteasome"]
         """
-        map_of_interest = self.map_of_interest
+        map_names = self.df_01_stacked.index.get_level_values("Map").unique()
+        self.map_names = map_names
 
         markerproteins = self.markerproteins
 
@@ -477,28 +478,33 @@ class SpatialDataSet:
         df_log_fracunstacked = df_log_stacked["log profile"].unstack("Fraction")
 
         pca = PCA(n_components=3)
-        df_pca = pd.DataFrame(pca.fit_transform(df_log_fracunstacked))
 
+        #df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
+        df_pca = pd.DataFrame(pca.fit_transform(df_log_fracunstacked))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_log_fracunstacked.index
 
-        df_setofproteins = pd.DataFrame()
-        for marker in markerproteins[self.cluster_of_interest]:
-            plot_try_pca = df_pca.xs((marker, map_of_interest), level=["Gene names", "Map"], drop_level=False)
-            # plot_try_pca = plot_try_pca.reset_index()
-            df_setofproteins = df_setofproteins.append(plot_try_pca)
-
-        df_setofproteins.reset_index(inplace=True)
-        fig = go.Figure(data=[go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
-                                           hovertext=df_setofproteins["Gene names"], mode="markers",
-                                           marker=dict(color=[
-                                               f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})'
-                                               for _ in range(25)])
-                                           )])
+        for maps in map_names:
+            df_setofproteins = pd.DataFrame()
+            for marker in markerproteins[self.cluster_of_interest]:
+                if marker not in df_pca.index.get_level_values("Gene names"):
+                    continue
+                plot_try_pca = df_pca.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
+                df_setofproteins = df_setofproteins.append(plot_try_pca)
+            df_setofproteins.reset_index(inplace=True)
+            if maps == map_names[0]:
+                fig = go.Figure(
+                    data=[go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
+                                       hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
+                                       # marker=dict(color=[f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})' for _   in range(25)])
+                                       )])
+            else:
+                fig.add_trace(go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
+                                           hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
+                                           ))
 
         fig.update_layout(autosize=False, width=500, height=500,
-                          title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest)
-                          )
+                         title = "PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest))
 
         return fig
 
@@ -515,12 +521,6 @@ class SpatialDataSet:
 
         map_names = self.df_01_stacked.index.get_level_values("Map").unique()
         self.map_names = map_names
-
-        # cluster_of_interest = "Proteasome"
-        # self.cluster_of_interest = cluster_of_interest
-
-        # map_of_interest = "MAP1"
-        # self.map_of_interest = map_of_interest
 
         df_setofproteins = self.cluster_isolation_df(self.map_of_interest, self.cluster_of_interest)
 
@@ -613,6 +613,8 @@ class SpatialDataSet:
 
         # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
         for marker in markerproteins[clusters]:
+            if marker not in df_01_stacked.index.get_level_values("Gene names"):
+                continue
             plot_try = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
             df_setofproteins = df_setofproteins.append(plot_try)
 
@@ -640,10 +642,10 @@ class SpatialDataSet:
 
         return df_distance_to_median_fracunstacked
 
-    def violinplot_distance_to_median_manymaps(self):
+    def boxplot_distance_to_median_manymaps(self):
         """
-        A violin plot for 1 desired cluster, 1 desired fraction, and across all maps is generated displaying the
-        distribution of the distance to the median.
+        A box plot for 1 desired cluster, 1 fraction, and across all maps is generated displaying the
+        distribution of the distance to the median. For each fraction, one box plot will be displayed.
 
         Args:
             self:
@@ -654,127 +656,54 @@ class SpatialDataSet:
             map_names: individual map names are stored as an index
 
         Returns:
-            violinplot_median_distance_manymaps: Violin plot. Along the x-axis, the maps are shown, along the y-axis
-            the fraction of interest is plotted
+            bx_median_distance_manymaps: Box plot. Along the x-axis, the maps are shown, along the y-axis
+            the distances is plotted
         """
 
         map_names = self.map_names
         df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked
 
-        # cluster_of_interest="Proteasome"
-        # self.cluster_of_interest=cluster_of_interest
-
-        # fraction_of_interest="03K"
-        # self.fraction_of_interest=fraction_of_interest
-
-        df_violinplot_manymaps = pd.DataFrame()
+        df_boxplot_manymaps = pd.DataFrame()
 
         # for each individual map and a defined cluster data will be extracted from the dataframe
-        # "df_allclusters_onlynorm_fracunstacked" and appended to the new dataframe df_violinplot_manymaps
+        # "df_allclusters_onlynorm_fracunstacked" and appended to the new dataframe df_boxplot_manymaps
         for maps in map_names:
             plot_try = df_allclusters_onlynorm_fracunstacked.xs((self.cluster_of_interest, maps),
                                                                 level=["Cluster", "Map"], drop_level=False)
-            df_violinplot_manymaps = df_violinplot_manymaps.append(plot_try)
+            df_boxplot_manymaps = df_boxplot_manymaps.append(plot_try)
 
         # index will be reset, required by px.violin
-        df_violinplot_manymaps = df_violinplot_manymaps.reset_index()
+        df_boxplot_manymaps = abs(df_boxplot_manymaps.stack("Fraction"))
 
-        # violin plot will be generated, only considering the "fraction_of_interest"
-        violinplot_median_distance_manymaps = px.violin(df_violinplot_manymaps, x="Map",
-                                                        y=self.fraction_of_interest,
-                                                        title="Distribution of the distance to the median for <br>the protein cluster: {}".format(
-                                                            self.cluster_of_interest)
-                                                        )
+        df_boxplot_manymaps.name = "distance"
 
-        # determine the layout
-        violinplot_median_distance_manymaps.update_layout(
-            autosize=False,
-            width=500,
-            height=500,
+        df_boxplot_manymaps = df_boxplot_manymaps.reset_index()
 
-            # setting a black boy around the graph
-            xaxis=go.layout.XAxis(linecolor='black',
-                                  linewidth=1,
-                                  title="Map",
-                                  mirror=True),
-
-            yaxis=go.layout.YAxis(linecolor='black',
-                                  linewidth=1,
-                                  title=self.fraction_of_interest,
-                                  mirror=True),
-        )
-
-        return violinplot_median_distance_manymaps
-
-    def violinplot_distance_to_median_manyfractions(self):
-        """
-        A violin plot for 1 desired cluster, 1 desired map, and across all fractions is generated displaying the
-        distribution of the distance to the median.
-
-        Args:
-            self:
-            requires dataframe (df_allclusters_onlynorm_fracunstacked, single level column), stored as attribute
-            (self.df_allclusters_onlynorm_fracunstacked), in which "Fraction" is unstacked. It contains only the
-            normalized data of individual protein clusters substracted by the median of the respective protein cluster
-            for each fraction.
-            fractions: individual fraction names are stored as an index
-
-        Returns:
-            violinplot_median_distance_manyfractions: Violin plot. Along the x-axis, the fractions are shown, along the y-axis
-            the map of interest is plotted
-        """
-
-        map_names = self.map_names
-        fractions = self.fractions
-        df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked
-
-        # "Fration" will be unstacked, and "Map" stacked
-        df_allclusters_onlynorm_mapunstacked = df_allclusters_onlynorm_fracunstacked.unstack("Map").stack("Fraction")
-
-        # cluster_of_interest = "Proteasome"
-        # self.cluster_of_interest=cluster_of_interest
-
-        # map_of_interest = "MAP1"
-        # self.map_of_interest = map_of_interest
-
-        df_violinplot_manyfractions = pd.DataFrame()
-
-        # for each individual fraction and a defined cluster data will be extracted from the dataframe
-        # "df_allclusters_onlynorm_fracunstacked" and appended to the new dataframe df_violinplot_manyfractions
-        for fraction_number in fractions:
-            plot_try = df_allclusters_onlynorm_mapunstacked.xs((self.cluster_of_interest, fraction_number),
-                                                               level=["Cluster", "Fraction"], drop_level=False)
-            df_violinplot_manyfractions = df_violinplot_manyfractions.append(plot_try)
-
-        # index will be reset, required by px.violin
-        df_violinplot_manyfractions.reset_index(inplace=True)
-
-        # violin plot will be generated, only considering the "map_of_interest_violin"
-        violinplot_median_distance_manyfractions = px.violin(df_violinplot_manyfractions, x="Fraction",
-                                                             y=self.map_of_interest,
-                                                             title="Distribution of the distance to the median for <br>the protein cluster: {}".format(
-                                                                 self.cluster_of_interest)
-                                                             )
+        # box plot will be generated, every fraction will be displayed in a single plot
+        bx_median_distance_manymaps = px.box(df_boxplot_manymaps, x="Map", y="distance", facet_col="Cluster",
+                                             facet_row="Fraction",
+                                             boxmode="overlay", height=300 * 5, width=250 * 4, points="all",
+                                             hover_name="Gene names",
+                                             title="Distribution of the distance to the median for <br>the protein cluster: {}".format(
+                                                 self.cluster_of_interest))
 
         # determine the layout
-        violinplot_median_distance_manyfractions.update_layout(
-            autosize=False,
-            width=500,
-            height=500,
+    #    bx_median_distance_manymaps.update_layout(
+#
+ #           # setting a black boy around the graph
+  #          xaxis=go.layout.XAxis(linecolor='black',
+   #                               linewidth=1,
+    #                              title="Map",
+     #                             mirror=True),
+#
+ #           yaxis=go.layout.YAxis(linecolor='black',
+  #                                linewidth=1,
+   #                               title=self.fraction_of_interest,
+    #                              mirror=True),
+     #   )
 
-            # setting a black boy around the graph
-            xaxis=go.layout.XAxis(linecolor='black',
-                                  linewidth=1,
-                                  title="Fractions",
-                                  mirror=True),
+        return bx_median_distance_manymaps
 
-            yaxis=go.layout.YAxis(linecolor='black',
-                                  linewidth=1,
-                                  title=self.map_of_interest,
-                                  mirror=True),
-        )
-
-        return violinplot_median_distance_manyfractions
 
     def distance_calculation(self):
         """
@@ -793,8 +722,6 @@ class SpatialDataSet:
             df_distance_noindex: dataframe, index is reset. It contains the column name "distance", in which the e.g.
             Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
         """
-
-        # =df_class, df_allclusters_onlynorm_fracunstacked=df_class.df_allclusters_onlynorm_fracunstacked, markerproteins=df_class.markerproteins
 
         markerproteins = self.markerproteins
         df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked.copy()
@@ -831,7 +758,7 @@ class SpatialDataSet:
         Returns:
             distance_boxplot_figure: boxplot. Along the x-axis the maps, along the y-axis the distances are shown
         """
-        # =df_class, df_distance_noindex=df_class.df_distance_noindex, markerproteins=df_class.markerproteins
+        
         map_names = self.map_names
 
         df_distance_noindex = self.df_distance_noindex
@@ -855,7 +782,7 @@ class SpatialDataSet:
         df_cluster_xmaps_distance = df_cluster_xmaps_distance_with_index.reset_index()
 
         # optinal: points=all (= next to each indiviual boxplot the corresponding datapoints are displayed)
-        distance_boxplot_figure = px.box(df_cluster_xmaps_distance, x="Map", y="distance",
+        distance_boxplot_figure = px.box(df_cluster_xmaps_distance, x="Map", y="distance",points="all",
                                          title="Manhattan distance distribution for <br>the protein cluster: {}".format(
                                              self.cluster_of_interest)
                                          )
@@ -903,7 +830,7 @@ class SpatialDataSet:
                 plot_try = df_distance_map_cluster_gene_in_index.xs((clusters, maps), level=["Cluster", "Map"],
                                                                     drop_level=False)
                 statistic_table = {"range": (plot_try["distance"].max(axis=0)) - (plot_try["distance"].min(axis=0)),
-                                   "mean": plot_try["distance"].mean(axis=0),
+                                   "mean": plot_try["distance"].median(axis=0),
                                    "standardeviation": plot_try["distance"].std(axis=0),
                                    "Cluster": clusters,
                                    "Map": maps}
