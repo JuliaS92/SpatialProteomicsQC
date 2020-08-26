@@ -64,7 +64,7 @@ class SpatialDataSet:
         self.markerproteins = {
             "Proteasome": ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3",
                            "PSMB4", "PSMB5", "PSMB6", "PSMB7"],
-            "large protein complex - CCT": ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8"],
+            "CCT complex": ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8"],
             "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2",
                                      "ATP6V1C1", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
             "EMC complex": ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10"]
@@ -483,7 +483,7 @@ class SpatialDataSet:
         df_pca.index = df_log_fracunstacked.index
 
         df_setofproteins = pd.DataFrame()
-        for marker in markerproteins["Proteasome"]:
+        for marker in markerproteins[self.cluster_of_interest]:
             plot_try_pca = df_pca.xs((marker, map_of_interest), level=["Gene names", "Map"], drop_level=False)
             # plot_try_pca = plot_try_pca.reset_index()
             df_setofproteins = df_setofproteins.append(plot_try_pca)
@@ -496,7 +496,9 @@ class SpatialDataSet:
                                                for _ in range(25)])
                                            )])
 
-        fig.update_layout(autosize=False, width=500, height=500)
+        fig.update_layout(autosize=False, width=500, height=500,
+                          title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest)
+                          )
 
         return fig
 
@@ -511,7 +513,7 @@ class SpatialDataSet:
 
         """
 
-        map_names = df_01_stacked.index.get_level_values("Map").unique()
+        map_names = self.df_01_stacked.index.get_level_values("Map").unique()
         self.map_names = map_names
 
         # cluster_of_interest = "Proteasome"
@@ -909,7 +911,8 @@ class SpatialDataSet:
                 df_statistic_table_individual_cluster = pd.DataFrame(statistic_series).T
                 df_overview = df_overview.append(df_statistic_table_individual_cluster)
 
-        df_overview.set_index(["Map", "Cluster"], inplace=True)
+        df_overview.set_index(["Cluster", "Map"], inplace=True)
+        df_overview.sort_index(axis=0, level=0, inplace=True)
 
         return df_overview
 
