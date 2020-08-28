@@ -18,8 +18,6 @@ class SpatialDataSet:
 
         self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
 
-        self.fraction_of_interest = "03K" if "fraction_of_interest" not in kwargs.keys() else kwargs[
-            "fraction_of_interest"]
         self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
         self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs[
             "cluster_of_interest"]
@@ -67,18 +65,20 @@ class SpatialDataSet:
             "CCT complex": ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
             "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2",
                                      "ATP6V1C1", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
-            "EMC complex": ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
-            "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2"]
+            "EMC": ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
+            "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"]
             }
 
 
         self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
+
 
     def data_reading(self):
         """Data import"""
 
         self.df_original = pd.read_csv(self.filename, sep="\t", comment="#",
                                        usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
+
 
     def analyze(self):
         """Analysis of the SILAC/LFQ data will be performed.
@@ -435,7 +435,8 @@ class SpatialDataSet:
             self.df_01_stacked = df_01_stacked
             fractions = df_01_stacked.index.get_level_values("Fraction").unique()
             self.fractions = fractions
-
+            map_names = self.df_01_stacked.index.get_level_values("Map").unique()
+            self.map_names = map_names
             return df_01_stacked
             # return df_index
 
@@ -457,8 +458,9 @@ class SpatialDataSet:
         else:
             return "I don't know this"
 
+
     def perform_pca(self):
-        """PCA will be performed for a cluster of interest across all maps, using logarithmized data.
+        """PCA will be performed, using logarithmized data.
 
         Args:
             self.df_log_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column "log profile"
@@ -466,11 +468,11 @@ class SpatialDataSet:
                 "MS/MS count" and "Ratio H/L count|Ratio H/L variability [%]" are stored as single level indices
 
         Returns:
-                fig: PCA plot, that contains all scatter points of a protein cluster, defined in the dictionary markerproteins["Proteasome"]
+                df_pca_all_marker_cluster_maps: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3",
+                filtered for marker genes, that are consistent throughout all maps / coverage filtering.
         """
-        map_names = self.df_01_stacked.index.get_level_values("Map").unique()
-        self.map_names = map_names
 
+        map_names = self.map_names
         markerproteins = self.markerproteins
 
         # isolate only logarithmized profile, and unstack "Fraction"
@@ -479,70 +481,115 @@ class SpatialDataSet:
 
         pca = PCA(n_components=3)
 
-        #df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
+        # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         df_pca = pd.DataFrame(pca.fit_transform(df_log_fracunstacked))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_log_fracunstacked.index
 
+        df_pca_all_marker_cluster_maps_unfiltered = pd.DataFrame()
+
+        for maps in map_names:
+            for clusters in markerproteins:
+                for marker in markerproteins[clusters]:
+                    if marker not in df_pca.index.get_level_values("Gene names"):
+                        continue
+                    plot_try_pca = df_pca.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
+                    df_pca_all_marker_cluster_maps_unfiltered = df_pca_all_marker_cluster_maps_unfiltered.append(
+                        plot_try_pca)
+
+        # genes are droped, if they are not present in all maps
+        df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps_unfiltered.groupby(["Gene names"]).filter(
+            lambda x: len(x) >= len(map_names))
+        self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps
+
+
+    def plot_pca(self):
+        """
+        PCA plot will be generated
+
+        Args:
+            df_pca_all_marker_cluster_maps: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3",
+                filtered for marker genes, that are consistent throughout all maps / coverage filtering.
+
+        Returns:
+            fig_pca: PCA plot, for one protein cluster all maps are plotted
+        """
+
+        df_pca_all_marker_cluster_maps = self.df_pca_all_marker_cluster_maps
+        map_names = self.map_names
+        markerproteins = self.markerproteins
+
         for maps in map_names:
             df_setofproteins = pd.DataFrame()
             for marker in markerproteins[self.cluster_of_interest]:
-                if marker not in df_pca.index.get_level_values("Gene names"):
+                if marker not in df_pca_all_marker_cluster_maps.index.get_level_values("Gene names"):
                     continue
-                plot_try_pca = df_pca.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
+                plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Gene names", "Map"],
+                                                                 drop_level=False)
                 df_setofproteins = df_setofproteins.append(plot_try_pca)
+
             df_setofproteins.reset_index(inplace=True)
             if maps == map_names[0]:
-                fig = go.Figure(
+                fig_pca = go.Figure(
                     data=[go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
                                        hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
                                        # marker=dict(color=[f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})' for _   in range(25)])
                                        )])
             else:
-                fig.add_trace(go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
-                                           hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
-                                           ))
+                fig_pca.add_trace(go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
+                                               hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
+                                               ))
 
-        fig.update_layout(autosize=False, width=500, height=500,
-                         title = "PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest))
+        fig_pca.update_layout(autosize=False, width=500, height=500,
+                              title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest))
 
-        return fig
+        return fig_pca
+
 
     def plottingdf(self):
         """
-        The function allows the plotting of filtered spatial proteomic data using plotly.express.
-        Referring to the function "cluster_isolation_df",
-         df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
-            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+        The function allows the plotting of filtered and normalized spatial proteomic data using plotly.express.
+        The median profile is also calculated and displayed
 
         Args:
+            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+
+        Returns:
+            fig_abundance_profiles_and_median: Line plot: relative abundan
 
         """
-
-        map_names = self.df_01_stacked.index.get_level_values("Map").unique()
-        self.map_names = map_names
 
         df_setofproteins = self.cluster_isolation_df(self.map_of_interest, self.cluster_of_interest)
 
         df_setofproteins = df_setofproteins.copy()
         df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+
+        df_setofproteins = df_setofproteins.reindex(index=natsort.natsorted(df_setofproteins.index))
+
         df_setofproteins.reset_index(inplace=True)
         fig_abundance_profiles = px.line(df_setofproteins, x="Fraction", y="normalized profile",
                                          color="Gene names",
-                                         title="Relative abundance profile for <br>the protein cluster: {}".format(
-                                             self.cluster_of_interest))
+                                         title="Relative abundance profile for {} of <br>the protein cluster: {}".format(
+                                             self.map_of_interest, self.cluster_of_interest))
 
         # make it available for plotting
         df_proteinset_median.name = "normalized profile"
+
+        df_proteinset_median = df_proteinset_median.reindex(index=natsort.natsorted(df_proteinset_median.index))
+
         df_proteinset_median = df_proteinset_median.reset_index()
         df_proteinset_median.insert(0, "Gene names", np.repeat("Median profile", len(df_proteinset_median)))
         # return df_proteinset_median
+
+
         fig_abundance_profiles_and_median = fig_abundance_profiles.add_scatter(x=df_proteinset_median["Fraction"],
                                                                                y=df_proteinset_median[
                                                                                    "normalized profile"],
                                                                                name="Median profile")
 
         return fig_abundance_profiles_and_median
+
 
     def multiple_iterations(self):
         """
@@ -565,11 +612,9 @@ class SpatialDataSet:
         markerproteins = self.markerproteins
         df_01_stacked = self.df_01_stacked
 
-        df_allclusters_onlynorm_fracunstacked = pd.DataFrame()
+        df_allclusters_onlynorm_fracunstacked_unfiltered = pd.DataFrame()
 
-        # individual map names are stored as an index
-        map_names = df_01_stacked.index.get_level_values("Map").unique()
-        self.map_names = map_names
+        map_names = self.map_names
 
         # for each individual map, and each individual protein cluster, defined in the dictionary markerproteins,
         # the functions "cluster_isolation_df" and "distance_to_median_calculation" will be performed
@@ -581,11 +626,25 @@ class SpatialDataSet:
                 df_distance_to_median_fracunstacked["Cluster"] = clusters
                 df_distance_to_median_fracunstacked.set_index("Cluster", inplace=True, append=True)
                 # the isolated and processed
-                df_allclusters_onlynorm_fracunstacked = df_allclusters_onlynorm_fracunstacked.append(
+                df_allclusters_onlynorm_fracunstacked_unfiltered = df_allclusters_onlynorm_fracunstacked_unfiltered.append(
                     df_distance_to_median_fracunstacked)
 
+        # genes are droped, if they are not present in all maps
+        df_allclusters_onlynorm_fracunstacked = df_allclusters_onlynorm_fracunstacked_unfiltered.groupby(["Gene names"]).filter(lambda x: len(x) >= len(map_names))
         self.df_allclusters_onlynorm_fracunstacked = df_allclusters_onlynorm_fracunstacked
+        # concatenate both original and filtered dataframe, and drop duplicates
+        dfs_dictionary = {'DF1': df_allclusters_onlynorm_fracunstacked_unfiltered,
+                          'DF2': df_allclusters_onlynorm_fracunstacked}
+        df = pd.concat(dfs_dictionary)
+        df_genenames_sortedout = df.drop_duplicates(keep=False)
+        # retrieve all gene names, that are sorted out
+        genenames_sortedout_index = df_genenames_sortedout.index.get_level_values("Gene names").unique()
+        genenames_sortedout_list = genenames_sortedout_index.tolist()
+
+        self.genenames_sortedout_list = genenames_sortedout_list
+
         return df_allclusters_onlynorm_fracunstacked
+
 
     def cluster_isolation_df(self, maps, clusters):
         """
@@ -620,6 +679,7 @@ class SpatialDataSet:
 
         return df_setofproteins
 
+
     def distance_to_median_calculation(self, df_setofproteins):
         """
         A dataframe will be generated, in which the distances to the median profile will be stored.
@@ -641,6 +701,7 @@ class SpatialDataSet:
             lambda x: x - df_proteinset_median, axis=1)
 
         return df_distance_to_median_fracunstacked
+
 
     def boxplot_distance_to_median_manymaps(self):
         """
@@ -677,6 +738,8 @@ class SpatialDataSet:
 
         df_boxplot_manymaps.name = "distance"
 
+        df_boxplot_manymaps = df_boxplot_manymaps.reindex(index=natsort.natsorted(df_boxplot_manymaps.index))
+
         df_boxplot_manymaps = df_boxplot_manymaps.reset_index()
 
         # box plot will be generated, every fraction will be displayed in a single plot
@@ -698,7 +761,6 @@ class SpatialDataSet:
 #
  #           yaxis=go.layout.YAxis(linecolor='black',
   #                                linewidth=1,
-   #                               title=self.fraction_of_interest,
     #                              mirror=True),
      #   )
 
@@ -743,6 +805,7 @@ class SpatialDataSet:
 
         return df_distance_noindex
 
+
     def distance_boxplot(self):
         """
         A box plot for 1 desired cluster, and across all maps is generated displaying the distribution of the e.g.
@@ -758,7 +821,7 @@ class SpatialDataSet:
         Returns:
             distance_boxplot_figure: boxplot. Along the x-axis the maps, along the y-axis the distances are shown
         """
-        
+
         map_names = self.map_names
 
         df_distance_noindex = self.df_distance_noindex
@@ -783,6 +846,7 @@ class SpatialDataSet:
 
         # optinal: points=all (= next to each indiviual boxplot the corresponding datapoints are displayed)
         distance_boxplot_figure = px.box(df_cluster_xmaps_distance, x="Map", y="distance",points="all",
+                                         hover_name="Gene names",
                                          title="Manhattan distance distribution for <br>the protein cluster: {}".format(
                                              self.cluster_of_interest)
                                          )
@@ -806,6 +870,7 @@ class SpatialDataSet:
         )
 
         return distance_boxplot_figure
+
 
     def results_overview_table(self):
         """
@@ -843,5 +908,6 @@ class SpatialDataSet:
 
         return df_overview
 
+
     def __repr__(self):
-        return "This is a spatial dataset with {} lines.".format(len(self.df))
+        return "This is a spatial dataset with {} lines.".format(len(self.df_original))
