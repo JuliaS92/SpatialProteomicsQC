@@ -16,7 +16,9 @@ class SpatialDataSet:
         # df_original contains all information of the raw file; tab separated file is imported,
         # without considering comments, marked with #
 
-        self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
+
+        self.filename = "LFQ_proteinGroups.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
+        #self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
 
         self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
         self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs[
@@ -70,17 +72,25 @@ class SpatialDataSet:
             }
 
 
-        self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
+        #self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
+        self.acquisition = "LFQ" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
 
 
     def data_reading(self):
-        """Data import"""
+        """Data import.
+
+        Args:
+            filename: stored as attribute
+
+        Returns:
+            df_orginal: raw, unprocessed dataframe, single level column index
+        """
 
         self.df_original = pd.read_csv(self.filename, sep="\t", comment="#",
                                        usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
 
 
-    def analyze(self):
+    def processingdf(self):
         """Analysis of the SILAC/LFQ data will be performed.
 
         The dataframe will be filtered, normalized and converted into a dataframe, characterized by a flat column index,
@@ -95,6 +105,7 @@ class SpatialDataSet:
             for LFQ data; represented as a flat column index
         """
 
+
         def filterdf(df_original, regex):
             """"The dataframe will be filtered by removing matches to the reverse database, matches only identified by
             site, and potential contaminants.
@@ -104,6 +115,10 @@ class SpatialDataSet:
                 used as the basis for the analysis
                 regex: dictionary, unique keys, that correspond to regular expressions, that allow the identification
                 of the dataframe entries "Only identified by site", "Reverse" and "Potential contaminant", respectively
+
+            Returns:
+                df_filt: dataframe, that was filtered for matches to the reverse database, matches only identified by
+                site, and potential contaminants.
             """
 
             # f.e. matches to the reverse database are depicted with "+". Therefore only entries without the "+" (!=+)
@@ -116,6 +131,7 @@ class SpatialDataSet:
                                            bool(re.match(regex["reverse"], col))][0]] != "+"]
 
             return df_filt
+
 
         def indexingdf_silac(df_filt, regex, map_index, fraction_index):
             """ A multiindex will be generated, characterized by Map, Fraction and Type as level labels,
@@ -175,19 +191,21 @@ class SpatialDataSet:
 
             return df_index
 
+
         def stringency_silac(df_index):
             """The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are
             considered (a set of f.e. 5 SILAC ratios in case you have 5 fractions / any proteins with missing values
             were rejected). Proteins were retained with 3 or more quantifications in each subfraction (=count). Furthermore,
             proteins with only 2 quantification events in one or more subfraction were retained, if their ratio
-            variability for ratios obtained with 2 quantification events was below 30% (=var). Subsequently normalization
+            variability for ratios obtained with 2 quantification events was below 30% (=var).
+            SILAC ratios were linearly normalized by division through the fraction median. Subsequently normalization
             to SILAC loading was performed.
 
             Args:
                 df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Type
 
             Returns:
-                df_filteredjoint_stacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                df_stringency_mapfracstacked: dataframe, in which "MAP" and "Fraction" are stacked;
                 the columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
             """
 
@@ -209,38 +227,41 @@ class SpatialDataSet:
             df_normsilac_stacked = df_countvarfiltered_stacked["Ratio H/L"].unstack(["Fraction", "Map"]).apply(
                 lambda x: x / np.median([el for el in x if not np.isnan(el)]), axis=0).stack(["Map", "Fraction"])
 
-            df_filteredjoint_stacked = df_countvarfiltered_stacked[["Ratio H/L count",
+            df_stringency_mapfracstacked = df_countvarfiltered_stacked[["Ratio H/L count",
                                                                     "Ratio H/L variability [%]"]].join(
                 pd.DataFrame(df_normsilac_stacked, columns=["Ratio H/L"]))
 
             # dataframe is grouped (Map, id), that allows the filtering for complete profiles
-            df_filteredjoint_stacked = df_filteredjoint_stacked.groupby(["Map", "id"]).filter(
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.groupby(["Map", "id"]).filter(
                 lambda x: len(x) >= len_fractions)
 
             # Ratio H/L is converted into Ratio L/H
-            df_filteredjoint_stacked["Ratio H/L"] = df_filteredjoint_stacked["Ratio H/L"].transform(lambda x: 1 / x)
+            df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1 / x)
 
-            return df_filteredjoint_stacked
 
-        def normalization_01_silac(df_filteredjoint_stacked):
+            return df_stringency_mapfracstacked
+
+
+        def normalization_01_silac(df_stringency_mapfracstacked):
             """The multiindex dataframe, that was subjected to stringency filtering, is 0-1 normalized ("Ratio H/L").
 
             Args:
-                df_filteredjoint_stacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                df_stringency_mapfracstacked: dataframe, in which "MAP" and "Fraction" are stacked;
                 the columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
 
             Returns:
                 df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column
-                "Ratio H/L" is 0-1 normalized; the columns "Ratio H/L count", "Ratio H/L variability [%]",
-                and "Ratio H/L" stored as single level indices; plotting is possible now
+                "Ratio H/L" is 0-1 normalized and renamed to "normalized profile"; the columns "Ratio H/L count",
+                "Ratio H/L variability [%]", and "normalized profile" stored as single level indices;
+                plotting is possible now
             """
 
-            df_01norm_unstacked = df_filteredjoint_stacked["Ratio H/L"].unstack("Fraction")
+            df_01norm_unstacked = df_stringency_mapfracstacked["Ratio H/L"].unstack("Fraction")
 
             # 0:1 normalization of Ratio L/H
             df_01norm_unstacked = df_01norm_unstacked.div(df_01norm_unstacked.sum(axis=1), axis=0)
 
-            df_01_stacked = df_filteredjoint_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame
+            df_01_stacked = df_stringency_mapfracstacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame
                 (
                 df_01norm_unstacked.stack(
                     "Fraction"),
@@ -253,11 +274,12 @@ class SpatialDataSet:
 
             return df_01_stacked
 
-        def conversion_to_log_silac(df_filteredjoint_stacked):
+
+        def logarithmization_silac(df_stringency_mapfracstacked):
             """The multiindex dataframe, that was subjected to stringency filtering, is logarithmized ("Ratio H/L").
 
             Args:
-                df_filteredjoint_stacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                df_stringency_mapfracstacked: dataframe, in which "MAP" and "Fraction" are stacked;
                 the columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
 
             Returns:
@@ -267,12 +289,12 @@ class SpatialDataSet:
 
             """
             # logarithmizing, basis of 2
-            df_lognorm_ratio_stacked = df_filteredjoint_stacked["Ratio H/L"].transform(np.log2)
-            df_log_stacked = df_filteredjoint_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(
+            df_lognorm_ratio_stacked = df_stringency_mapfracstacked["Ratio H/L"].transform(np.log2)
+            df_log_stacked = df_stringency_mapfracstacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(
                 pd.DataFrame
                 (df_lognorm_ratio_stacked, columns=["Ratio H/L"]))
 
-            # "Ratio H/L" will be renamed to "normalized profile"
+            # "Ratio H/L" will be renamed to "log profile"
             df_log_stacked.columns = [col if col != "Ratio H/L" else "log profile" for col in df_log_stacked.columns]
 
             return df_log_stacked
@@ -331,6 +353,7 @@ class SpatialDataSet:
 
             return df_index
 
+
         def stringency_lfq(df_index):
             """The multiindex dataframe is subjected to stringency filtering. Only Proteins which were identified with
             at least [4] consecutive data points regarding the "LFQ intensity", and if summed MS/MS counts >= n(fractions)*[2]
@@ -340,8 +363,8 @@ class SpatialDataSet:
                 df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Typ
 
             Returns:
-                df_consecutive_mapstacked: dataframe, in which "MAP" and "Fraction" are stacked;
-                the columns "normalized profile" and "MS/MS count" stored as single level indices
+                df_stringency_mapfracstacked: dataframe, in which "Map" and "Fraction" is stacked;
+                "LFQ intensity" and "MS/MS count" define a single-level column index
                 """
 
             # retrieve number of fractions that are present in the dataset
@@ -361,55 +384,56 @@ class SpatialDataSet:
             df_mscount_mapstacked = df_index.loc[df_index[('MS/MS count')].apply(np.sum, axis=1) >= (
                     number_fractions * self.summed_MSMS_counts)]
 
-            df_consecutive_mapstacked = df_mscount_mapstacked.copy()
+            df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
 
             # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
-            df_consecutive_mapstacked = df_consecutive_mapstacked.loc[
-                df_consecutive_mapstacked[("LFQ intensity")].apply(lambda x: any(
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[
+                df_stringency_mapfracstacked[("LFQ intensity")].apply(lambda x: any(
                     np.invert(np.isnan(x)).rolling(window=self.consecutive_LFQ_I).sum() >=
                     self.consecutive_LFQ_I), axis=1)]
 
-            return df_consecutive_mapstacked
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.copy().stack("Fraction")
 
-        def normalization_01_lfq(df_consecutive_mapstacked):
+            return df_stringency_mapfracstacked
+
+
+        def normalization_01_lfq(df_stringency_mapfracstacked):
             """The multiindex dataframe, that was subjected to stringency filtering, is 0-1 normalized ("LFQ intensity").
 
             Args:
-                df_consecutive_mapstacked: dataframe, in which "Map" is stacked; the column names are stored as
-                2 level labels: Fraction (03K, 06K, 12K, 24K, 80K), Type (LFQ intensity, MS/MS count)
+                df_stringency_mapfracstacked: dataframe, in which "Map" and "Fraction" is stacked;
+                "LFQ intensity" and "MS/MS count" define a single-level column index
 
 
             Returns:
                 df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column
-                "LFQ intensity" is 0-1 normalized; the columns "LFQ intensity" and "MS/MS count" are stored as
+                "LFQ intensity" is 0-1 normalized and renamed to "normalized profile";
+                the columns ""normalized profile"" and "MS/MS count" are stored as
                 single level indices; plotting is possible now
 
             """
 
-            # 0-1 normalization but only for LFQ intensity
-            df_01norm_mapstacked = df_consecutive_mapstacked["LFQ intensity"].div(
-                df_consecutive_mapstacked["LFQ intensity"].sum(axis=1), axis=0)
+            df_01norm_mapstacked = df_stringency_mapfracstacked["LFQ intensity"].unstack("Fraction")
 
-            df_01_stacked = df_consecutive_mapstacked.copy()
+            # 0:1 normalization of Ratio L/H
+            df_01norm_unstacked = df_01norm_mapstacked.div(df_01norm_mapstacked.sum(axis=1), axis=0)
 
-            # you overwrite the column ["LFQ intensity"] with df_01norm_mapstacked, which contains only the data for LFQ intensity
-            df_01_stacked["LFQ intensity"] = df_01norm_mapstacked
-
-            # Replace missing values in the remaining maps with 0
-            df_01_stacked = df_01_stacked.fillna(0).stack("Fraction")
+            df_01_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame(df_01norm_unstacked.stack(
+                   "Fraction"),columns=["LFQ intensity"]))
 
             # rename columns: "LFQ intensity" into "normalized profile"
             df_01_stacked.columns = [col if col != "LFQ intensity" else "normalized profile" for col in
                                      df_01_stacked.columns]
-
+            df_01_stacked = df_01_stacked.sort_index()
             return df_01_stacked
 
-        def conversion_to_log_lfq(df_consecutive_mapstacked):
+
+        def logarithmization_lfq(df_stringency_mapfracstacked):
             """The multiindex dataframe, that was subjected to stringency filtering, is logarithmized ("LFQ intensity").
 
             Args:
-                df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked;
-                the columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
+                df_stringency_mapfracstacked: dataframe, in which "Map" and "Fraction" is stacked;
+                "LFQ intensity" and "MS/MS count" define a single-level column index
 
             Returns:
                 df_log_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column "log profile"
@@ -417,20 +441,26 @@ class SpatialDataSet:
                 stored as single level indices; PCA is possible now
             """
 
-            df_lognorm_mapstacked = df_consecutive_mapstacked["LFQ intensity"].transform(np.log2)
-            df_log_stacked = df_consecutive_mapstacked.copy()
-            df_log_stacked["LFQ intensity"] = df_lognorm_mapstacked
-            df_log_stacked = df_log_stacked.fillna(0).stack("Fraction")
-            df_log_stacked.columns = [col if col != "LFQ intensity" else "log profile" for col in
-                                      df_log_stacked.columns]
+            df_lognorm_ratio_stacked = df_stringency_mapfracstacked["LFQ intensity"].transform(np.log2)
+            #df_log_stacked = df_stringency_mapfracstacked.copy()
+            #df_log_stacked["LFQ intensity"] = df_lognorm_mapstacked
+            #df_log_stacked = df_log_stacked.fillna(0).stack("Fraction")
+
+            df_log_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame
+                (df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
+
+            # "Ratio H/L" will be renamed to "log profile"
+            df_log_stacked.columns = [col if col != "LFQ intensity" else "log profile" for col in df_log_stacked.columns]
+
             return df_log_stacked
+
 
         if self.acquisition == "SILAC":
             df_filter = filterdf(self.df_original, self.regex)
             df_index = indexingdf_silac(df_filter, self.regex, self.map_index, self.fraction_index)
-            df_filteredjoint_stacked = stringency_silac(df_index)
-            df_01_stacked = normalization_01_silac(df_filteredjoint_stacked)
-            df_log_stacked = conversion_to_log_silac(df_filteredjoint_stacked)
+            df_stringency_mapfracstacked = stringency_silac(df_index)
+            df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
+            df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
             self.df_log_stacked = df_log_stacked
             self.df_01_stacked = df_01_stacked
             fractions = df_01_stacked.index.get_level_values("Fraction").unique()
@@ -444,15 +474,17 @@ class SpatialDataSet:
         elif self.acquisition == "LFQ":
             df_filter = filterdf(self.df_original, self.regex)
             df_index = indexingdf_lfq(df_filter, self.regex, self.map_index, self.fraction_index)
-            df_consecutive_mapstacked = stringency_lfq(df_index)
-            df_01_stacked = normalization_01_lfq(df_consecutive_mapstacked)
-            df_log_stacked = conversion_to_log_lfq(df_consecutive_mapstacked)
+            df_stringency_mapfracstacked = stringency_lfq(df_index)
+
+            df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
+            df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
             self.df_log_stacked = df_log_stacked
             self.df_01_stacked = df_01_stacked
             fractions = df_01_stacked.index.get_level_values("Fraction").unique()
             self.fractions = fractions
-
-            return df_01_stacked
+            map_names = self.df_01_stacked.index.get_level_values("Map").unique()
+            self.map_names = map_names
+            return df_log_stacked
 
 
         else:
@@ -512,7 +544,7 @@ class SpatialDataSet:
                 filtered for marker genes, that are consistent throughout all maps / coverage filtering.
 
         Returns:
-            fig_pca: PCA plot, for one protein cluster all maps are plotted
+            pca_figure: PCA plot, for one protein cluster all maps are plotted
         """
 
         df_pca_all_marker_cluster_maps = self.df_pca_all_marker_cluster_maps
@@ -530,20 +562,20 @@ class SpatialDataSet:
 
             df_setofproteins.reset_index(inplace=True)
             if maps == map_names[0]:
-                fig_pca = go.Figure(
+                pca_figure = go.Figure(
                     data=[go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
                                        hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
                                        # marker=dict(color=[f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})' for _   in range(25)])
                                        )])
             else:
-                fig_pca.add_trace(go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
+                pca_figure.add_trace(go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
                                                hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
                                                ))
 
-        fig_pca.update_layout(autosize=False, width=500, height=500,
+        pca_figure.update_layout(autosize=False, width=500, height=500,
                               title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest))
 
-        return fig_pca
+        return pca_figure
 
 
     def plottingdf(self):
@@ -552,43 +584,45 @@ class SpatialDataSet:
         The median profile is also calculated and displayed
 
         Args:
-            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            df_ setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
             stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
 
         Returns:
-            fig_abundance_profiles_and_median: Line plot: relative abundan
+            abundance_profiles_and_median_figure: Line plot, displaying the relative abundance profiles.
 
         """
 
         df_setofproteins = self.cluster_isolation_df(self.map_of_interest, self.cluster_of_interest)
 
         df_setofproteins = df_setofproteins.copy()
-        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
 
+        # fractions get sorted
         df_setofproteins = df_setofproteins.reindex(index=natsort.natsorted(df_setofproteins.index))
 
+        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+
+        # make it available for plotting
         df_setofproteins.reset_index(inplace=True)
-        fig_abundance_profiles = px.line(df_setofproteins, x="Fraction", y="normalized profile",
+        abundance_profiles_figure = px.line(df_setofproteins, x="Fraction", y="normalized profile",
                                          color="Gene names",
                                          title="Relative abundance profile for {} of <br>the protein cluster: {}".format(
                                              self.map_of_interest, self.cluster_of_interest))
 
-        # make it available for plotting
         df_proteinset_median.name = "normalized profile"
 
+        #fractions get sorted
         df_proteinset_median = df_proteinset_median.reindex(index=natsort.natsorted(df_proteinset_median.index))
 
+        # make it available for plotting
         df_proteinset_median = df_proteinset_median.reset_index()
         df_proteinset_median.insert(0, "Gene names", np.repeat("Median profile", len(df_proteinset_median)))
-        # return df_proteinset_median
 
-
-        fig_abundance_profiles_and_median = fig_abundance_profiles.add_scatter(x=df_proteinset_median["Fraction"],
+        abundance_profiles_and_median_figure = abundance_profiles_figure.add_scatter(x=df_proteinset_median["Fraction"],
                                                                                y=df_proteinset_median[
                                                                                    "normalized profile"],
                                                                                name="Median profile")
 
-        return fig_abundance_profiles_and_median
+        return abundance_profiles_and_median_figure
 
 
     def multiple_iterations(self):
@@ -690,7 +724,7 @@ class SpatialDataSet:
 
         Returns:
             df_distance_to_median_fracunstacked: multiindex dataframe, for each individual protein and fraction the distances
-            are claculated. The data is stored in single level columns (Column names: e.g. "03K", "06K", "12K", "24K", "80K")
+            are calculated. The data is stored in single level columns (Column names: e.g. "03K", "06K", "12K", "24K", "80K")
         """
         # calculate the median of the "normalized profile" of individual proteins over the fractions
         df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
@@ -703,9 +737,9 @@ class SpatialDataSet:
         return df_distance_to_median_fracunstacked
 
 
-    def boxplot_distance_to_median_manymaps(self):
+    def distance_to_median_boxplot(self):
         """
-        A box plot for 1 desired cluster, 1 fraction, and across all maps is generated displaying the
+        A box plot for 1 desired cluster, across all maps and fractions is generated displaying the
         distribution of the distance to the median. For each fraction, one box plot will be displayed.
 
         Args:
@@ -717,7 +751,7 @@ class SpatialDataSet:
             map_names: individual map names are stored as an index
 
         Returns:
-            bx_median_distance_manymaps: Box plot. Along the x-axis, the maps are shown, along the y-axis
+            distance_to_median_boxplot_figure: Box plot. Along the x-axis, the maps are shown, along the y-axis
             the distances is plotted
         """
 
@@ -743,7 +777,7 @@ class SpatialDataSet:
         df_boxplot_manymaps = df_boxplot_manymaps.reset_index()
 
         # box plot will be generated, every fraction will be displayed in a single plot
-        bx_median_distance_manymaps = px.box(df_boxplot_manymaps, x="Map", y="distance", facet_col="Cluster",
+        distance_to_median_boxplot_figure = px.box(df_boxplot_manymaps, x="Map", y="distance", facet_col="Cluster",
                                              facet_row="Fraction",
                                              boxmode="overlay", height=300 * 5, width=250 * 4, points="all",
                                              hover_name="Gene names",
@@ -751,7 +785,7 @@ class SpatialDataSet:
                                                  self.cluster_of_interest))
 
         # determine the layout
-    #    bx_median_distance_manymaps.update_layout(
+    #    distance_to_median_boxplot_figure.update_layout(
 #
  #           # setting a black boy around the graph
   #          xaxis=go.layout.XAxis(linecolor='black',
@@ -764,7 +798,7 @@ class SpatialDataSet:
     #                              mirror=True),
      #   )
 
-        return bx_median_distance_manymaps
+        return distance_to_median_boxplot_figure
 
 
     def distance_calculation(self):
@@ -895,7 +929,7 @@ class SpatialDataSet:
                 plot_try = df_distance_map_cluster_gene_in_index.xs((clusters, maps), level=["Cluster", "Map"],
                                                                     drop_level=False)
                 statistic_table = {"range": (plot_try["distance"].max(axis=0)) - (plot_try["distance"].min(axis=0)),
-                                   "mean": plot_try["distance"].median(axis=0),
+                                   "median": plot_try["distance"].median(axis=0),
                                    "standardeviation": plot_try["distance"].std(axis=0),
                                    "Cluster": clusters,
                                    "Map": maps}
