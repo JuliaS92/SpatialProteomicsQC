@@ -16,52 +16,45 @@ class SpatialDataSet:
         # df_original contains all information of the raw file; tab separated file is imported,
         # without considering comments, marked with #
 
-
-        self.filename = "LFQ_proteinGroups.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
-        #self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
-
+        self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
+        
         self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
         self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs[
             "cluster_of_interest"]
 
-        self.map_index = ".*[ .](.*)_.*K" if "map_index" not in kwargs.keys() else kwargs["map_index"]
-        self.fraction_index = ".*_(\d+[Kk])" if "fraction_index" not in kwargs.keys() else kwargs["fraction_index"]
-
         self.summed_MSMS_counts = 2 if "summed_MSMS_counts" not in kwargs.keys() else kwargs["summed_MSMS_counts"]
-        self.consecutive_LFQ_I = 4 if "consecutive_LFQ_I" not in kwargs.keys() else kwargs["consecutive_LFQ_I"]
-
-        # self.lfq_filter_param = {"summed MS/MS counts": 2, "consecutive LFQ_I": 4}
-
+        self.consecutiveLFQi = 4 if "consecutiveLFQi" not in kwargs.keys() else kwargs["consecutiveLFQi"]
+        
+        self.RatioHLcount_1 = 3 if "RatioHLcount_1" not in kwargs.keys() else kwargs["RatioHLcount_1"]
+        self.RatioHLcount_2 = 2 if "RatioHLcount_2" not in kwargs.keys() else kwargs["RatioHLcount_2"]
+        self.RatioVariability = 30 if "RatioVariability" not in kwargs.keys() else kwargs["RatioVariability"]
+            
         self.regex = {
-            "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue",
-            "index_col_silac": "[Pp]rotein.[Ii][Dd]s|[Mm]ajority.[Pp]rotein.[Ii][Dd]s|[Pp]rotein.[Nn]ames|[Gg]ene.[Nn]ames|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue",
-            "index_col_lfq": ".*[Pp][rR].*[Ii][Dd]s.*|.*[nN]ames.*|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue|MS/MS.count$",
+            "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|R.Fraction|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity",
+#            "index_col_silac": "[Pp]rotein.[Ii][Dd]s|[Mm]ajority.[Pp]rotein.[Ii][Dd]s|[Pp]rotein.[Nn]ames|[Gg]ene.[Nn]ames|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue",
+#            "index_col_lfq": ".*[Pp][rR].*[Ii][Dd]s.*|.*[nN]ames.*|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue|MS/MS.count$",
 
-            # "map": ".*[ .](.*)_.*K",
-            # "fraction_silac": ".*_(\d+[Kk])",
-            # "fraction_lfq": ".*_(\d+[Kk])",
-
-            "type_count_silac": "([Rr]atio.[Hh]/[Ll].[cC]ount)[ .].*_.*K",
-            "type_var_silac": "([Rr]atio.[Hh]/[Ll].[Vv]ariability....)[ .].*_.*K",
-            "type_ratio_silac": "([rR]atio.[Hh]/[Ll])[ .](?![cC]ount|[Vv]ariability).*_.*K",
-
-            "type_count_lfq": "([Rr]atio.[Hh]/[Ll].[cC]ount)[ .].*_.*K",
-            "type_var_lfq": "([Rr]atio.[Hh]/[Ll].[Vv]ariability....)[ .].*_.*K",
-            "type_ratio_silac": "([rR]atio.[Hh]/[Ll])[ .](?![cC]ount|[Vv]ariability).*_.*K",
-
-            "type_msms_lfq": "([Mm][Ss]/[Mm][Ss].[cC]ount)[ .].*_.*K",
-            "type_intensity_lfq": "([Ll][Ff][Qq].[Ii]ntensity)[ .].*_.*K",
+#            "type_count_silac": "([Rr]atio.[Hh]/[Ll].[cC]ount)[ .].*_.*K",
+#            "type_var_silac": "([Rr]atio.[Hh]/[Ll].[Vv]ariability....)[ .].*_.*K",
+#            "type_ratio_silac": "([rR]atio.[Hh]/[Ll])[ .](?![cC]ount|[Vv]ariability).*_.*K",
+#
+#            "type_count_lfq": "([Rr]atio.[Hh]/[Ll].[cC]ount)[ .].*_.*K",
+#            "type_var_lfq": "([Rr]atio.[Hh]/[Ll].[Vv]ariability....)[ .].*_.*K",
+#            "type_ratio_silac": "([rR]atio.[Hh]/[Ll])[ .](?![cC]ount|[Vv]ariability).*_.*K",
+#
+#            "type_msms_lfq": "([Mm][Ss]/[Mm][Ss].[cC]ount)[ .].*_.*K",
+#            "type_intensity_lfq": "([Ll][Ff][Qq].[Ii]ntensity)[ .].*_.*K",
 
             # "type_lfq": "(.*[nNTt]{1}[yYtT]{1})[ .].*_\d+[Kk]$",
 
-            "lfq_nan": "[Ll][Ff][Qq].*",
+            #"lfq_nan": "[Ll][Ff][Qq].*",
 
-            "contaminants": "[Pp]otential.[cC]ontaminant",
-            "sites": "[Oo]nly.[iI]dentified.[bB]y.[sS]ite",
-            "reverse": "[Rr]everse"
+            #"contaminants": "[Pp]otential.[cC]ontaminant",
+            #"sites": "[Oo]nly.[iI]dentified.[bB]y.[sS]ite",
+            #"reverse": "[Rr]everse"
         }
-
-        self.markerproteins = {
+        
+        markerprotein_human = {
             "Proteasome": ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3",
                            "PSMB4", "PSMB5", "PSMB6", "PSMB7"],
             "CCT complex": ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
@@ -70,12 +63,58 @@ class SpatialDataSet:
             "EMC": ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
             "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"]
             }
-
-
-        #self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
-        self.acquisition = "LFQ" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
-
-
+        
+        self.all_markerproteins = {
+            "Human - Swissprot" : markerprotein_human, 
+            "Arabidopsis - Araport" : {
+                "CCT complex": ["AT3G11830","AT5G16070","AT5G20890","AT5G26360","AT1G24510","AT3G18190","AT3G20050","AT3G03960"],
+                "Coatomer": ["AT1G62020","AT4G34450","AT4G31490","AT1G79990","AT1G30630","AT4G08520"],
+                "SAGA complex": ["AT5G25150","AT3G54610","AT1G54360","AT1G54140","AT4G38130","AT4G31720"],
+                "AP1/2": ["AT1G60070","AT2G17380","AT4G23460","AT5G22780","AT1G47830","AT5G46630","AT1G10730"],
+                "20S proteasome": ["AT1G13060","AT1G21720","AT3G22110","AT3G22630","AT5G40580","AT1G16470","AT1G47250","AT1G53850",
+                                  "AT1G56450","AT2G27020","AT3G60820","AT4G31300","AT5G35590","AT3G51260","AT3G53230"],
+                "cis Golgi proteins": ["AT1G05720","AT1G07230","AT1G10950","AT1G15020","AT1G18580","AT1G20270","AT1G29060","AT1G29310",
+                                      "AT1G51590","AT1G52420","AT1G53710","AT1G62330","AT1G65820","AT1G76270","AT1G77370","AT1G78920",
+                                      "AT2G01070","AT2G14740","AT2G17720","AT2G20130","AT2G20810","AT2G40280","AT2G43080","AT2G47320",
+                                      "AT3G06300","AT3G09090","AT3G21160","AT3G24160","AT3G28480","AT3G48280","AT4G01210","AT4G24530",
+                                      "AT5G04480","AT5G06660","AT5G14430","AT5G14950","AT5G18900","AT5G27330","AT5G47780","AT5G65470",
+                                      "AT5G66060"],
+                "photosystem": ["AT2G33040","AT5G13450","ATCG00280","AT1G31330","AT1G29920","ATCG00340","ATCG00350","AT1G61520",
+                               "ATCG00580","ATCG00710","AT4G12800","AT4G10340","AT3G08940","AT3G54890","ATCG00270","ATCG00020",
+                               "AT5G13440","AT1G55670","AT4G22890","AT3G47470","AT1G45474"]
+            },
+            "Mouse - Swissprot" : {
+                "STH" : ["STH"],
+            },
+            }
+                    
+        
+        self.markerproteins = markerprotein_human if "markerprotein" not in kwargs.keys() else kwargs["markerprotein"]
+        
+        self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
+        
+        self.acquisition_set_dict = {
+            "LFQ": ["[Ll][Ff][Qq].[Ii]ntensity", "[Mm][Ss]/[Mm][Ss].[cC]ount", "[Ii]ntensity"],
+            "LFQ spectronaut" : ["LFQ intensity", "MS/MS count"],
+            "SILAC"  : [ "[Rr]atio.[Hh]/[Ll](?!.[Vv]aria|.[Cc]ount)","[Rr]atio.[Hh]/[Ll].[Vv]ariability.\[%\]", "[Rr]atio.[Hh]/[Ll].[cC]ount"]
+            }
+        
+        self.name_pattern = ".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)" if "name_pattern" not in kwargs.keys() else kwargs["name_pattern"]
+        
+        self.fraction_dict = {"1K": "01K","3K": "03K", "6K": "06K", "12K": "12K", "24K": "24K", "80K": "80K", 
+                              "01K": "01K","03K": "03K", "06K": "06K", "012K": "12K", "024K": "24K", "080K": "80K", 
+                              "Cyt": "Cyt", "Mem": "Mem", "Nuc": "Nuc", "Prot": "Prot", "cyt": "Cyt", "mem": "Mem", "nuc": "Nuc", "Prot": "Prot", "prot": "Prot"}
+        
+        self.Spectronaut_columnRenaming = {
+            "R.Condition": "Map", "R.Fraction": "Fraction", "PG.Genes" : "Gene names", "PG.Qvalue": "Q-value", "PG.Cscore":"C-Score", 
+            "PG.ProteinGroups" : "Majority protein IDs", "PG.RunEvidenceCount" : "MS/MS count", "PG.Quantity" : "LFQ intensity"
+            }
+        
+        self.analysed_datasets_dict = {}
+        self.analysis_summary_dict = {}
+        self.shape_dict = {}  
+        self.expname = "Protein_Groups" if "expname" not in kwargs.keys() else kwargs["expname"]
+        
     def data_reading(self):
         """Data import.
 
@@ -89,7 +128,8 @@ class SpatialDataSet:
         self.df_original = pd.read_csv(self.filename, sep="\t", comment="#",
                                        usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
 
-
+        return self.df_original
+    
     def processingdf(self):
         """Analysis of the SILAC/LFQ data will be performed.
 
@@ -102,96 +142,91 @@ class SpatialDataSet:
         Returns:
             A dataframe, in which "Fraction" and "Map" are stacked, containing "normalized profile" as column,
             additionally "Ratio H/L count", "Ratio H/L variability [%]" is found for SILAC data and "MS/MS count"
-            for LFQ data; represented as a flat column index
+            "LFQ intensity" for LFQ data; represented as a flat column index
         """
-
-
-        def filterdf(df_original, regex):
-            """"The dataframe will be filtered by removing matches to the reverse database, matches only identified by
-            site, and potential contaminants.
-
-            Args:
-                df_original: raw dataframe, MaxQuant returns as the primary output the "protein groups" file,
-                used as the basis for the analysis
-                regex: dictionary, unique keys, that correspond to regular expressions, that allow the identification
-                of the dataframe entries "Only identified by site", "Reverse" and "Potential contaminant", respectively
-
-            Returns:
-                df_filt: dataframe, that was filtered for matches to the reverse database, matches only identified by
-                site, and potential contaminants.
-            """
-
-            # f.e. matches to the reverse database are depicted with "+". Therefore only entries without the "+" (!=+)
-            # are taken over into the new dataframe
-            df_filt = df_original.loc[df_original[[col for col in df_original.columns if
-                                                   bool(re.match(regex["contaminants"], col))][0]] != "+"]
-            df_filt = df_filt.loc[df_filt[[col for col in df_filt.columns if
-                                           bool(re.match(regex["sites"], col))][0]] != "+"]
-            df_filt = df_filt.loc[df_filt[[col for col in df_filt.columns if
-                                           bool(re.match(regex["reverse"], col))][0]] != "+"]
-
-            return df_filt
-
-
-        def indexingdf_silac(df_filt, regex, map_index, fraction_index):
-            """ A multiindex will be generated, characterized by Map, Fraction and Type as level labels,
+    
+        def indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern, shape_dict):
+            """For data output from MaxQuant, all columns - except of "MS/MS count" and "LFQ intensity" (LFQ) | 
+            "Ratio H/L count", "Ratio H/L variability [%]" (SILAC) - will be set as index.
+            A multiindex will be generated, containing "Set" ("MS/MS count", "LFQ intensity"|  "Ratio H/L count", "Ratio H/L variability [%]"),
+            "Fraction" (= defined via "name_pattern") and "Map" (= defined via "name_pattern") as level labels,
             allowing the stacking and unstacking of the dataframe;
-
+            The dataframe will be filtered by removing matches to the reverse database, matches only identified by
+            site, and potential contaminants.
+            
             Args:
-                df_filt: dataframe, that was filtered for matches to the reverse database, matches only identified by
-                site, and potential contaminants.
+                df_original: dataframe, columns defined through self.regex["imported_columns"]
+                
 
             Returns:
-                df_index: multiindex dataframe, which contains 3 level labels: Map (e.g. MAP1, MAP2, ...)
-                Fraction (03K, 06K, 12K, 24K, 80K), Type (Ratio H/L count,Ratio H/L variability [%], Ratio H/L),
-                rest of the information is stored in the index (Protein IDs, Majority protein IDs,
-                Protein names, Gene names, id)
+                df_index: mutliindex dataframe, which contains 3 level labels: MAP, Fraction, Type
             """
-
+            
             # deep copy of the dataframe
-            df_index = df_filt.copy()
-
-            # iteration through the column names, and searches for column names that are mentioned in the dictionary
-            # entry regex["index_col_silac"]
-            col_to_index = [col for col in df_filt.columns if re.match(regex["index_col_silac"], col)]
-
-            # column names are defined as index
-            df_index = df_index.set_index(col_to_index)
-
-            # all other columns, that are not needed for data processing (they do not start with "Ratio") are removed
-
-            list_drop_col = [column for column in df_index.columns if not column.startswith("Ratio ")]
-            list_endcount = [column for column in df_index.columns if column.endswith("count")]
-            list_endpct = [column for column in df_index.columns if column.endswith("[%]")]
-
-            list_drop_col.extend(list_endcount)
-            list_drop_col.extend(list_endpct)
-
-            df_index = df_index.drop(list_drop_col, axis=1)
-            # df_index = df_index.drop([column for column in df_index.columns if not column.startswith("Ratio")], axis=1)
-
+            df_original = df_original.copy()
+            df_i = df_original.set_index([col for col in df_original.columns if any([re.match(s, col) 
+                                                                                     for s in self.acquisition_set_dict[self.acquisition]]) == False])
+    
             # multindex will be generated, by isolating the information about the Map, Fraction and Type from each
             # individual column name
-            # names=["Map", "Fraction", "Type"] defines the label of the multiindex
+            # names=["Set", "Map", "Fraction"] defines the label of the multiindex
+            multiindex = pd.MultiIndex.from_arrays(
+                    arrays=[
+                        [item for sublist in [[re.findall(s, col)[0] for s in self.acquisition_set_dict[self.acquisition] if re.match(s,col)] 
+                                              for col in df_i.columns] for item in sublist],
+                        [re.match(self.name_pattern, col).group("rep") for col in df_i.columns] if not "<cond>" in self.name_pattern 
+                        else ["_".join(re.match(self.name_pattern, col).group("cond", "rep")) for col in df_i.columns],
+                        [self.fraction_dict[re.match(self.name_pattern, col).group("frac")] for col in df_i.columns],
+                    ],
+                    names=["Set", "Map", "Fraction"]
+                        )
+            df_i.columns = multiindex
+            df_i.sort_index(1, inplace=True)
+            
+            self.shape_dict["Original size"]=df_i.shape
+            
+            df_index = df_i.xs(
+                    np.nan, 0, "Reverse").xs(
+                    np.nan, 0, "Potential contaminant").xs(
+                    np.nan, 0, "Only identified by site")
+            df_index.replace(0, np.nan, inplace=True)
+            self.shape_dict["Shape after categorical filtering"]=df_index.shape
+    
+            return df_index   
 
-            desired_columns_types = [e1 for e1 in [
-                re.findall(regex["type_count_silac"], column) or re.findall(regex["type_var_silac"],
-                                                                            column) or re.findall(
-                    regex["type_ratio_silac"], column) for column in df_index.columns] if e1]
-            col_list_type_silac = [item for sublist in desired_columns_types for item in sublist]
 
-            columns = pd.MultiIndex.from_arrays([
-                [re.findall(map_index, column)[0] for column in df_index.columns],
-                [re.findall(fraction_index, column)[0] for column in df_index.columns],
-                col_list_type_silac],
-                # [re.findall(regex["type_silac"], column)[0] for column in df_index.columns],
-                # [re.findall(regex["type_count_silac"], column)[0] or re.findall(regex["type_var_silac"], column)[0] or re.findall(regex["type_ratio_silac"], column)[0] for column in df_index.columns]],
-                names=["Map", "Fraction", "Type"])
-            df_index.columns = columns
+        def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, shape_dict):
+            """For data generated from the Spectronaut software, columns will be renamed, such it fits in the scheme of MaxQuant output data.
+            Subsequently, all columns - except of "MS/MS count" and "LFQ intensity" will be set as index.
+            A multiindex will be generated, containing "Set" ("MS/MS count" and "LFQ intensity"), "Fraction" (= output from Spectronaut: R.Fraction) and
+            "Map" (= output from Spectronaut: R.condition). 
+            A dataframe, in which "Fraction" and "Map" are stacked, containing "normalized profile" as column,
+            additionally "Ratio H/L count", "Ratio H/L variability [%]" is found for SILAC data and "MS/MS count"
+            for LFQ data; represented as a flat column index
+            
+            Args:
+                df_original: dataframe, columns defined through self.regex["imported_columns"]
+                
 
+            Returns:
+                df_index: mutliindex dataframe, which contains 3 level labels: MAP, Fraction, Type
+            !!!
+            !!!It is very important to define R.Fraction, R.condition already during the setup of Spectronaut!!!
+            !!!
+            """
+            df_original = df_original.copy()
+            
+            df_renamed = df_original.rename(columns = self.Spectronaut_columnRenaming)
+            df_index = df_renamed.set_index([col for col in df_renamed.columns if any([re.match(s, col) 
+                                                                                       for s in self.acquisition_set_dict[self.acquisition]]) == False])
+            df_index.columns.names = ["Set"]
+            df_index.rename(columns=self.fraction_dict, inplace=True)
+            df_index = df_index.unstack(["Map", "Fraction"])
+            df_index.replace(0, np.nan, inplace=True)
+            self.shape_dict["Original size"]=df_index.shape
+            
             return df_index
-
-
+        
         def stringency_silac(df_index):
             """The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are
             considered (a set of f.e. 5 SILAC ratios in case you have 5 fractions / any proteins with missing values
@@ -218,9 +253,11 @@ class SpatialDataSet:
             # variability (var in Ratio H/L variability [%]) into account
             # zip: allows direct comparison of count and var
             # only if the filtering parameters are fulfilled the data will be introduced into df_countvarfiltered_stacked
-            df_countvarfiltered_stacked = df_stack.loc[[count >= 3 or (count >= 2 and var < 30) for var, count in
-                                                        zip(df_stack["Ratio H/L variability [%]"],
-                                                            df_stack['Ratio H/L count'])]]
+            
+            df_countvarfiltered_stacked = df_stack.loc[[count >= self.RatioHLcount_1 or (count >= self.RatioHLcount_2 and var < self.RatioVariability) 
+                                            for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack['Ratio H/L count'])]]
+            
+            self.shape_dict["Shape after Ratio H/L count (>= 3)/var (count>=2, var<30) filtering"]=df_countvarfiltered_stacked.shape
 
             # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
             # np.median([...]): only entries, that are not NANs are considered
@@ -234,7 +271,9 @@ class SpatialDataSet:
             # dataframe is grouped (Map, id), that allows the filtering for complete profiles
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.groupby(["Map", "id"]).filter(
                 lambda x: len(x) >= len_fractions)
-
+            
+            self.shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.shape
+            
             # Ratio H/L is converted into Ratio L/H
             df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1 / x)
 
@@ -262,11 +301,7 @@ class SpatialDataSet:
             df_01norm_unstacked = df_01norm_unstacked.div(df_01norm_unstacked.sum(axis=1), axis=0)
 
             df_01_stacked = df_stringency_mapfracstacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame
-                (
-                df_01norm_unstacked.stack(
-                    "Fraction"),
-                columns=[
-                    "Ratio H/L"]))
+                (df_01norm_unstacked.stack("Fraction"),columns=["Ratio H/L"]))
 
             # "Ratio H/L" will be renamed to "normalized profile"
             df_01_stacked.columns = [col if col != "Ratio H/L" else "normalized profile" for col in
@@ -291,69 +326,14 @@ class SpatialDataSet:
             # logarithmizing, basis of 2
             df_lognorm_ratio_stacked = df_stringency_mapfracstacked["Ratio H/L"].transform(np.log2)
             df_log_stacked = df_stringency_mapfracstacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(
-                pd.DataFrame
-                (df_lognorm_ratio_stacked, columns=["Ratio H/L"]))
+                pd.DataFrame(df_lognorm_ratio_stacked, columns=["Ratio H/L"]))
 
             # "Ratio H/L" will be renamed to "log profile"
             df_log_stacked.columns = [col if col != "Ratio H/L" else "log profile" for col in df_log_stacked.columns]
 
             return df_log_stacked
 
-        def indexingdf_lfq(df_filt, regex, map_index, fraction_index):
-            """ A multiindex will be generated, characterized by Map, Fraction and Type as level labels,
-            allowing the stacking and unstacking of the dataframe;
-
-            Args:
-                df_filt: dataframe, that was filtered for matches to the reverse database, matches only identified by
-                site, and potential contaminants.
-
-            Returns:
-                df_index: multiindex dataframe, which contains 3 level labels: Map (f.e. EGF_rep1, nt_rep1)
-                Fraction (03K, 06K, 12K, 24K, 80K), Type (LFQ intensity, MS/MS count),
-                rest of the information is stored in the index (Protein IDs, Majority protein IDs, Protein names,
-                Gene names, Q-value, Score, id)
-            ##same for SILAC
-            """
-            # deep copy of the dataframe
-            df_index = df_filt.copy()
-
-            # iteration through the column names, and searches for column names that are mentioned in the dictionary
-            # entry regex["index_col_lfq"]
-            col_to_index = [col for col in df_filt.columns if re.match(regex["index_col_lfq"], col)]
-
-            # column names are defined as index
-            df_index = df_index.set_index(col_to_index)
-
-            # all other columns, that do not start with "LFQ" and "MS" (essentially "Only identified by site",
-            # "Reverse", "Potential contaminant") are removed
-            df_index = df_index.drop([column for column in df_index.columns
-                                      if not column.startswith(("LFQ", "MS"))], axis=1)
-
-            # "LFQ intensity"-values: converting 0 into NAN
-            # iteration through the column names, and searches for column names (LFQ intensity, deposited as regular
-            # expression in the dictionary entry regex["lfq_nan"]
-            df_index[[col for col in df_index.columns if re.match(regex["lfq_nan"], col)]] = \
-                df_index[[col for col in df_index.columns if re.match(regex["lfq_nan"], col)]].replace(0, np.nan)
-
-            # multindex will be generated, by isolating the information about the Map, Fraction and Type from each
-            # individual column name
-            # names=["Map", "Fraction", "Type"] defines the label of the multiindex
-
-            desired_columns_types = [e1 for e1 in [
-                re.findall(regex["type_msms_lfq"], column) or re.findall(regex["type_intensity_lfq"], column) for column
-                in df_index.columns] if e1]
-            col_list_type_lfq = [item for sublist in desired_columns_types for item in sublist]
-
-            columns = pd.MultiIndex.from_arrays([
-                [re.findall(map_index, column)[0] for column in df_index.columns],
-                [re.findall(fraction_index, column)[0] for column in df_index.columns],
-                col_list_type_lfq],
-                names=["Map", "Fraction", "Type"])
-            df_index.columns = columns
-
-            return df_index
-
-
+        
         def stringency_lfq(df_index):
             """The multiindex dataframe is subjected to stringency filtering. Only Proteins which were identified with
             at least [4] consecutive data points regarding the "LFQ intensity", and if summed MS/MS counts >= n(fractions)*[2]
@@ -373,9 +353,6 @@ class SpatialDataSet:
 
             df_index = df_index.stack("Map")
 
-            # level 0 = Fraction, level 1 = Type is converted into level 0 = Type, level 1 = Fraction
-            df_index.columns = df_index.columns.swaplevel(0, 1)
-
             # sorting the level 0, in order to have LFQ intensity -	MS/MS count instead of continuous alternation
             df_index.sort_index(axis=1, level=0, inplace=True)
 
@@ -384,13 +361,17 @@ class SpatialDataSet:
             df_mscount_mapstacked = df_index.loc[df_index[('MS/MS count')].apply(np.sum, axis=1) >= (
                     number_fractions * self.summed_MSMS_counts)]
 
+            self.shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.shape
+            
             df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
 
             # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[
                 df_stringency_mapfracstacked[("LFQ intensity")].apply(lambda x: any(
-                    np.invert(np.isnan(x)).rolling(window=self.consecutive_LFQ_I).sum() >=
-                    self.consecutive_LFQ_I), axis=1)]
+                    np.invert(np.isnan(x)).rolling(window=self.consecutiveLFQi).sum() >=
+                    self.consecutiveLFQi), axis=1)]
+            
+            self.shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.shape
 
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.copy().stack("Fraction")
 
@@ -456,8 +437,7 @@ class SpatialDataSet:
 
 
         if self.acquisition == "SILAC":
-            df_filter = filterdf(self.df_original, self.regex)
-            df_index = indexingdf_silac(df_filter, self.regex, self.map_index, self.fraction_index)
+            df_index = indexingdf(self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern, self.shape_dict)
             df_stringency_mapfracstacked = stringency_silac(df_index)
             df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
             df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
@@ -467,15 +447,25 @@ class SpatialDataSet:
             self.fractions = fractions
             map_names = self.df_01_stacked.index.get_level_values("Map").unique()
             self.map_names = map_names
-            return df_01_stacked
-            # return df_index
+            
+            self.analysis_summary_dict["changes in Shape after filtering"] = self.shape_dict.copy() 
+            self.analysis_parameters = {"acquisition" : self.acquisition, 
+                                        "filename" : self.filename,
+                                        "Ratio H/L count 1 (>= X)" : self.RatioHLcount_1,
+                                        "Ratio H/L count 2 (>=Y, var<Z)" : self.RatioHLcount_2,
+                                        "Ratio variability (<Z, count>=Y)" : self.RatioVariability}
+            
+            self.analysis_summary_dict["Analysis parameters"] = self.analysis_parameters.copy() 
+            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
+
+            self.shape_dict.clear()
+            self.analysis_parameters.clear() 
+            return self.df_01_stacked
 
 
         elif self.acquisition == "LFQ":
-            df_filter = filterdf(self.df_original, self.regex)
-            df_index = indexingdf_lfq(df_filter, self.regex, self.map_index, self.fraction_index)
+            df_index = indexingdf(self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern, self.shape_dict)
             df_stringency_mapfracstacked = stringency_lfq(df_index)
-
             df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
             df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
             self.df_log_stacked = df_log_stacked
@@ -484,13 +474,56 @@ class SpatialDataSet:
             self.fractions = fractions
             map_names = self.df_01_stacked.index.get_level_values("Map").unique()
             self.map_names = map_names
-            return df_log_stacked
+            
+            self.analysis_summary_dict["changes in Shape after filtering"] = self.shape_dict.copy() 
+            self.analysis_parameters = {"acquisition" : self.acquisition, 
+                            "filename" : self.filename,
+                            "consecutive data points" : self.consecutiveLFQi,
+                            "summed MS/MS counts" : self.summed_MSMS_counts}
+            self.analysis_summary_dict["Analysis parameters"] = self.analysis_parameters.copy() 
+            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
+            
+            self.shape_dict.clear()
+            self.analysis_parameters.clear() 
+            return self.df_01_stacked
+        
+        elif self.acquisition == "LFQ spectronaut":
+            df_index = spectronaut_LFQ_indexingdf(self.df_original, self.Spectronaut_columnRenaming, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.shape_dict)
+            df_stringency_mapfracstacked = stringency_lfq(df_index)
+            df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
+            df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
+            self.df_log_stacked = df_log_stacked
+            self.df_01_stacked = df_01_stacked
+            fractions = df_01_stacked.index.get_level_values("Fraction").unique()
+            self.fractions = fractions
+            map_names = self.df_01_stacked.index.get_level_values("Map").unique()
+            self.map_names = map_names
+            
+            self.analysis_summary_dict["changes in Shape after filtering"] = self.shape_dict.copy() 
+            self.analysis_parameters = {"acquisition" : self.acquisition, 
+                            "filename" : self.filename,
+                            "consecutive data points" : self.consecutiveLFQi,
+                            "summed MS/MS counts" : self.summed_MSMS_counts}
+            self.analysis_summary_dict["Analysis parameters"] = self.analysis_parameters.copy() 
+            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
+            
+            self.shape_dict.clear()
+            self.analysis_parameters.clear() 
+            return self.df_01_stacked
 
 
         else:
-            return "I don't know this"
-
-
+            return "I don't know this"    
+        
+#list_drop_col = [column for column in df_index.columns if not column.startswith("Ratio ")]
+#list_endcount = [column for column in df_index.columns if column.endswith("count")]
+#list_endpct = [column for column in df_index.columns if column.endswith("[%]")]
+#list_drop_col.extend(list_endcount)
+#list_drop_col.extend(list_endpct)
+#df_index = df_index.drop(list_drop_col, axis=1)
+#df_index[[col for col in df_index.columns if re.match(regex["lfq_nan"], col)]] = \
+#df_index[[col for col in df_index.columns if re.match(regex["lfq_nan"], col)]].replace(0, np.nan)
+            
     def perform_pca(self):
         """PCA will be performed, using logarithmized data.
 
@@ -509,8 +542,7 @@ class SpatialDataSet:
 
         # isolate only logarithmized profile, and unstack "Fraction"
         df_log_stacked = self.df_log_stacked
-        df_log_fracunstacked = df_log_stacked["log profile"].unstack("Fraction")
-
+        df_log_fracunstacked = df_log_stacked["log profile"].unstack("Fraction").dropna()
         pca = PCA(n_components=3)
 
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
@@ -532,8 +564,8 @@ class SpatialDataSet:
         # genes are droped, if they are not present in all maps
         df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps_unfiltered.groupby(["Gene names"]).filter(
             lambda x: len(x) >= len(map_names))
+        
         self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps
-
 
     def plot_pca(self):
         """
@@ -593,6 +625,7 @@ class SpatialDataSet:
         """
 
         df_setofproteins = self.cluster_isolation_df(self.map_of_interest, self.cluster_of_interest)
+        self.analysis_summary_dict["0/1 normalized data"] = df_setofproteins.reset_index().to_json() 
 
         df_setofproteins = df_setofproteins.copy()
 
@@ -775,7 +808,9 @@ class SpatialDataSet:
         df_boxplot_manymaps = df_boxplot_manymaps.reindex(index=natsort.natsorted(df_boxplot_manymaps.index))
 
         df_boxplot_manymaps = df_boxplot_manymaps.reset_index()
-
+        
+        self.analysis_summary_dict["Distances to the median profile"] = df_boxplot_manymaps.reset_index().to_json() 
+        
         # box plot will be generated, every fraction will be displayed in a single plot
         distance_to_median_boxplot_figure = px.box(df_boxplot_manymaps, x="Map", y="distance", facet_col="Cluster",
                                              facet_row="Fraction",
@@ -878,6 +913,8 @@ class SpatialDataSet:
         # index will be reset, required by px.box
         df_cluster_xmaps_distance = df_cluster_xmaps_distance_with_index.reset_index()
 
+        self.analysis_summary_dict["Manhattan distances"] = df_cluster_xmaps_distance.reset_index().to_json() 
+
         # optinal: points=all (= next to each indiviual boxplot the corresponding datapoints are displayed)
         distance_boxplot_figure = px.box(df_cluster_xmaps_distance, x="Map", y="distance",points="all",
                                          hover_name="Gene names",
@@ -940,6 +977,10 @@ class SpatialDataSet:
         df_overview.set_index(["Cluster", "Map"], inplace=True)
         df_overview.sort_index(axis=0, level=0, inplace=True)
 
+        self.analysis_summary_dict["Overview table"] = df_overview.reset_index().to_json()
+        self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
+        self.analysis_summary_dict.clear()
+        
         return df_overview
 
 
