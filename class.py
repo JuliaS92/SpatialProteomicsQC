@@ -30,7 +30,7 @@ class SpatialDataSet:
         self.RatioVariability = 30 if "RatioVariability" not in kwargs.keys() else kwargs["RatioVariability"]
             
         self.regex = {
-            "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|R.Fraction|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity",
+            "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity",
 #            "index_col_silac": "[Pp]rotein.[Ii][Dd]s|[Mm]ajority.[Pp]rotein.[Ii][Dd]s|[Pp]rotein.[Nn]ames|[Gg]ene.[Nn]ames|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue",
 #            "index_col_lfq": ".*[Pp][rR].*[Ii][Dd]s.*|.*[nN]ames.*|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue|MS/MS.count$",
 
@@ -95,7 +95,7 @@ class SpatialDataSet:
         
         self.acquisition_set_dict = {
             "LFQ": ["[Ll][Ff][Qq].[Ii]ntensity", "[Mm][Ss]/[Mm][Ss].[cC]ount", "[Ii]ntensity"],
-            "LFQ spectronaut" : ["LFQ intensity", "MS/MS count"],
+            "LFQ Spectronaut" : ["LFQ intensity", "MS/MS count"],
             "SILAC"  : [ "[Rr]atio.[Hh]/[Ll](?!.[Vv]aria|.[Cc]ount)","[Rr]atio.[Hh]/[Ll].[Vv]ariability.\[%\]", "[Rr]atio.[Hh]/[Ll].[cC]ount"]
             }
         
@@ -106,8 +106,8 @@ class SpatialDataSet:
                               "Cyt": "Cyt", "Mem": "Mem", "Nuc": "Nuc", "Prot": "Prot", "cyt": "Cyt", "mem": "Mem", "nuc": "Nuc", "Prot": "Prot", "prot": "Prot"}
         
         self.Spectronaut_columnRenaming = {
-            "R.Condition": "Map", "R.Fraction": "Fraction", "PG.Genes" : "Gene names", "PG.Qvalue": "Q-value", "PG.Cscore":"C-Score", 
-            "PG.ProteinGroups" : "Majority protein IDs", "PG.RunEvidenceCount" : "MS/MS count", "PG.Quantity" : "LFQ intensity"
+            "R.Condition": "Map", "PG.Genes" : "Gene names", "PG.Qvalue": "Q-value", "PG.Cscore":"C-Score", 
+            "PG.ProteinGroups" : "Protein IDs", "PG.RunEvidenceCount" : "MS/MS count", "PG.Quantity" : "LFQ intensity"
             }
         
         self.analysed_datasets_dict = {}
@@ -195,7 +195,7 @@ class SpatialDataSet:
             return df_index   
 
 
-        def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, shape_dict):
+        def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern, shape_dict):
             """For data generated from the Spectronaut software, columns will be renamed, such it fits in the scheme of MaxQuant output data.
             Subsequently, all columns - except of "MS/MS count" and "LFQ intensity" will be set as index.
             A multiindex will be generated, containing "Set" ("MS/MS count" and "LFQ intensity"), "Fraction" (= output from Spectronaut: R.Fraction) and
@@ -217,12 +217,21 @@ class SpatialDataSet:
             df_original = df_original.copy()
             
             df_renamed = df_original.rename(columns = self.Spectronaut_columnRenaming)
-            df_index = df_renamed.set_index([col for col in df_renamed.columns if any([re.match(s, col) 
-                                                                                       for s in self.acquisition_set_dict[self.acquisition]]) == False])
+            
+            df_renamed["Fraction"] = [re.match(name_pattern, i).group("frac") for i in df_renamed["Map"]]
+            df_renamed["Map"] = [re.match(name_pattern, i).group("rep") for i in df_renamed["Map"]] if not "<cond>" in name_pattern else ["_".join(re.match(name_pattern, i).group("cond", "rep")) for i in df_renamed["Map"]]
+            
+            df_index = df_renamed.set_index([col for col in df_renamed.columns if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
+            
             df_index.columns.names = ["Set"]
-            df_index.rename(columns=self.fraction_dict, inplace=True)
+            
+#df_iclass = i_class.df_index.stack(["Map", "Fraction"])
+#df_iclass.columns.names = ["Set"]
+#df_iclass = df_iclass.unstack(["Map", "Fraction"])
+#df_iclass
             df_index = df_index.unstack(["Map", "Fraction"])
             df_index.replace(0, np.nan, inplace=True)
+            df_index.rename(columns=self.fraction_dict, inplace=True)
             self.shape_dict["Original size"]=df_index.shape
             
             return df_index
@@ -302,6 +311,8 @@ class SpatialDataSet:
 
             df_01_stacked = df_stringency_mapfracstacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(pd.DataFrame
                 (df_01norm_unstacked.stack("Fraction"),columns=["Ratio H/L"]))
+            #df_index[[col for col in df_index.columns if re.match(regex["lfq_nan"], col)]] = \
+#df_index[[col for col in df_index.columns if re.match(regex["lfq_nan"], col)]].replace(0, np.nan)
 
             # "Ratio H/L" will be renamed to "normalized profile"
             df_01_stacked.columns = [col if col != "Ratio H/L" else "normalized profile" for col in
@@ -405,6 +416,15 @@ class SpatialDataSet:
             # rename columns: "LFQ intensity" into "normalized profile"
             df_01_stacked.columns = [col if col != "LFQ intensity" else "normalized profile" for col in
                                      df_01_stacked.columns]
+            
+            #retrieve number of non valid profiles - profiles that contain NaN
+            series_non_validProfiles = df_01_stacked.unstack(["Fraction", "Map"])["normalized profile"].apply(lambda x: x.isnull().any(), axis=1)
+            non_validProfiles = len(series_non_validProfiles[series_non_validProfiles == True].index)
+            self.shape_dict["Non valid profiles"] = non_validProfiles
+            
+            #imputation
+            df_01_stacked = df_01_stacked.unstack("Fraction").replace(np.NaN, 0).stack("Fraction")
+            
             df_01_stacked = df_01_stacked.sort_index()
             return df_01_stacked
 
@@ -438,6 +458,7 @@ class SpatialDataSet:
 
         if self.acquisition == "SILAC":
             df_index = indexingdf(self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern, self.shape_dict)
+            self.df_index = df_index
             df_stringency_mapfracstacked = stringency_silac(df_index)
             df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
             df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
@@ -447,6 +468,10 @@ class SpatialDataSet:
             self.fractions = fractions
             map_names = self.df_01_stacked.index.get_level_values("Map").unique()
             self.map_names = map_names
+            
+            unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in df_01_stacked.reset_index()["Protein IDs"]]))
+            #number_unique_proteins = len(unique_proteins)
+            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             
             self.analysis_summary_dict["changes in Shape after filtering"] = self.shape_dict.copy() 
             self.analysis_parameters = {"acquisition" : self.acquisition, 
@@ -463,8 +488,14 @@ class SpatialDataSet:
             return self.df_01_stacked
 
 
-        elif self.acquisition == "LFQ":
-            df_index = indexingdf(self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern, self.shape_dict)
+        #elif self.acquisition == "LFQ":
+        elif self.acquisition == "LFQ" or self.acquisition == "LFQ Spectronaut":
+            if self.acquisition == "LFQ":
+                df_index = indexingdf(self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern, self.shape_dict)
+            elif self.acquisition == "LFQ Spectronaut":
+                df_index = spectronaut_LFQ_indexingdf(self.df_original, self.Spectronaut_columnRenaming, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern, self.shape_dict)
+            
+            self.df_index = df_index           
             df_stringency_mapfracstacked = stringency_lfq(df_index)
             df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
             df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
@@ -474,6 +505,10 @@ class SpatialDataSet:
             self.fractions = fractions
             map_names = self.df_01_stacked.index.get_level_values("Map").unique()
             self.map_names = map_names
+            
+            unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in df_01_stacked.reset_index()["Protein IDs"]]))
+            #number_unique_proteins = len(unique_proteins)
+            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             
             self.analysis_summary_dict["changes in Shape after filtering"] = self.shape_dict.copy() 
             self.analysis_parameters = {"acquisition" : self.acquisition, 
@@ -486,31 +521,6 @@ class SpatialDataSet:
             self.shape_dict.clear()
             self.analysis_parameters.clear() 
             return self.df_01_stacked
-        
-        elif self.acquisition == "LFQ spectronaut":
-            df_index = spectronaut_LFQ_indexingdf(self.df_original, self.Spectronaut_columnRenaming, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.shape_dict)
-            df_stringency_mapfracstacked = stringency_lfq(df_index)
-            df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
-            df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
-            self.df_log_stacked = df_log_stacked
-            self.df_01_stacked = df_01_stacked
-            fractions = df_01_stacked.index.get_level_values("Fraction").unique()
-            self.fractions = fractions
-            map_names = self.df_01_stacked.index.get_level_values("Map").unique()
-            self.map_names = map_names
-            
-            self.analysis_summary_dict["changes in Shape after filtering"] = self.shape_dict.copy() 
-            self.analysis_parameters = {"acquisition" : self.acquisition, 
-                            "filename" : self.filename,
-                            "consecutive data points" : self.consecutiveLFQi,
-                            "summed MS/MS counts" : self.summed_MSMS_counts}
-            self.analysis_summary_dict["Analysis parameters"] = self.analysis_parameters.copy() 
-            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
-            
-            self.shape_dict.clear()
-            self.analysis_parameters.clear() 
-            return self.df_01_stacked
-
 
         else:
             return "I don't know this"    
@@ -541,14 +551,19 @@ class SpatialDataSet:
         markerproteins = self.markerproteins
 
         # isolate only logarithmized profile, and unstack "Fraction"
-        df_log_stacked = self.df_log_stacked
-        df_log_fracunstacked = df_log_stacked["log profile"].unstack("Fraction").dropna()
+        if self.acquisition == "SILAC":
+            df_log_stacked = self.df_log_stacked
+            df_01orlog_fracunstacked = df_log_stacked["log profile"].unstack("Fraction").dropna()
+        elif self.acquisition == "LFQ" or self.acquisition == "LFQ Spectronaut":
+            df_01_stacked = self.df_01_stacked
+            df_01orlog_fracunstacked = df_01_stacked["normalized profile"].unstack("Fraction").dropna()
+
         pca = PCA(n_components=3)
 
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
-        df_pca = pd.DataFrame(pca.fit_transform(df_log_fracunstacked))
+        df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked))
         df_pca.columns = ["PC1", "PC2", "PC3"]
-        df_pca.index = df_log_fracunstacked.index
+        df_pca.index = df_01orlog_fracunstacked.index
 
         df_pca_all_marker_cluster_maps_unfiltered = pd.DataFrame()
 
@@ -584,24 +599,24 @@ class SpatialDataSet:
         markerproteins = self.markerproteins
 
         for maps in map_names:
-            df_setofproteins = pd.DataFrame()
+            df_setofproteins_PCA = pd.DataFrame()
             for marker in markerproteins[self.cluster_of_interest]:
                 if marker not in df_pca_all_marker_cluster_maps.index.get_level_values("Gene names"):
                     continue
                 plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Gene names", "Map"],
                                                                  drop_level=False)
-                df_setofproteins = df_setofproteins.append(plot_try_pca)
+                df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
 
-            df_setofproteins.reset_index(inplace=True)
+            df_setofproteins_PCA.reset_index(inplace=True)
             if maps == map_names[0]:
                 pca_figure = go.Figure(
-                    data=[go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
-                                       hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
+                    data=[go.Scatter3d(x=df_setofproteins_PCA.PC1, y=df_setofproteins_PCA.PC2, z=df_setofproteins_PCA.PC3,
+                                       hovertext=df_setofproteins_PCA["Gene names"], mode="markers", name=maps
                                        # marker=dict(color=[f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})' for _   in range(25)])
                                        )])
             else:
-                pca_figure.add_trace(go.Scatter3d(x=df_setofproteins.PC1, y=df_setofproteins.PC2, z=df_setofproteins.PC3,
-                                               hovertext=df_setofproteins["Gene names"], mode="markers", name=maps
+                pca_figure.add_trace(go.Scatter3d(x=df_setofproteins_PCA.PC1, y=df_setofproteins_PCA.PC2, z=df_setofproteins_PCA.PC3,
+                                               hovertext=df_setofproteins_PCA["Gene names"], mode="markers", name=maps
                                                ))
 
         pca_figure.update_layout(autosize=False, width=500, height=500,
@@ -625,7 +640,6 @@ class SpatialDataSet:
         """
 
         df_setofproteins = self.cluster_isolation_df(self.map_of_interest, self.cluster_of_interest)
-        self.analysis_summary_dict["0/1 normalized data"] = df_setofproteins.reset_index().to_json() 
 
         df_setofproteins = df_setofproteins.copy()
 
@@ -680,6 +694,7 @@ class SpatialDataSet:
         df_01_stacked = self.df_01_stacked
 
         df_allclusters_onlynorm_fracunstacked_unfiltered = pd.DataFrame()
+        df_allclusters_01 = pd.DataFrame()
 
         map_names = self.map_names
 
@@ -688,6 +703,7 @@ class SpatialDataSet:
         for maps in map_names:
             for clusters in markerproteins:
                 df_setofproteins = self.cluster_isolation_df(maps, clusters)
+                df_allclusters_01 = df_allclusters_01.append(df_setofproteins)
                 df_distance_to_median_fracunstacked = self.distance_to_median_calculation(df_setofproteins)
                 # new column is introduced: Column name = "Cluster"; values: clustername, to wich the individual protein belongs to
                 df_distance_to_median_fracunstacked["Cluster"] = clusters
@@ -696,9 +712,15 @@ class SpatialDataSet:
                 df_allclusters_onlynorm_fracunstacked_unfiltered = df_allclusters_onlynorm_fracunstacked_unfiltered.append(
                     df_distance_to_median_fracunstacked)
 
+        #storage of 0/1 normalized data in global dictionary
+        ####Possibility to sort - if necessary, takes some computing time
+        ####df_allclusters_01 = df_allclusters_01.reindex(index=natsort.natsorted(i_class.df_allclusters_01.index))
+
+        self.analysis_summary_dict["0/1 normalized data"] = df_allclusters_01.reset_index().to_json() 
         # genes are droped, if they are not present in all maps
         df_allclusters_onlynorm_fracunstacked = df_allclusters_onlynorm_fracunstacked_unfiltered.groupby(["Gene names"]).filter(lambda x: len(x) >= len(map_names))
         self.df_allclusters_onlynorm_fracunstacked = df_allclusters_onlynorm_fracunstacked
+        
         # concatenate both original and filtered dataframe, and drop duplicates
         dfs_dictionary = {'DF1': df_allclusters_onlynorm_fracunstacked_unfiltered,
                           'DF2': df_allclusters_onlynorm_fracunstacked}
@@ -791,6 +813,14 @@ class SpatialDataSet:
         map_names = self.map_names
         df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked
 
+        
+        #storage of "Distances to the median profile" in global dictionary
+        df_dist_to_median = abs(df_allclusters_onlynorm_fracunstacked.stack("Fraction"))
+        df_dist_to_median.name = "distance"
+        df_dist_to_median = df_dist_to_median.reindex(index=natsort.natsorted(df_dist_to_median.index))
+        self.analysis_summary_dict["Distances to the median profile"] = df_dist_to_median.reset_index().to_json() 
+
+        
         df_boxplot_manymaps = pd.DataFrame()
 
         # for each individual map and a defined cluster data will be extracted from the dataframe
@@ -808,9 +838,7 @@ class SpatialDataSet:
         df_boxplot_manymaps = df_boxplot_manymaps.reindex(index=natsort.natsorted(df_boxplot_manymaps.index))
 
         df_boxplot_manymaps = df_boxplot_manymaps.reset_index()
-        
-        self.analysis_summary_dict["Distances to the median profile"] = df_boxplot_manymaps.reset_index().to_json() 
-        
+                
         # box plot will be generated, every fraction will be displayed in a single plot
         distance_to_median_boxplot_figure = px.box(df_boxplot_manymaps, x="Map", y="distance", facet_col="Cluster",
                                              facet_row="Fraction",
@@ -871,6 +899,8 @@ class SpatialDataSet:
         df_distance_noindex = distance_series.reset_index()
 
         self.df_distance_noindex = df_distance_noindex
+        
+        self.analysis_summary_dict["Manhattan distances"] = df_distance_noindex.to_json() 
 
         return df_distance_noindex
 
@@ -912,8 +942,6 @@ class SpatialDataSet:
 
         # index will be reset, required by px.box
         df_cluster_xmaps_distance = df_cluster_xmaps_distance_with_index.reset_index()
-
-        self.analysis_summary_dict["Manhattan distances"] = df_cluster_xmaps_distance.reset_index().to_json() 
 
         # optinal: points=all (= next to each indiviual boxplot the corresponding datapoints are displayed)
         distance_boxplot_figure = px.box(df_cluster_xmaps_distance, x="Map", y="distance",points="all",
