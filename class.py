@@ -17,10 +17,15 @@ class SpatialDataSet:
         # without considering comments, marked with #
 
         self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
+        self.json_filename = "AnalysedDatasets.json" if "json_filename" not in kwargs.keys() else kwargs["json_filename"]
+        
         
         self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
         self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs[
             "cluster_of_interest"]
+        
+        self.cluster_of_interest_comparison = "Proteasome" if "cluster_of_interest_comparison" not in kwargs.keys() else kwargs[
+            "cluster_of_interest_comparison"]
 
         self.summed_MSMS_counts = 2 if "summed_MSMS_counts" not in kwargs.keys() else kwargs["summed_MSMS_counts"]
         self.consecutiveLFQi = 4 if "consecutiveLFQi" not in kwargs.keys() else kwargs["consecutiveLFQi"]
@@ -29,6 +34,15 @@ class SpatialDataSet:
         self.RatioHLcount_2 = 2 if "RatioHLcount_2" not in kwargs.keys() else kwargs["RatioHLcount_2"]
         self.RatioVariability = 30 if "RatioVariability" not in kwargs.keys() else kwargs["RatioVariability"]
             
+        self.collapse_maps = False if "collapse_maps" not in kwargs.keys() else kwargs["collapse_maps"]
+        
+        self.collapse_maps_PCA = False if "collapse_maps_PCA" not in kwargs.keys() else kwargs["collapse_maps_PCA"]
+        
+        self.multi_choice_venn = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
+        self.multi_choice = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
+        
+        self.multi_choice_venn = ["x", "y"] if "multi_choice_venn" not in kwargs.keys() else kwargs["multi_choice_venn"]
+        
         self.regex = {
             "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity",
 #            "index_col_silac": "[Pp]rotein.[Ii][Dd]s|[Mm]ajority.[Pp]rotein.[Ii][Dd]s|[Pp]rotein.[Nn]ames|[Gg]ene.[Nn]ames|[Ii][Dd]|[Ss]core|[Qq]-[Vv]alue",
@@ -93,6 +107,8 @@ class SpatialDataSet:
         
         self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
         
+        #self.cache_comparison = False if "cache_comparison" not in kwargs.keys() else kwargs["cache_comparison"]
+        
         self.acquisition_set_dict = {
             "LFQ": ["[Ll][Ff][Qq].[Ii]ntensity", "[Mm][Ss]/[Mm][Ss].[cC]ount", "[Ii]ntensity"],
             "LFQ Spectronaut" : ["LFQ intensity", "MS/MS count"],
@@ -113,7 +129,25 @@ class SpatialDataSet:
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
         self.shape_dict = {}  
-        self.expname = "Protein_Groups" if "expname" not in kwargs.keys() else kwargs["expname"]
+        self.expname = "Protein_Groups" if "expname" not in kwargs.keys() else kwargs["expname"]      
+        
+        css_color_string='''
+            green, blue, orange, purple, goldenrod, yellow, lightcoral, magenta, brown, lightpink, red, turquoise,
+            khaki, darkgoldenrod,darkturquoise, darkviolet, greenyellow, darksalmon, hotpink, indianred, indigo,darkolivegreen, coral, aqua, aquamarine, azure,
+            beige, bisque, black, blanchedalmond, blueviolet, burlywood, cadetblue, yellowgreen, chartreuse, chocolate, cornflowerblue, cornsilk, crimson, cyan, darkblue, darkcyan,
+            darkgray, darkgrey, darkgreen, darkkhaki, darkmagenta, darkorange, darkorchid, darkred, darkseagreen, darkslateblue, darkslategray, darkslategrey,
+            deeppink, deepskyblue, dimgray, dimgrey, dodgerblue, firebrick, floralwhite, forestgreen, fuchsia, gainsboro, ghostwhite, gold, gray, grey, 
+            ivory, lavenderblush, lawngreen, lemonchiffon, lightblue, lightcyan, lightgoldenrodyellow, lightgray, lightgrey, lightgreen, lightsalmon, lightseagreen,
+            lightskyblue, lightslategray, lightslategrey, lightsteelblue, lightyellow, lime, limegreen, linen, maroon, mediumaquamarine, mediumblue, mediumorchid, mediumpurple,
+            mediumseagreen, mediumslateblue, mediumspringgreen, mediumturquoise, mediumvioletred, midnightblue, mintcream, mistyrose, moccasin, navajowhite, navy, oldlace, olive, 
+            olivedrab, orangered, orchid, palegoldenrod, palegreen, paleturquoise, palevioletred, papayawhip, peachpuff, peru, pink,
+            plum, powderblue, rosybrown, royalblue, saddlebrown, salmon, sandybrown, seagreen, seashell, sienna, silver, skyblue, slateblue, slategray, slategrey, snow, springgreen,
+            steelblue, teal, thistle, tomato, violet, wheat, white, whitesmoke, 
+            '''
+        css_color=css_color_string.split(',')
+        css_color=[l.replace('\n','') for l in css_color]
+        css_color=[l.replace(' ','') for l in css_color]
+        self.css_color = css_color 
         
     def data_reading(self):
         """Data import.
@@ -266,6 +300,8 @@ class SpatialDataSet:
             df_countvarfiltered_stacked = df_stack.loc[[count >= self.RatioHLcount_1 or (count >= self.RatioHLcount_2 and var < self.RatioVariability) 
                                             for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack['Ratio H/L count'])]]
             
+            self.df_countvarfiltered_stacked = df_countvarfiltered_stacked
+            
             self.shape_dict["Shape after Ratio H/L count (>= 3)/var (count>=2, var<30) filtering"]=df_countvarfiltered_stacked.shape
 
             # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
@@ -285,6 +321,18 @@ class SpatialDataSet:
             
             # Ratio H/L is converted into Ratio L/H
             df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1 / x)
+            
+            
+            #Annotation with marker genes
+            df_eLifeMarkers = self.df_eLifeMarkers
+            
+            df_stringency_mapfracstacked.reset_index(inplace=True)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_eLifeMarkers, 
+                                                                              how="outer", on='Gene names', indicator = True)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[df_stringency_mapfracstacked['_merge'].isin(['both',                                                                                                  'left_only'])].drop("_merge", axis=1)
+            df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
+                                                    if c != 'Ratio H/L count' and c != 'Ratio H/L variability [%]' and c != 'Ratio H/L'], inplace=True)
+            df_stringency_mapfracstacked.rename(index={np.nan : "undefined"}, level='Compartment', inplace=True)
 
 
             return df_stringency_mapfracstacked
@@ -385,7 +433,18 @@ class SpatialDataSet:
             self.shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.shape
 
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.copy().stack("Fraction")
-
+            
+            #Annotation with marker genes
+            df_eLifeMarkers = self.df_eLifeMarkers
+            
+            df_stringency_mapfracstacked.reset_index(inplace=True)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_eLifeMarkers, 
+                                                                              how="outer", on='Gene names', indicator = True)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[df_stringency_mapfracstacked['_merge'].isin(['both',                                                                                                  'left_only'])].drop("_merge", axis=1)
+            df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
+                                                    if c != 'MS/MS count' and c != 'LFQ intensity'], inplace=True)
+            df_stringency_mapfracstacked.rename(index={np.nan : "undefined"}, level='Compartment', inplace=True)
+            
             return df_stringency_mapfracstacked
 
 
@@ -547,26 +606,24 @@ class SpatialDataSet:
                 filtered for marker genes, that are consistent throughout all maps / coverage filtering.
         """
 
-        map_names = self.map_names
         markerproteins = self.markerproteins
 
-        # isolate only logarithmized profile, and unstack "Fraction"
         if self.acquisition == "SILAC":
-            df_log_stacked = self.df_log_stacked
-            df_01orlog_fracunstacked = df_log_stacked["log profile"].unstack("Fraction").dropna()
+            df_01orlog_fracunstacked = self.df_log_stacked["log profile"].unstack("Fraction").dropna()
         elif self.acquisition == "LFQ" or self.acquisition == "LFQ Spectronaut":
-            df_01_stacked = self.df_01_stacked
-            df_01orlog_fracunstacked = df_01_stacked["normalized profile"].unstack("Fraction").dropna()
-
+            df_01orlog_fracunstacked = self.df_01_stacked["normalized profile"].unstack("Fraction").dropna()
+        
+            
         pca = PCA(n_components=3)
 
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_01orlog_fracunstacked.index
-
+        self.df_pca = df_pca
+        
+        map_names = self.map_names
         df_pca_all_marker_cluster_maps_unfiltered = pd.DataFrame()
-
         for maps in map_names:
             for clusters in markerproteins:
                 for marker in markerproteins[clusters]:
@@ -575,13 +632,50 @@ class SpatialDataSet:
                     plot_try_pca = df_pca.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
                     df_pca_all_marker_cluster_maps_unfiltered = df_pca_all_marker_cluster_maps_unfiltered.append(
                         plot_try_pca)
-
+    
         # genes are droped, if they are not present in all maps
         df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps_unfiltered.groupby(["Gene names"]).filter(
             lambda x: len(x) >= len(map_names))
-        
         self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps
 
+        
+    def plot_global_pca(self):
+        """"
+        PCA plot will be generated
+
+        Args:
+            df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3",
+                    index: "Gene names" 	"Protein IDs" 	"C-Score" 	"Q-value" 	"Map" 	"Compartment" 	
+
+        Returns:
+            pca_figure: global PCA plot
+        """
+        
+        compartments = self.df_eLifeMarkers["Compartment"].unique()
+        compartment_color = dict(zip(compartments, self.css_color))
+        compartment_color["undefined"] = "lightgrey"
+        
+        if self.collapse_maps_PCA == False:
+            df_global_pca = self.df_pca.unstack("Map").swaplevel(0,1, axis=1)[self.map_of_interest].reset_index()
+        else:
+            df_global_pca = self.df_pca.rename_axis("PC", axis="columns").unstack("Map").stack("PC").median(axis=1).to_frame().unstack("PC")
+            df_global_pca.columns = df_global_pca.columns.droplevel()
+            df_global_pca.reset_index(inplace=True)
+
+        
+        fig_global_pca = px.scatter(data_frame=df_global_pca,
+                                    x="PC1",
+                                    y="PC3",
+                                    color="Compartment",
+                                    color_discrete_map=compartment_color,
+                                    title="Protein subcellular localization by PCA",
+                                    hover_data=["Gene names", "Compartment"], #"Protein names", 
+                            #       custom_data=df_annotated_all.columns,
+                                    opacity=0.9
+                                    )
+        return fig_global_pca                         
+            
+            
     def plot_pca(self):
         """
         PCA plot will be generated
@@ -623,7 +717,50 @@ class SpatialDataSet:
                               title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest))
 
         return pca_figure
+            
 
+    #def plot_pca(self):
+    #    """
+    #    PCA plot will be generated
+#
+    #    Args:
+    #        df_pca_for_plotting: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3",
+    #            filtered for marker genes, that are consistent throughout all maps / coverage filtering.
+#
+    #    Returns:
+    #        pca_figure: PCA plot, for one protein cluster all maps are plotted
+    #    """
+#
+    #    df_pca_for_plotting = self.df_pca_for_plotting
+    #    map_names = self.map_names
+    #    markerproteins = self.markerproteins
+#
+    #    for maps in map_names:
+    #        df_setofproteins_PCA = pd.DataFrame()
+    #        for marker in markerproteins[self.cluster_of_interest]:
+    #            if marker not in df_pca_for_plotting.index.get_level_values("Gene names"):
+    #                continue
+    #            plot_try_pca = df_pca_for_plotting.xs((marker, maps), level=["Gene names", "Map"],
+    #                                                             drop_level=False)
+    #            df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
+#
+    #        df_setofproteins_PCA.reset_index(inplace=True)
+    #        if maps == map_names[0]:
+    #            pca_figure = go.Figure(
+    #                data=[go.Scatter3d(x=df_setofproteins_PCA.PC1, y=df_setofproteins_PCA.PC2, z=df_setofproteins_PCA.PC3,
+    #                                   hovertext=df_setofproteins_PCA["Gene names"], mode="markers", name=maps
+    #                                   # marker=dict(color=[f'rgb({np.random.randint(0,256)}, {np.random.randint(0,256)}, {np.random.randint(0,256)})' for _   in range(25)])
+    #                                   )])
+    #        else:
+    #            pca_figure.add_trace(go.Scatter3d(x=df_setofproteins_PCA.PC1, y=df_setofproteins_PCA.PC2, z=df_setofproteins_PCA.PC3,
+    #                                           hovertext=df_setofproteins_PCA["Gene names"], mode="markers", name=maps
+    #                                           ))
+#
+    #    pca_figure.update_layout(autosize=False, width=500, height=500,
+    #                          title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest))
+#
+    #    return pca_figure
+#
 
     def plottingdf(self):
         """
@@ -904,7 +1041,7 @@ class SpatialDataSet:
 
         return df_distance_noindex
 
-
+    
     def distance_boxplot(self):
         """
         A box plot for 1 desired cluster, and across all maps is generated displaying the distribution of the e.g.
@@ -969,8 +1106,9 @@ class SpatialDataSet:
         )
 
         return distance_boxplot_figure
+        
 
-
+    
     def results_overview_table(self):
         """
         Dataframe will be created, that provides information about "range", "mean" and "standardeviation",
@@ -1008,9 +1146,448 @@ class SpatialDataSet:
         self.analysis_summary_dict["Overview table"] = df_overview.reset_index().to_json()
         self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
         self.analysis_summary_dict.clear()
-        
+#########################################################################HAS TO GO TO THE BEGINNINg        
         return df_overview
 
+    def read_jsonFile(self):
+        """
+        Read-out of the JSON-file and currently analysed dataset, stored in "analysed_datasets_dict". It wil create df_distances_combined ("Gene
+        names", "Cluster" are stacked; "Map" and Experiment names (are not stored in an additional level name) are unstacked. Layout will be 
+        adjusted for distance-plotting.
+    
+        Args: 
+            self.json_dict: contains the dictionary stored in AnalysedDatasets.json
+        
+        Returns: 
+            df_01_filtered_combined: "Fraction" is unstacked; "Experiment", "Gene names", "Map", "Exp_Map" are stacked 
+            df_distance_single: no index, column names: "Gene names", "Cluster", "Experiment", "Map", "Exp_Map", "distance"
+            df_distance_collapse: no index, column names: "Gene names", "Cluster", "Experiment", "distance"
+            unique_proteins_total: dictionary: Experiment_name -> Unique Proteins
+            exp_map_names: list of unique Exp_Map - fusions e.g. LFQ_Map1
+            exp_names: list of unique Experiment names - e.g. LFQ
+        """
+        
+        json_dict = self.json_dict
+        #add experiments that are not stored in AnalysedDAtasets.json for comparison
+        try:
+            json_dict[i_class.expname] = i_class.analysed_datasets_dict[i_class.expname]
+        except:
+            pass
+    
+        acquisition_loaded = []
+        unique_proteins_total = {}
+        
+        for exp_name in json_dict.keys():
+            #print(exp_name)
+            for data_type in json_dict[exp_name].keys():
+                if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
+                    #convert into dataframe
+                    df_01_combined = pd.read_json(json_dict[exp_name][data_type])
+                    #get only 01 normalized data 
+                    df_01_combined = df_01_combined.set_index(["Fraction", "Map", "Gene names"])[["normalized profile"]].unstack(["Fraction", "Map"])
+                    df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
+        
+                elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
+                    df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
+                    df_01_toadd = df_01_toadd.set_index(["Fraction", "Map", "Gene names"])[["normalized profile"]].unstack(["Fraction", "Map"])
+                    df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
+                    #dataframes will be concatenated, only proteins/Profiles that are in both df will be retained
+                    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1, join='inner')
+                    
+                elif data_type == "Manhattan distances" and exp_name == list(json_dict.keys())[0]:
+                    #convert into dataframe
+                    df_distances_combined = pd.read_json(json_dict[exp_name][data_type])
+                    #get only 01 normalized data 
+                    df_distances_combined = df_distances_combined.set_index(["Map", "Gene names", "Cluster"])[["distance"]].unstack(["Map"])
+                    df_distances_combined.rename(columns = {"distance":exp_name}, inplace=True)
+        
+                elif data_type == "Manhattan distances" and exp_name != list(json_dict.keys())[0]:
+                    df_distances_toadd = pd.read_json(json_dict[exp_name][data_type])
+                    df_distances_toadd = df_distances_toadd.set_index(["Map", "Gene names", "Cluster"])[["distance"]].unstack(["Map"])
+                    df_distances_toadd.rename(columns = {"distance":exp_name}, inplace=True)
+                    
+                    #dataframes will be concatenated, only proteins/Profiles that are in both df will be retained
+                    df_distances_combined = pd.concat([df_distances_combined, df_distances_toadd], axis=1, join='inner')
+                
+                elif data_type == "Unique Proteins":
+                    unique_proteins_total[exp_name] = json_dict[exp_name][data_type]
+                    
+                #print("  ", data_type)
+               # pd.read_json(json_dict["lfq_spec"]["0/1 normalized data"])
+                try:
+                    for paramters in json_dict[exp_name][data_type].keys():
+                        #print("            ", paramters)
+                        if paramters=="acquisition":
+                            acquisition_loaded.append(json_dict[exp_name][data_type][paramters])
+                        #elif parameters=="Non valid profiles":
+                except:
+                    continue
+
+        #filter for consistently quantified proteins (they have to be in all fractions and all maps)
+        df_01_filtered_combined = df_01_combined.dropna()    
+        df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
+        #reframe it to make it ready for PCA
+        df_01_filtered_combined = df_01_filtered_combined.stack(["Experiment", "Map"]).swaplevel(0,1, axis=0).dropna(axis=1)
+        index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+'_'+df_01_filtered_combined.index.get_level_values("Map")
+        index_ExpMap.name = "Exp_Map"
+        df_01_filtered_combined.set_index(index_ExpMap, append=True, inplace=True)      
+        
+        df_distances_combined.columns.names = ["Experiment", "Map"]
+        series = df_distances_combined.stack(["Experiment", "Map"])
+        series.name = "distance"
+        
+        df_distance_collapse = series.to_frame().droplevel(level="Map")
+        df_distance_collapse.reset_index(inplace=True)
+        
+        df_distance_single = series.to_frame()
+        #fuse Experiment and Map into one column = "Exp_Map"
+        index_dist_ExpMap = df_distance_single.index.get_level_values("Experiment")+'_'+df_distance_single.index.get_level_values("Map")
+        index_dist_ExpMap.name = "Exp_Map"
+        df_distance_single.set_index(index_dist_ExpMap, append=True, inplace=True)
+        df_distance_single.reset_index(inplace=True)
+        
+        
+        self.unique_proteins_total = unique_proteins_total
+        self.exp_names = list(df_01_filtered_combined.index.get_level_values("Experiment").unique())
+        self.exp_map_names = list(index_dist_ExpMap.unique())
+        
+        self.df_01_filtered_combined = df_01_filtered_combined 
+        
+        self.df_distance_collapse = df_distance_collapse
+        self.df_distance_single = df_distance_single
+
+    
+    def perform_pca_comparison(self):
+        """PCA will be performed, using logarithmized data.
+
+        Args:
+            self.df_01_filtered_combined: "Fraction" is unstacked; "Experiment", "Gene names", "Map", "Exp_Map" are unstacked
+
+        Returns:
+            self.df_pca_for_plotting: PCA processed dataframe
+                    index: Experiment 	Gene names 	Map 	Exp_Map
+                    columns: PC1 	PC2 	PC3
+                    contains only marker genes, that are consistent throughout all maps / experiments
+        """
+
+        markerproteins = self.markerproteins
+
+        # isolate only logarithmized profile, and unstack "Fraction"
+        df_01orlog_fracunstacked = self.df_01_filtered_combined
+            
+        pca = PCA(n_components=3)
+
+        # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
+        df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked))
+        df_pca.columns = ["PC1", "PC2", "PC3"]
+        df_pca.index = df_01orlog_fracunstacked.index
+        self.df_pca_for_plotting = df_pca
+
+            
+            
+    def plot_pca_comparison(self):
+        """
+        A PCA plot for desired experiments (multi_choice) and 1 desired cluster is generated.
+        Either the maps for every single experiment are displayed individually or in a combined manner
+    
+        Args:
+            self.df_pca_for_plotting: PCA processed dataframe
+                    index: Experiment 	Gene names 	Map 	Exp_Map
+                    columns: PC1 	PC2 	PC3
+                    contains only marker genes, that are consistent throughout all maps / experiments
+    
+        Returns:
+            pca_figure: PCA plot.
+        """
+    
+        #df_pca_all_marker_cluster_maps = self.df_pca_all_marker_cluster_maps
+        #map_or_exp_names = self.map_or_exp_names
+        
+        df_pca_for_plotting = self.df_pca_for_plotting
+        markerproteins = self.markerproteins
+        multi_choice = self.multi_choice
+        #symbol_pca = None if "symbol_pca" not in kwargs.keys() else kwargs["symbol_pca"]
+        
+        
+        if self.collapse_maps == False:
+            map_or_exp_names = df_pca_for_plotting.loc[(multi_choice)].index.get_level_values("Exp_Map").unique()
+            level_of_interest = "Exp_Map"
+            symbol_pca = "Experiment"     
+        else:
+            map_or_exp_names = multi_choice
+            level_of_interest = "Experiment"
+            symbol_pca = None
+        
+        df_setofproteins_PCA = pd.DataFrame()
+        for map_or_exp in map_or_exp_names:
+            for marker in markerproteins[self.cluster_of_interest_comparison]:
+                if marker not in df_pca_for_plotting.index.get_level_values("Gene names"):
+                    continue
+                plot_try_pca = df_pca_for_plotting.xs((marker, map_or_exp), level=["Gene names", level_of_interest],
+                                                                 drop_level=False)
+                df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
+        try:
+            df_setofproteins_PCA.reset_index(inplace=True)
+            pca_figure = px.scatter_3d(df_setofproteins_PCA, x="PC1", y="PC2", z="PC3", color=level_of_interest, 
+                                       symbol=symbol_pca, hover_data=["Gene names"],
+                                      )
+                    
+            pca_figure.update_layout(autosize=False, width=800, height=500,
+                                  title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest_comparison), 
+                                    #legend_traceorder="reversed+grouped"
+                                    )
+        except:
+            pca_figure  ="sth went wrong"
+    
+        return pca_figure
+    
+    def distance_boxplot_comparison(self):
+        """
+        A box plot for desired experiments (multi_choice) and 1 desired cluster is generated displaying the distribution of the e.g.
+        Manhattan distance.
+        Either the maps for every single experiment are displayed individually or in a combined manner.
+
+        Args:
+            self:
+            multi_choice : list of experiments, that will be displayed
+            cluster_of_interest_comparison: cluster which will be analysed
+            map_names: individual map names are stored as an index
+            df_distance_single: 
+                    columns: Gene names 	Cluster 	Experiment 	Map 	Exp_Map 	distance
+                    no index
+                    "distance": Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
+
+        Returns:
+            distance_boxplot_figure: boxplot. Along the x-axis the maps, along the y-axis the distances are shown
+        """
+        
+        #markerproteins = self.markerproteins
+        #symbol_pca = None if "symbol_pca" not in kwargs.keys() else kwargs["symbol_pca"]
+        multi_choice = self.multi_choice
+        
+        if self.collapse_maps == False:
+            df_distance_single = self.df_distance_single
+            
+            #get only values form experiment of interest
+            df_distance_single = df_distance_single.loc[df_distance_single['Experiment'].isin(multi_choice)]
+            #get only values form cluster of interest
+            df_distance_single = df_distance_single.loc[df_distance_single['Cluster'] == self.cluster_of_interest_comparison]
+            
+            
+            individual_distance_boxplot_figure=go.Figure()
+            for i, exp in enumerate(df_distance_single["Experiment"].unique()):
+                df_plot=df_distance_single[df_distance_single["Experiment"]==exp]
+                individual_distance_boxplot_figure.add_trace(go.Box(
+                    x=[df_plot["Experiment"], df_plot["Map"]],
+                    y=df_plot["distance"],      
+                    line=dict(color=self.css_color[i]),#px.colors.sequential.Plasma_r[i]), 
+                    #notched=True,
+                    name= exp, 
+                    hovertext=df_plot["Gene names"],
+                ))
+            individual_distance_boxplot_figure.update_layout(boxmode="group", xaxis_tickangle=0, 
+                                                             title="Manhattan distance distribution for <br>the protein cluster: {}".format(self.cluster_of_interest_comparison),
+                                                             autosize=False,
+                                                             width=800,
+                                                             height=500,
+                                                             # setting a black boy around the graph
+                                                             xaxis=go.layout.XAxis(linecolor='black',
+                                                                                   linewidth=1,
+                                                                                   title="Map",
+                                                                                   mirror=True),
+                                                 
+                                                             yaxis=go.layout.YAxis(linecolor='black',
+                                                                                   linewidth=1,
+                                                                                   title="distance",
+                                                                                   mirror=True))
+            
+            
+            return individual_distance_boxplot_figure
+        
+        # self.collapse_maps == True:    
+        else: 
+            map_or_exp_names = multi_choice
+            level_of_interest = "Experiment"
+            boxplot_color = "Experiment"
+            df_distance_noindex = self.df_distance_single
+    
+
+            # "Gene names", "Map", "Cluster" and transferred into the index
+            df_distance_map_cluster_gene_in_index = df_distance_noindex.set_index(["Gene names", level_of_interest, "Cluster"]) ###################level_of_interest
+    
+            df_cluster_xmaps_distance_with_index = pd.DataFrame()
+    
+            # for each individual map and a defined cluster data will be extracted from the dataframe
+            # "df_distance_map_cluster_gene_in_index" and appended to the new dataframe df_cluster_xmaps_distance_with_index
+            for map_or_exp in map_or_exp_names: ###################################################################################################map_or_exp_names
+                plot_try = df_distance_map_cluster_gene_in_index.xs((self.cluster_of_interest_comparison, map_or_exp),
+                                                                    level=["Cluster", level_of_interest], drop_level=False)
+                df_cluster_xmaps_distance_with_index = df_cluster_xmaps_distance_with_index.append(plot_try)
+    
+            # index will be reset, required by px.box
+            df_cluster_xmaps_distance = df_cluster_xmaps_distance_with_index.reset_index()
+    
+            
+            # optinal: points=all (= next to each indiviual boxplot the corresponding datapoints are displayed)
+            distance_boxplot_figure = px.box(df_cluster_xmaps_distance, x=level_of_interest, y="distance",#points="all",           ######################level_of_interest
+                                             hover_name="Gene names", color = boxplot_color,
+                                             title="Global Manhattan distance distribution for <br>the protein cluster: {}".format(
+                                                 self.cluster_of_interest_comparison)
+                                             )
+    
+            # determine the layout
+            distance_boxplot_figure.update_layout(
+                autosize=False,
+                width=500,
+                height=500,
+    
+                # setting a black boy around the graph
+                xaxis=go.layout.XAxis(linecolor='black',
+                                      linewidth=1,
+                                      title="Map",
+                                      mirror=True),
+    
+                yaxis=go.layout.YAxis(linecolor='black',
+                                      linewidth=1,
+                                      title="distance",
+                                      mirror=True),
+            )
+            
+            return distance_boxplot_figure
+
+    
+    def venn_diagram(self):
+        multi_choice_venn = self.multi_choice_venn
+        #try:
+         #   vd.clear()
+        #except:
+         #   pass
+        #try:
+        if len(multi_choice_venn)==2:
+            vd = venn2([set(self.unique_proteins_total[i]) for i in multi_choice_venn], 
+                 set_labels=([i for i in multi_choice_venn]),
+                 set_colors=("#F4ACB7","#c4e6ff")
+                 )
+        elif len(multi_choice_venn)==3:
+            vd = venn3([set(self.unique_proteins_total[i]) for i in multi_choice_venn],
+              set_labels=([i for i in multi_choice_venn]),
+              set_colors=("#c4e6ff", "#F4ACB7","#9D8189"), 
+              alpha = 0.8)
+        
+        else:
+            return ("Please select 2 or more experiments for comparison")
+            #venn3_circles([set(unique_proteins_total[i]) for i in multi_choice.value], 
+           #                   linestyle="-.", linewidth=2, color="grey")
+        #for text in vd.set_labels:
+        #    text.set_fontsize(16)
+        #for text in vd.subset_labels:
+        #    text.set_fontsize(16)
+        vd = plt.title("Unique Proteins - Venn Diagram",
+                  #fontname="Times New Roman", fontweight="bold",backgroundcolor="#cbe7e3",color="black",style="italic"
+                  pad=30,fontsize=20,
+                  )
+        vd = vd.figure
+        out_img = io.BytesIO()
+        plt.savefig(out_img, bbox_inches='tight',format='jpg',  dpi = 105)
+        out_img.seek(0)  # rewind file
+        im = Image.open(out_img)
+        plt.clf()
+        ##encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
+        
+            ## A canvas must be manually attached to the figure
+            #canvas = FigureCanvas(vd.figure)
+            #
+            ##Save the figure to a string | draw the canvas, cache the renderer
+            #canvas.draw()       
+            #
+            ##Convert to a NumPy array.
+            #buf = canvas.buffer_rgba()
+            #X = np.asarray(buf)
+            #
+            ##Convert to image.
+            #venn_diagram = Image.fromarray(X)
+        return im        
+            
+    def svm_processing(self):
+        """
+        The misclassification matrix, generated by Perseus, will be used for Recall/Precision calculation of each individual cluster and on a global level. 
+        Data will be stored in a local dictionary that will be assigned to the global dictionary. 
+        
+        Args:
+            self.df_SVM: dataframe, provided by Perseus, no index; 
+                        Column names: e.g. "Predicted: ER", "Predicted: NPC"
+                        Rows: e.g. "True: ER", "True: NPC"
+        
+        Returns:
+            self.analysed_datasets_dict:
+                local dictionary (SVM_dict) will be assigned to the global dictionary self.analysed_datasets_dict, that is available for downloading
+                {"Experiment name" : {...}
+                                     {"Misclassification Analysis": 
+                                         {
+                                          "True: ER" : {
+                                                       "Recall": int,
+                                                       "FDR": int,
+                                                       "Precision": int,
+                                                       "F1': int
+                                                       }
+                                           "True: NPC" : {...}
+                                            ...          
+                                           "Summary": {...}
+                                           }
+                                        }
+                }
+        """
+        
+        df_SVM = self.df_SVM
+        SVM_dict = {}
+        all_correct = np.diag(df_SVM)
+        members = df_SVM.sum(axis=1)
+        total_members = 0
+        membrame_members = 0
+        membrane_correct = 0
+        all_organelle_recall = []
+        all_organelle_precision = []
+        all_organelle_f1 = []
+        F1_all_cluster = []
+        no_of_membrane_clusters = 0
+        total_correct = sum(all_correct)
+        predicted_one_organelle = df_SVM.sum(axis=0)
+        
+        for i in range(len(df_SVM)):
+            total_members = total_members + members[i]
+            recall = all_correct[i]/members[i]
+            fdr = (predicted_one_organelle[i]-all_correct[i])/predicted_one_organelle[i]
+            precision = 1-fdr
+            F1 = statistics.harmonic_mean([recall, precision])
+            F1_all_cluster.append(F1)
+            SVM_dict[df_SVM["T: True group"][i]] = {"Recall": recall, "FDR": fdr, "Precision": precision, "F1": F1}
+            if df_SVM["T: True group"][i] != "True: Nuclear pore complex" and df_SVM["T: True group"][i] != "True: Large Protein Complex" and df_SVM["T: True group"][i] != "True: Actin binding proteins" :
+                no_of_membrane_clusters = no_of_membrane_clusters+1
+                membrame_members = membrame_members + members[i]
+                membrane_correct = membrane_correct + all_correct[i]
+                all_organelle_f1.append(F1)
+                all_organelle_recall.append(recall)
+                all_organelle_precision.append(precision)
+            
+        total_recall = total_correct/total_members
+        membrane_recall = membrane_correct/membrame_members
+        av_per_organelle_recall = statistics.mean(all_organelle_recall)
+        median_per_organelle_recall = statistics.median(all_organelle_recall)
+        av_per_organelle_precision = statistics.mean(all_organelle_precision)
+        avg_organelle_f1 = statistics.mean(all_organelle_f1)
+        avg_F1_all_cluster = statistics.mean(F1_all_cluster)
+                    
+        SVM_dict["Summary"]={"Total - Recall": total_recall, 
+                           "Membrane - Recall" : membrane_recall, 
+                           "Av per organelle - Recall": av_per_organelle_recall,
+                           "Median per organelle - Recall" : median_per_organelle_recall,
+                           "Av precision organelles" : av_per_organelle_precision,
+                           "Av F1 organelles" : avg_organelle_f1,
+                           "Av F1 all clusters" :  avg_F1_all_cluster,
+                          }
+        self.analysed_datasets_dict[self.expname]["Misclassification Analysis"] = SVM_dict.copy()
+        SVM_dict.clear()
+        #self.SVM_dict = SVM_dict    
 
     def __repr__(self):
         return "This is a spatial dataset with {} lines.".format(len(self.df_original))
