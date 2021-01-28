@@ -2,27 +2,26 @@ class SpatialDataSet:
 
     def __init__(self, **kwargs):
         """Import of the raw file of interest. Dataframe will be generated, which contains only the data of desired
-        column names, specified by the dictionary entry regex["col_shortened"]
+        column names, specified by the dictionary entry regex["imported_columns"]
 
         Dictionaries are created, that ate used for filtering and plotting, respectively.
 
         Args:
-            filename: raw file obtained by the LFQ/SILAC approach (Protein Groups Files), processed by MaxQuant
+            filename: raw file obtained by the LFQ/SILAC approach (Protein Groups Files), processed by MaxQuant or Spectronaut
 
         Returns:
-            df_original: shortened data frame, contains only the information, which was determined due to
-            the values of the key "col_shortened"
+            df_original: shortened data frame, contains only the information, based on regex["imported_columns"]
         """
         # df_original contains all information of the raw file; tab separated file is imported,
-        # without considering comments, marked with #
-
         self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
+        
+        self.name_pattern = ".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)" if "name_pattern" not in kwargs.keys() else kwargs["name_pattern"]
+        
         self.json_filename = "AnalysedDatasets.json" if "json_filename" not in kwargs.keys() else kwargs["json_filename"]
         
-        
         self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
-        self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs[
-            "cluster_of_interest"]
+        
+        self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs["cluster_of_interest"]
         
         self.cluster_of_interest_comparison = "Proteasome" if "cluster_of_interest_comparison" not in kwargs.keys() else kwargs[
             "cluster_of_interest_comparison"]
@@ -35,31 +34,59 @@ class SpatialDataSet:
         self.RatioVariability = 30 if "RatioVariability" not in kwargs.keys() else kwargs["RatioVariability"]
             
         self.collapse_maps = False if "collapse_maps" not in kwargs.keys() else kwargs["collapse_maps"]
-        
         self.collapse_maps_PCA = False if "collapse_maps_PCA" not in kwargs.keys() else kwargs["collapse_maps_PCA"]
         
-        self.multi_choice_venn = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
         self.multi_choice = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
-        
         self.multi_choice_venn = ["x", "y"] if "multi_choice_venn" not in kwargs.keys() else kwargs["multi_choice_venn"]
+        
+        self.expname = "Experiment_name" if "expname" not in kwargs.keys() else kwargs["expname"]      
+        
+        self.x_PCA = "PC1" if "x_PCA" not in kwargs.keys() else kwargs["x_PCA"]
+        self.x_PCA_comp = "PC1" if "x_PCA_comp" not in kwargs.keys() else kwargs["x_PCA_comp"]
+        
+        self.y_PCA = "PC3" if "y_PCA" not in kwargs.keys() else kwargs["y_PCA"]
+        self.y_PCA_comp = "PC3" if "y_PCA_comp" not in kwargs.keys() else kwargs["y_PCA_comp"]
+                
+        self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
+        
+        self.analysed_datasets_dict = {}
+        self.analysis_summary_dict = {}
+        self.shape_dict = {} 
         
         self.regex = {
             "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity",
         }
-        
+               
         markerprotein_human = {
             "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3",
                            "PSMB4", "PSMB5", "PSMB6", "PSMB7"],
             "CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
-            "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2",
-                                     "ATP6V1C1", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
+            "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
             "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
             "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"],
             "COP9 signalosome complex" : ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS7A", "COPS7B", "COPS8", "GPS1"],
             "MCM complex" : ["MCM2", "MCM3", "MCM4", "MCM5", "MCM7"],
-            "mitochondrial ribosomal subunits" : ["MRPL1", "MRPL11", "MRPL12", "MRPL13", "MRPL15", "MRPL16", "MRPL18", "MRPL19", "MRPL22", "MRPL23", "MRPL28", "MRPL3", "MRPL30", "MRPL37", "MRPL38", "MRPL39", "MRPL4", "MRPL40", "MRPL43", "MRPL44", "MRPL45", "MRPL46", "MRPL47", "MRPL49", "MRPL9"], #39S proteins;MRPL12;SLC25A10
-            "cytoplasmic ribosomal subunits" : ["RPS10", "RPS11", "RPS12", "RPS13", "RPS14", "RPS15", "RPS15A", "RPS16", "RPS17", "RPS18", "RPS19", "RPS2", "RPS20", "RPS21", "RPS23", "RPS24", "RPS25", "RPS26", "RPS28", "RPS29", "RPS3", "RPS3A", "RPS4X", "RPS5", "RPS6", "RPS7", "RPS8", "RPS9", "RPSA"], #RPS17;RPS17L; RPS26;RPS26P11
-            }
+            "mitochondrial ribosomal subunits" : ["MRPL1", "MRPL11", "MRPL12", "MRPL13", "MRPL15", "MRPL16", "MRPL18", "MRPL19", "MRPL22", "MRPL23", "MRPL28",
+                                                  "MRPL3", "MRPL30", "MRPL37", "MRPL38", "MRPL39", "MRPL4", "MRPL40", "MRPL43", "MRPL44", "MRPL45", "MRPL46", 
+                                                  "MRPL47", "MRPL49", "MRPL9"], #39S proteins;MRPL12;SLC25A10
+            "cytoplasmic ribosomal subunits" : ["RPS10", "RPS11", "RPS12", "RPS13", "RPS14", "RPS15", "RPS15A", "RPS16", "RPS17", "RPS18", "RPS19", "RPS2", "RPS20", 
+                                                "RPS21", "RPS23", "RPS24", "RPS25", "RPS26", "RPS28", "RPS29", "RPS3", "RPS3A", "RPS4X", "RPS5", "RPS6", "RPS7",
+                                                "RPS8", "RPS9", "RPSA"], #RPS17;RPS17L; RPS26;RPS26P11
+           # "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"], 
+           # "Prefoldin" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
+           # "AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
+           # "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],
+           # "AP3 adaptor complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
+           # "AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1",  "AP4S1"],
+           # "Anaphas,e-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
+           # "Rnase/Mrp complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
+           # "Class C, Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
+           # "Dynactin, complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6"],
+           # "CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
+           # "Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
+        }
+        
+        self.markerproteins = markerprotein_human if "markerprotein" not in kwargs.keys() else kwargs["markerprotein"]
         
         self.all_markerproteins = {
             "Human - Swissprot" : markerprotein_human, 
@@ -83,64 +110,44 @@ class SpatialDataSet:
             "Mouse - Swissprot" : {
                 "STH" : ["STH"],
             },
-            }
-                    
-        
-        self.markerproteins = markerprotein_human if "markerprotein" not in kwargs.keys() else kwargs["markerprotein"]
-        
-        self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
-        
+        }
         self.acquisition_set_dict = {
             "LFQ": ["[Ll][Ff][Qq].[Ii]ntensity", "[Mm][Ss]/[Mm][Ss].[cC]ount", "[Ii]ntensity"],
             "LFQ Spectronaut" : ["LFQ intensity", "MS/MS count"],
             "SILAC"  : [ "[Rr]atio.[Hh]/[Ll](?!.[Vv]aria|.[Cc]ount)","[Rr]atio.[Hh]/[Ll].[Vv]ariability.\[%\]", "[Rr]atio.[Hh]/[Ll].[cC]ount"]
-            }
+        }
         
-        self.name_pattern = ".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)" if "name_pattern" not in kwargs.keys() else kwargs["name_pattern"]
-        
-        self.fraction_dict = {"1K": "01K","3K": "03K", "6K": "06K", "12K": "12K", "24K": "24K", "80K": "80K", 
-                              "01K": "01K","03K": "03K", "06K": "06K", "012K": "12K", "024K": "24K", "080K": "80K", 
-                              "Cyt": "Cyt", "Mem": "Mem", "Nuc": "Nuc", "Prot": "Prot", "cyt": "Cyt", "mem": "Mem", "nuc": "Nuc", "Prot": "Prot", "prot": "Prot"}
+        self.fraction_dict = {
+            "1K": "01K","3K": "03K", "6K": "06K", "12K": "12K", "24K": "24K", "80K": "80K", "01K": "01K","03K": "03K", "06K": "06K", "012K": "12K", "024K": "24K",
+            "080K": "80K", "Cyt": "Cyt", "Mem": "Mem", "Nuc": "Nuc", "Prot": "Prot", "cyt": "Cyt", "mem": "Mem", "nuc": "Nuc", "Prot": "Prot", "prot": "Prot"
+        }
         
         self.Spectronaut_columnRenaming = {
             "R.Condition": "Map", "PG.Genes" : "Gene names", "PG.Qvalue": "Q-value", "PG.Cscore":"C-Score", 
             "PG.ProteinGroups" : "Protein IDs", "PG.RunEvidenceCount" : "MS/MS count", "PG.Quantity" : "LFQ intensity"
-            }
+        }
         
-        self.analysed_datasets_dict = {}
-        self.analysis_summary_dict = {}
-        self.shape_dict = {}  
-        self.expname = "Protein_Groups" if "expname" not in kwargs.keys() else kwargs["expname"]      
+
         
-        self.x_PCA = "PC1" if "x_PCA" not in kwargs.keys() else kwargs["x_PCA"]
-        self.x_PCA_comp = "PC1" if "x_PCA_comp" not in kwargs.keys() else kwargs["x_PCA_comp"]
-        
-        self.y_PCA = "PC3" if "y_PCA" not in kwargs.keys() else kwargs["y_PCA"]
-        self.x_PCA_comp = "PC3" if "y_PCA_comp" not in kwargs.keys() else kwargs["y_PCA_comp"]
-        
-        css_color_string='''
-            #888888, #b2df8a, #6a3d9a, #e31a1c, #b15928, #fdbf6f, #ff7f00, #cab2d6, #fb9a99, #1f78b4, #ffff99, #a6cee3, #33a02c,
-            green, blue, orange, purple, goldenrod, yellow, lightcoral, magenta, brown, lightpink, red, turquoise,
-            khaki, darkgoldenrod,darkturquoise, darkviolet, greenyellow, darksalmon, hotpink, indianred, indigo,darkolivegreen, coral, aqua,
-            beige, bisque, black, blanchedalmond, blueviolet, burlywood, cadetblue, yellowgreen, chartreuse, chocolate, cornflowerblue, cornsilk,
-            darkblue, darkcyan, darkgray, darkgrey, darkgreen, darkkhaki, darkmagenta, darkorange, darkorchid, darkred, darkseagreen, darkslateblue,
-            snow, springgreen, darkslategrey, mediumpurple, oldlace, olive, lightseagreen,
-            deeppink, deepskyblue, dimgray, dimgrey, dodgerblue, firebrick, floralwhite, forestgreen, fuchsia, gainsboro, ghostwhite, gold, gray,
-            ivory, lavenderblush, lawngreen, lemonchiffon, lightblue, lightcyan, lightgoldenrodyellow, lightgray, lightgrey, lightgreen, lightsalmon,
-            lightskyblue, lightslategray, lightslategrey, lightsteelblue, lightyellow, lime, limegreen, linen, maroon, mediumaquamarine, mediumblue,
-            mediumseagreen, mediumslateblue, mediumspringgreen, mediumturquoise, mediumvioletred, midnightblue, mintcream, mistyrose, moccasin,
-            olivedrab, orangered, orchid, palegoldenrod, palegreen, paleturquoise, palevioletred, papayawhip, peachpuff, peru, pink,
-            plum, powderblue, rosybrown, royalblue, saddlebrown, salmon, sandybrown, seagreen, seashell, sienna, silver, skyblue, slateblue,
-            steelblue, teal, thistle, tomato, violet, wheat, white, whitesmoke, slategray, slategrey,
-            aquamarine, azure,crimson, cyan, darkslategray, grey,mediumorchid,navajowhite, navy,
-            '''
-        css_color=css_color_string.split(',')
-        css_color=[l.replace('\n','') for l in css_color]
-        css_color=[l.replace(' ','') for l in css_color]
-        self.css_color = css_color 
+        self.css_color = ["#888888", "#b2df8a", "#6a3d9a", "#e31a1c", "#b15928", "#fdbf6f", "#ff7f00", "#cab2d6", "#fb9a99", "#1f78b4", "#ffff99", "#a6cee3", 
+                          "#33a02c", "green", "blue", "orange", "purple", "goldenrod", "yellow", "lightcoral", "magenta", "brown", "lightpink", "red", "turquoise",
+                          "khaki", "darkgoldenrod","darkturquoise", "darkviolet", "greenyellow", "darksalmon", "hotpink", "indianred", "indigo","darkolivegreen", 
+                          "coral", "aqua", "beige", "bisque", "black", "blanchedalmond", "blueviolet", "burlywood", "cadetblue", "yellowgreen", "chartreuse",
+                          "chocolate", "cornflowerblue", "cornsilk", "darkblue", "darkcyan", "darkgray", "darkgrey", "darkgreen", "darkkhaki", "darkmagenta", 
+                          "darkorange", "darkorchid", "darkred", "darkseagreen", "darkslateblue", "snow", "springgreen", "darkslategrey", "mediumpurple", "oldlace", 
+                          "olive", "lightseagreen", "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue", "firebrick", "floralwhite", "forestgreen", 
+                          "fuchsia", "gainsboro", "ghostwhite", "gold", "gray", "ivory", "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcyan",
+                          "lightgoldenrodyellow", "lightgray", "lightgrey", "lightgreen", "lightsalmon", "lightskyblue", "lightslategray", "lightslategrey",
+                          "lightsteelblue", "lightyellow", "lime", "limegreen", "linen", "maroon", "mediumaquamarine", "mediumblue", "mediumseagreen",
+                          "mediumslateblue", "mediumspringgreen", "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin",
+                          "olivedrab", "orangered", "orchid", "palegoldenrod", "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
+                          "pink", "plum", "powderblue", "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell", "sienna", "silver",
+                          "skyblue", "slateblue", "steelblue", "teal", "thistle", "tomato", "violet", "wheat", "white", "whitesmoke", "slategray", "slategrey",
+                          "aquamarine", "azure","crimson", "cyan", "darkslategray", "grey","mediumorchid","navajowhite", "navy"]
+
         
     def data_reading(self):
-        """Data import.
+        """Data import. 
 
         Args:
             filename: stored as attribute
@@ -836,27 +843,37 @@ class SpatialDataSet:
 
         df_allclusters_onlynorm_fracunstacked_unfiltered = pd.DataFrame()
         df_allclusters_01 = pd.DataFrame()
-
+        
+        displayed_cluster = []
+        
         map_names = self.map_names
 
         # for each individual map, and each individual protein cluster, defined in the dictionary markerproteins,
         # the functions "cluster_isolation_df" and "distance_to_median_calculation" will be performed
         for maps in map_names:
             for clusters in markerproteins:
-                df_setofproteins = self.cluster_isolation_df(maps, clusters)
-                df_allclusters_01 = df_allclusters_01.append(df_setofproteins)
-                df_distance_to_median_fracunstacked = self.distance_to_median_calculation(df_setofproteins)
-                # new column is introduced: Column name = "Cluster"; values: clustername, to wich the individual protein belongs to
-                df_distance_to_median_fracunstacked["Cluster"] = clusters
-                df_distance_to_median_fracunstacked.set_index("Cluster", inplace=True, append=True)
-                # the isolated and processed
+                #if a certain cluster is not available in the dataset at all
+                try:
+                    df_setofproteins = self.cluster_isolation_df(maps, clusters)
+                    if len(df_setofproteins.index.get_level_values(level="Gene names").unique()) >= 4:
+                        displayed_cluster.append(clusters)
+                        df_allclusters_01 = df_allclusters_01.append(df_setofproteins)
+                        df_distance_to_median_fracunstacked = self.distance_to_median_calculation(df_setofproteins)
+                        # new column is introduced: Column name = "Cluster"; values: clustername, to wich the individual protein belongs to
+                        df_distance_to_median_fracunstacked["Cluster"] = clusters
+                        df_distance_to_median_fracunstacked.set_index("Cluster", inplace=True, append=True)
+                    else:
+                        continue
+                except:
+                    continue
                 df_allclusters_onlynorm_fracunstacked_unfiltered = df_allclusters_onlynorm_fracunstacked_unfiltered.append(
                     df_distance_to_median_fracunstacked)
 
         #storage of 0/1 normalized data in global dictionary
         ####Possibility to sort - if necessary, takes some computing time
         ####df_allclusters_01 = df_allclusters_01.reindex(index=natsort.natsorted(i_class.df_allclusters_01.index))
-
+        self.displayed_cluster = sorted(set(displayed_cluster))
+        
         self.analysis_summary_dict["0/1 normalized data"] = df_allclusters_01.reset_index().to_json() 
         # genes are droped, if they are not present in all maps
         df_allclusters_onlynorm_fracunstacked = df_allclusters_onlynorm_fracunstacked_unfiltered.groupby(["Gene names"]).filter(lambda x: len(x) >= len(map_names))
@@ -1022,8 +1039,7 @@ class SpatialDataSet:
             df_distance_noindex: dataframe, index is reset. It contains the column name "distance", in which the e.g.
             Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
         """
-
-        markerproteins = self.markerproteins
+        
         df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked.copy()
 
         # np.linalg.norm requires array; ord=1: Manhattan distance will be calculated over 5 dimensions (Fractions)
@@ -1690,22 +1706,26 @@ class SpatialDataSet:
         else:
             return ("")
         
+        df_distance_single = self.df_distance_single.copy()
+        #set categroical column, allowing lexicographic sorting
+        df_distance_single['Experiment_lexicographic_sort'] = pd.Categorical(df_distance_single['Experiment'], categories=self.sorting_list, ordered=True)
+        df_distance_single.sort_values("Experiment_lexicographic_sort", inplace=True)
+        
         if self.collapse_maps == False:
-            df_distance_single = self.df_distance_single
-            
             #get only values form experiment of interest
-            df_distance_single = df_distance_single.loc[df_distance_single['Experiment'].isin(multi_choice)]
+            df_distance_selectedExp = df_distance_single.loc[df_distance_single['Experiment'].isin(multi_choice)]
             #get only values form cluster of interest
-            df_distance_single = df_distance_single.loc[df_distance_single['Cluster'] == self.cluster_of_interest_comparison]
+            df_distance_selectedExp = df_distance_selectedExp.loc[df_distance_selectedExp['Cluster'] == self.cluster_of_interest_comparison]
+            
             
             
             individual_distance_boxplot_figure=go.Figure()
-            for i, exp in enumerate(df_distance_single["Experiment"].unique()):
-                df_plot=df_distance_single[df_distance_single["Experiment"]==exp]
+            for i, exp in enumerate(df_distance_selectedExp["Experiment"].unique()):
+                df_plot=df_distance_selectedExp[df_distance_selectedExp["Experiment"]==exp]
                 individual_distance_boxplot_figure.add_trace(go.Box(
                     x=[df_plot["Experiment"], df_plot["Map"]],
                     y=df_plot["distance"],      
-                    line=dict(color=self.css_color[i]),#px.colors.sequential.Plasma_r[i]), 
+                    line=dict(color=px.colors.qualitative.Plotly[i]),
                     #notched=True,
                     boxpoints="all",
                     whiskerwidth=0.2,
@@ -1736,24 +1756,24 @@ class SpatialDataSet:
             map_or_exp_names = multi_choice
             level_of_interest = "Experiment"
             boxplot_color = "Experiment"
-            df_distance_noindex = self.df_distance_single
+            df_distance_selectedExp_global = df_distance_single
     
 
             # "Gene names", "Map", "Cluster" and transferred into the index
-            df_distance_map_cluster_gene_in_index = df_distance_noindex.set_index(["Gene names", level_of_interest, "Cluster"]) 
+            df_distance_selectedExp_global.set_index(["Gene names", level_of_interest, "Cluster"], inplace=True) 
     
-            df_cluster_xmaps_distance_with_index = pd.DataFrame()
+            df_cluster_xmaps_distance_global = pd.DataFrame()
     
             # for each individual map and a defined cluster data will be extracted from the dataframe
-            # "df_distance_map_cluster_gene_in_index" and appended to the new dataframe df_cluster_xmaps_distance_with_index
+            # "df_distance_selectedExp_global" and appended to the new dataframe df_cluster_xmaps_distance_global
             for map_or_exp in map_or_exp_names:
-                plot_try = df_distance_map_cluster_gene_in_index.xs((self.cluster_of_interest_comparison, map_or_exp),
+                plot_try = df_distance_selectedExp_global.xs((self.cluster_of_interest_comparison, map_or_exp),
                                                                     level=["Cluster", level_of_interest], drop_level=False)
-                df_cluster_xmaps_distance_with_index = df_cluster_xmaps_distance_with_index.append(plot_try)
+                df_cluster_xmaps_distance_global = df_cluster_xmaps_distance_global.append(plot_try)
     
-            df_cluster_xmaps_distance = df_cluster_xmaps_distance_with_index.reset_index()
-    
-            distance_boxplot_figure = px.box(df_cluster_xmaps_distance, 
+            df_cluster_xmaps_distance_global.reset_index(inplace=True)
+        
+            distance_boxplot_figure = px.box(df_cluster_xmaps_distance_global, 
                                              x=level_of_interest, 
                                              y="distance", 
                                              points="all",
@@ -1783,7 +1803,116 @@ class SpatialDataSet:
             
             return distance_boxplot_figure
 
+        
+    def distance_ranking_barplot_comparison(self):
+        """
+        
+        
+        """
+        
+        multi_choice = self.multi_choice
+        # "Gene names", "Experiment", "Cluster" and transferred into the index
+        df_distance_gene_exp_cluster_in_index = self.df_distance_single.copy().set_index(["Gene names", "Experiment", "Cluster"])
+        #dict_exp_color = dict(zip(df_distance_gene_exp_cluster_in_index.index.get_level_values("Experiment").unique(), px.colors.qualitative.Plotly))
     
+        #an error massage, if no Experiments are selected, will be displayed already, that is why: return ""
+        if len(multi_choice)>=1:
+            pass
+        else:
+            return ("")
+        
+        dict_cluster_normalizedMedian = {}
+        for cluster in i_class.markerproteins.keys():
+            df_cluster = df_distance_gene_exp_cluster_in_index.xs(cluster, level="Cluster")
+            all_median_one_cluster_several_exp = {}
+            for exp in i_class.json_dict.keys():
+                median = df_cluster.xs(exp, level="Experiment").median()
+                #df_cluster[df_cluster.index.get_level_values('Experiment').isin([exp])].median()
+                all_median_one_cluster_several_exp[exp] = float(median)
+            
+            min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
+            median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
+            dict_cluster_normalizedMedian[cluster] = median_ranking
+            
+        df_cluster_normalizedMedian = pd.DataFrame(dict_cluster_normalizedMedian)
+        df_cluster_normalizedMedian.index.name="Experiment"
+        df_cluster_normalizedMedian.rename_axis("Cluster", axis=1, inplace=True)
+        
+        df_ranking = df_cluster_normalizedMedian.stack("Cluster")
+        df_ranking.name="Normalized Median"
+        df_ranking = df_ranking.reset_index()
+        
+        ranking_sum = df_cluster_normalizedMedian.sum(axis=1).round(2)
+        ranking_sum.name = "Normalized Median - Sum"
+        ranking_product = df_cluster_normalizedMedian.product(axis=1).round(2)
+        ranking_product.name = "Normalized Median - Product"
+        df_globalRanking = pd.concat([pd.DataFrame(ranking_sum), pd.DataFrame(ranking_product)], axis=1).reset_index()
+        
+        self.sorting_list = list(df_globalRanking.sort_values("Normalized Median - Sum")["Experiment"])
+        
+        #set categroical column, allowing lexicographic sorting
+        df_ranking['Experiment_lexicographic_sort'] = pd.Categorical(df_ranking['Experiment'], categories=self.sorting_list, ordered=True)
+        df_ranking.sort_values("Experiment_lexicographic_sort", inplace=True)
+        
+        df_globalRanking['Experiment_lexicographic_sort'] = pd.Categorical(df_globalRanking['Experiment'], categories=self.sorting_list, ordered=True)
+        df_globalRanking.sort_values("Experiment_lexicographic_sort", inplace=True)
+        
+        if self.collapse_maps == False:
+            #get only values form experiment of interest
+            df_ranking = df_ranking.loc[df_ranking["Experiment"].isin(i_class.multi_choice)]
+            #dict_exp_color1 = dict(zip(df_ranking["Experiment"].unique(), px.colors.qualitative.Plotly))
+            #df_ranking = df_ranking.sort_values(["Normalized Median", "Experiment"])
+            
+
+            fig_ranking = px.bar(df_ranking, 
+                                 x="Cluster", 
+                                 y="Normalized Median", 
+                                 color="Experiment", 
+                                 barmode="group", 
+                                 #color_discrete_map=dict_exp_color1,
+                                 title="Ranking - normalization to smallest median (=1)"
+                                )
+            fig_ranking.update_xaxes(categoryorder="total ascending")
+            fig_ranking.update_layout(
+                autosize=False,
+                width=1000,
+                height=500)
+            return fig_ranking
+        
+        else:
+            #get only values form experiment of interest
+            df_globalRanking = df_globalRanking.loc[df_globalRanking["Experiment"].isin(i_class.multi_choice)]
+            #dict_exp_color2 = dict(zip(df_globalRanking["Experiment"].unique(), px.colors.qualitative.Plotly))
+            #df_globalRanking.sort_values("Normalized Median - Sum", inplace=True)
+            
+            fig_globalRanking = px.bar(
+                df_globalRanking, 
+                x="Experiment", 
+                y="Normalized Median - Sum", 
+                color="Experiment", 
+                #color_discrete_map=dict_exp_color2, 
+                title="Ranking - sum of all individual normalized medians")
+            
+            fig_globalRanking.update_layout(
+                autosize=False,
+                width=250*len(multi_choice),
+                height=500,
+    
+                # setting a black boX around the graph
+                xaxis=go.layout.XAxis(linecolor="black",
+                                      linewidth=1,
+                                      title="Map",
+                                      mirror=True),
+    
+                yaxis=go.layout.YAxis(linecolor="black",
+                                      linewidth=1,
+                                      title="distance",
+                                      mirror=True),
+            )
+            
+            return fig_globalRanking
+    
+      
     def venn_diagram(self):
         multi_choice_venn = self.multi_choice_venn
         
