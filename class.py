@@ -30,7 +30,7 @@ class SpatialDataSet:
         self.multi_choice = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
         self.multi_choice_venn = ["x", "y"] if "multi_choice_venn" not in kwargs.keys() else kwargs["multi_choice_venn"]
         
-        self.data_or_profile_completeness = "x" if "data_or_profile_completeness" not in kwargs.keys() else kwargs["data_or_profile_completeness"]
+        self.pg_or_pr = "x" if "pg_or_pr" not in kwargs.keys() else kwargs["pg_or_pr"]
         
         self.expname = "Experiment_name" if "expname" not in kwargs.keys() else kwargs["expname"]      
         
@@ -204,12 +204,12 @@ class SpatialDataSet:
             def logarithmization_lfq(df_stringency_mapfracstacked):
 
         Args:
-            self.acquisition mode: "SILAC", "LFQ", or "LFQ Spectronaut"
+            self.acquisition: string, "SILAC", "LFQ", or "LFQ Spectronaut"
 
         Returns:
             self:
                 map_names: list of Map names
-                df_01_stacked: df; 0-1 normlaized data
+                df_01_stacked: df; 0-1 normalized data with "normalized profile" as column name
                 df_log_stacked: df; log transformed data
                 analysis_summary_dict["0/1 normalized data - mean"] : 0/1 normalized data across all maps by calculating the mean
                                      ["changes in shape after filtering"]
@@ -247,7 +247,6 @@ class SpatialDataSet:
                     df_index: mutliindex dataframe, which contains 3 level labels: Map, Fraction, Type
                     shape_dict["Original size"] of df_original
                     shape_dict["Shape after categorical filtering"] of df_index
-                    data_completeness : series, for each individual map, as well as combined maps: 1 - (percentage of NANs)
                     fractions: list of fractions e.g. ["01K", "03K", ...]
             """
             
@@ -289,19 +288,8 @@ class SpatialDataSet:
                 pass
             
             self.fractions = list(df_index.columns.get_level_values("Fraction").unique())
+            self.df_index = df_index
             
-            #data completness - percentage of NANs
-            if self.acquisition == "SILAC":
-                df_data_completeness = df_index["Ratio H/L"].stack(["Fraction"])
-            elif self.acquisition == "LFQ":
-                df_data_completeness = df_index["LFQ intensity"].stack(["Fraction"])
-                
-            data_completeness = 1-df_data_completeness.apply(np.isnan).apply(sum)/len(df_data_completeness)
-            data_completeness = data_completeness.append(pd.Series(data_completeness.mean(), index=["Combined Maps"]))
-            data_completeness.rename("Data completeness", inplace=True)
-            self.data_completeness = data_completeness    
-            
-            self.df_index_test = df_index
             return df_index
 
 
@@ -328,7 +316,6 @@ class SpatialDataSet:
                 self:
                     df_index: mutliindex dataframe, which contains 3 level labels: Map, Fraction, Type
                     shape_dict["Original size"] of df_index
-                    data_completeness : series, for each individual map, as well as combined maps: 1 - (percentage of NANs)
                     fractions: list of fractions e.g. ["01K", "03K", ...]
             """
             
@@ -358,17 +345,11 @@ class SpatialDataSet:
             
             self.fractions = list(df_index.columns.get_level_values("Fraction").unique())
             
-            #data completness - percentage of NANs
-            df_data_completeness = df_index["LFQ intensity"].stack(["Fraction"])
-            data_completeness = 1-df_data_completeness.apply(np.isnan).apply(sum)/len(df_data_completeness)
-            data_completeness = data_completeness.append(pd.Series(data_completeness.mean(), index=["Combined Maps"]))
-            data_completeness.rename("Data completeness", inplace=True)
-            self.data_completeness = data_completeness
+            self.df_index = df_index
             
-            self.df_index_test = df_index
             return df_index
         
-        
+            
         def stringency_silac(df_index):
             """
             The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are considered (a set of f.e. 5 SILAC ratios 
@@ -466,16 +447,6 @@ class SpatialDataSet:
 
             # "Ratio H/L" will be renamed to "normalized profile"
             df_01_stacked.columns = [col if col!="Ratio H/L" else "normalized profile" for col in df_01_stacked.columns]
-            self.df_01_stacked_test_silac = df_01_stacked
-            #profile completness - percentage of valid profiles (profiles that do not contain NaN)
-            df_profile_completeness = df_01_stacked["normalized profile"].xs(self.fractions[0], level="Fraction", axis=0).unstack(["Map"])
-            profile_completeness = 1-df_profile_completeness.apply(np.isnan).apply(sum)/len(df_profile_completeness)
-            profile_completeness = profile_completeness.append(pd.Series(profile_completeness.mean(), index=["Combined Maps"]))
-            profile_completeness.rename("Profile completeness", inplace=True)
-            
-            df_completeness = pd.concat([self.data_completeness, profile_completeness], axis=1)
-            df_completeness.index.name = "Map"
-            self.analysis_summary_dict["Data/Profile Completeness"] = df_completeness.reset_index().to_json()
 
             return df_01_stacked
 
@@ -579,17 +550,13 @@ class SpatialDataSet:
                                               single-level column index
                 self:
                     fractions: list of fractions e.g. ["01K", "03K", ...]
-                    data_completeness: series, for each individual map, as well as combined maps: 1 - (percentage of NANs)
 
 
             Returns:
                 df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column "LFQ intensity" is 0-1 normalized and renamed to 
                                "normalized profile"; the columns "normalized profile" and "MS/MS count" are stored as single level indices; plotting is possible now
                 
-                self:
-                    analysis_summary_dict["Data/Profile Completeness"] : df, with information about Data/Profile Completeness
-                                        column: "Experiment" 	"Map" 	"Data completeness" 	"Profile completeness"
-                                        no row index
+                self.df_01_stacked_for_quantity: see df_01_stacked, w/o imputation
 
             """
 
@@ -604,16 +571,8 @@ class SpatialDataSet:
             # rename columns: "LFQ intensity" into "normalized profile"
             df_01_stacked.columns = [col if col!="LFQ intensity" else "normalized profile" for col in
                                      df_01_stacked.columns]
-            self.df_01_stacked_test_lfq = df_01_stacked
-            #profile completness - percentage of valid profiles (profiles that do not contain NaN)
-            df_profile_completeness = df_01_stacked["normalized profile"].xs(self.fractions[0], level="Fraction", axis=0).unstack(["Map"])
-            profile_completeness = 1-df_profile_completeness.apply(np.isnan).apply(sum)/len(df_profile_completeness)
-            profile_completeness = profile_completeness.append(pd.Series(profile_completeness.mean(), index=["Combined Maps"]))
-            profile_completeness.rename("Profile completeness", inplace=True)
-                        
-            df_completeness = pd.concat([self.data_completeness, profile_completeness], axis=1)
-            df_completeness.index.name = "Map"
-            self.analysis_summary_dict["Data/Profile Completeness"] = df_completeness.reset_index().to_json()
+            
+            self.df_01_stacked_for_quantity = df_01_stacked
             
             #imputation 
             df_01_stacked = df_01_stacked.unstack("Fraction").replace(np.NaN, 0).stack("Fraction")
@@ -637,9 +596,8 @@ class SpatialDataSet:
 
             df_lognorm_ratio_stacked = df_stringency_mapfracstacked["LFQ intensity"].transform(np.log2)
 
-            df_log_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame
-                (df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
-
+            df_log_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame(df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
+            
             # "LFQ intensity" will be renamed to "log profile"
             df_log_stacked.columns = [col if col!="LFQ intensity" else "log profile" for col in df_log_stacked.columns]
 
@@ -707,7 +665,179 @@ class SpatialDataSet:
         else:
             return "I do not know this"    
 
+            
+    def quantity_profiles_proteinGroups(self):
+        """
+        Number of profiles, protein groups per experiment, and the data completness of profiles (total quantity, intersection) is calculated.
         
+        Args:
+            self:
+                acquisition: string, "SILAC", "LFQ", or "LFQ Spectronaut"
+                df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Typ
+                df_01_stacked: df; 0-1 normalized data with "normalized profile" as column name
+            
+        Returns:
+            self:
+                df_quantity_pr_pg: df; no index, columns: "filtering" 	"type" 	"npg" 	"npr" 	"npr_dc"; containign following information:
+                    npg_t: protein groups per experiment total quantity
+                    npgf_t = groups with valid profiles per experiment total quanitity
+                    npr_t: profiles with any valid values
+                    nprf_t = total number of valid profiles
+                    
+                    npg_i: protein groups per experiment intersection
+                    npgf_i = groups with valid profiles per experiment intersection
+                    npr_i: profiles with any valid values in the intersection
+                    nprf_i = total number of valid profiles in the intersection
+                    
+                    npr_t_dc: profiles, % values != nan
+                    nprf_t_dc = profiles, total, filtered, % values != nan
+                    npr_i_dc: profiles, intersection, % values != nan
+                    nprf_i_dc = profiles, intersection, filtered, % values != nan
+                    
+                df_npg | df_npgf: index: maps e.g. "Map1", "Map2",..., columns: fractions e.g. "03K", "06K", ...
+                    npg_f = protein groups, per fraction
+                    or npgf_f = protein groups, filtered, per fraction
+                df_npg_dc | df_npgf_dc: index: maps e.g. "Map1", "Map2",..., columns: fractions e.g. "03K", "06K", ...
+                    npg_f_dc = protein groups, per fraction, % values != nan 
+                    or npgf_f_dc = protein groups, filtered, per fraction, % values != nan                        
+                    
+        """
+    
+        if self.acquisition == "SILAC":
+            df_index = self.df_index["Ratio H/L"]
+            df_01_stacked = self.df_01_stacked["normalized profile"]
+        elif self.acquisition == "LFQ" or self.acquisition == "LFQ Spectronaut":
+            df_index = self.df_index["LFQ intensity"]
+            df_01_stacked = self.df_01_stacked_for_quantity["normalized profile"]
+        
+        npg_t = df_index.shape[0]
+        df_index_MapStacked = df_index.stack("Map")
+        npr_t = df_index_MapStacked.shape[0]
+        npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/(df_index_MapStacked.shape[0]*df_index_MapStacked.shape[1])
+        
+        dict_npg = {}
+        dict_npg_dc = {}
+        for maps in self.map_names:
+            dict_npg_map = {}
+            dict_npg_dc_map = {}
+            #remove profile, if the whole row contians nan (how="all")
+            df_index_map = df_index.xs(maps, level="Map", axis=1).dropna(axis=0, how="all")
+            npg_m = df_index_map.shape[0]
+            dict_npg_map["npg_m"] = npg_m
+            for fraction in self.fractions:
+                npg_f_dc = 1-df_index_map[fraction].isna().sum()/len(df_index_map[fraction])
+                npg_f = df_index_map[fraction].dropna().shape[0]
+                dict_npg_map[fraction] = npg_f
+                dict_npg_dc_map[fraction] = npg_f_dc
+            dict_npg[maps] = dict_npg_map
+            dict_npg_dc[maps] = dict_npg_dc_map
+        df_npg_dc = pd.DataFrame.from_dict(dict_npg_dc).T
+        df_npg = pd.DataFrame.from_dict(dict_npg).T
+        
+        df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        npr_i = df_index_intersection.shape[0]
+        npr_i_dc = 1-df_index_intersection.isna().sum().sum()/(df_index_intersection.shape[0]*df_index_intersection.shape[1])
+        npg_i = df_index_intersection.unstack("Map").shape[0]
+        
+        
+        df_01_stacked.unstack(["Map", "Fraction"]).sort_index(axis=1)
+        npgf_t = df_01_stacked.unstack(["Map", "Fraction"]).shape[0]
+        df_01_MapStacked = df_01_stacked.unstack("Fraction")
+        nprf_t = df_01_MapStacked.shape[0]
+        nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/(df_01_MapStacked.shape[0]*df_01_MapStacked.shape[1])
+        
+        df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        nprf_i = df_01_intersection.shape[0]
+        nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/(df_01_intersection.shape[0]*df_01_intersection.shape[1])
+        npgf_i = df_01_intersection.unstack("Map").shape[0]
+        
+        dict_npgf = {}
+        dict_npgf_dc = {}
+        for maps in i_class.map_names:
+            dict_npgf_map = {}
+            dict_npgf_map_dc = {}
+            df_01_map = df_01_MapStacked.xs(maps, level="Map")
+            npg_m = df_index_map.shape[0]
+            dict_npgf_map["npgf_m"] = npg_m
+            for fraction in i_class.fractions:
+                npgf_f_dc = 1-df_01_map[fraction].isna().sum()/len(df_01_map[fraction])
+                npgf_f = df_01_map[fraction].dropna().shape[0]
+                dict_npgf_map[fraction] = npgf_f
+                dict_npgf_map_dc[fraction] = npgf_f_dc
+            dict_npgf[maps] = dict_npgf_map
+            dict_npgf_dc[maps] = dict_npgf_map_dc
+        
+        df_npgf_dc = pd.DataFrame.from_dict(dict_npgf_dc).T
+        df_npgf = pd.DataFrame.from_dict(dict_npgf).T
+        
+        dictio_quantity_pr_pg = {"before filtering": {"total": {"number of protein groups" : npg_t,
+                                                                "number of profiles" : npr_t/len(i_class.map_names),
+                                                                "data completeness of profiles" : npr_t_dc,
+                                                               },
+                                                      "intersection" : {"number of protein groups" : npg_i,
+                                                                        "number of profiles" : npr_i/len(i_class.map_names),
+                                                                        "data completeness of profiles" : npr_i_dc,
+                                                                       },
+                                                     },
+                                 "after filtering": {"total": {"number of protein groups" : npgf_t,
+                                                               "number of profiles" : nprf_t/len(i_class.map_names),
+                                                               "data completeness of profiles" : nprf_t_dc,
+                                                              },
+                                                     "intersection" : {"number of protein groups" : npgf_i,
+                                                                       "number of profiles" : nprf_i/len(i_class.map_names),
+                                                                       "data completeness of profiles" : nprf_i_dc,
+                                                                      },
+                                                     }
+                                                 }
+        df_quantity_pr_pg = pd.DataFrame.from_dict({(i,j): dictio_quantity_pr_pg[i][j]
+                                                    for i in dictio_quantity_pr_pg.keys()
+                                                    for j in dictio_quantity_pr_pg[i].keys()},
+                                                   orient="index")
+        df_quantity_pr_pg.index.names = ["filtering","type"]
+        self.df_quantity_pr_pg = df_quantity_pr_pg.reset_index()
+        self.analysis_summary_dict["quantity: profiles/protein groups"] = self.df_quantity_pr_pg.to_json() 
+            
+                                                                            
+    def plot_quantity_profiles_proteinGroups(self):
+        """
+        
+        Args:
+            self:
+                df_quantity_pr_pg: df; no index, columns: "filtering" 	"type" 	"npg" 	"npr" 	"npr_dc"; further information: see above
+                
+        Returns:
+            
+        
+        """
+                                                                                
+        fig_npr_dc = px.bar(self.df_quantity_pr_pg.sort_values("filtering"), 
+                            x="type", 
+                            y="data completeness of profiles", 
+                            color="filtering", 
+                            barmode="overlay", 
+                            title="Coverage"
+                           )
+        
+        fig_npr = px.bar(self.df_quantity_pr_pg, 
+                         x="filtering", 
+                         y="number of profiles", 
+                         color="type", 
+                         barmode="overlay", 
+                         title="Number of Profiles"
+                        )
+        
+        fig_npg = px.bar(self.df_quantity_pr_pg, 
+                         x="filtering", 
+                         y="number of protein groups", 
+                         color="type", 
+                         barmode="overlay", 
+                         title="Number of Protein Groups"
+                        )
+                                                                                
+        
+        return pn.Column(pn.Row(fig_npg), pn.Row(fig_npr), pn.Row(fig_npr_dc)) 
+                                                                              
+                                                                                
     def perform_pca(self):
         """
         PCA will be performed, using logarithmized data.
@@ -909,7 +1039,9 @@ class SpatialDataSet:
     
             # make it available for plotting
             df_proteinset_median = df_proteinset_median.reset_index()
+            self.df_proteinset_median_test1 = df_proteinset_median
             df_proteinset_median.insert(0, "Gene names", np.repeat("Median profile", len(df_proteinset_median)))
+            self.df_proteinset_median_test2 = df_proteinset_median
     
             abundance_profiles_and_median_figure = abundance_profiles_figure.add_scatter(x=df_proteinset_median["Fraction"],
                                                                                          y=df_proteinset_median["normalized profile"],
@@ -1029,10 +1161,9 @@ class SpatialDataSet:
 
         df_setofproteins = pd.DataFrame()
         df_01_stacked = self.df_01_stacked
-        markerproteins = self.markerproteins
 
         # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
-        for marker in markerproteins[clusters]:
+        for marker in self.markerproteins[clusters]:
             if marker not in df_01_stacked.index.get_level_values("Gene names"):
                 continue
             plot_try = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
@@ -1448,8 +1579,7 @@ class SpatialDataSet:
                     "Shape after consecutive value filtering" : tuple,
                 },
                    
-                "Data/Profile #" : df - individual maps and combined,
-
+                "quantity: profiles/protein groups" : df - number of protein groups | number of profiles | data completeness of profiles
                 "Unique Proteins": list,
                 "Analysis parameters" : {
                     "acquisition" : str,
@@ -1496,14 +1626,15 @@ class SpatialDataSet:
             
         
         Returns: 
-            df_01_filtered_combined: "Fraction" is unstacked; "Experiment", "Gene names", "Map", "Exp_Map" are stacked 
-            df_distance_comp: no index, column names: "Gene names", "Cluster", "Protein IDs", "Compartment", "Experiment", "Map", "Exp_Map", "distance"
-                        "distance": Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
-            df_completeness_combined : df, with information about Data/Profile Completeness, index: "Experiment", "Map", 
-                                       column names: "Data completeness", "Profile completeness"
-            unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
-            exp_map_names: list of unique Exp_Map - fusions e.g. LFQ_Map1
-            exp_names: list of unique Experiment names - e.g. LFQ
+            self:
+                df_01_filtered_combined: df, "Fraction" is unstacked; "Experiment", "Gene names", "Map", "Exp_Map" are stacked 
+                df_distance_comp: df, no index, column names: "Gene names", "Cluster", "Protein IDs", "Compartment", "Experiment", "Map", "Exp_Map", "distance"
+                            "distance": Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
+                df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
+                                            "data completeness of profiles", "Experiment"
+                unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
+                exp_map_names: list of unique Exp_Map - fusions e.g. LFQ_Map1
+                exp_names: list of unique Experiment names - e.g. LFQ
         """
         
         json_dict = self.json_dict
@@ -1551,18 +1682,16 @@ class SpatialDataSet:
                     #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
                     df_01_mean_combined = pd.concat([df_01_mean_combined, df_01_mean_toadd], axis=1)#, join="inner")  
                     
-                elif data_type == "Data/Profile Completeness" and exp_name == list(json_dict.keys())[0]:
+                elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
                     #convert into dataframe
-                    df_completeness_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_completeness_combined = df_completeness_combined.set_index(["Map"])
-                    df_completeness_combined = pd.concat({exp_name: df_completeness_combined}, names=["Experiment"])
+                    df_quantity_pr_pg_combined = pd.read_json(json_dict[exp_name][data_type])
+                    df_quantity_pr_pg_combined["Experiment"] = exp_name
                     
-                elif data_type == "Data/Profile Completeness" and exp_name != list(json_dict.keys())[0]:
-                    df_completeness_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_completeness_toadd = df_completeness_toadd.set_index(["Map"])
-                    df_completeness_toadd = pd.concat({exp_name: df_completeness_toadd}, names=["Experiment"])
+                elif data_type == "quantity: profiles/protein groups" and exp_name != list(json_dict.keys())[0]:
+                    df_quantity_pr_pg_toadd = pd.read_json(json_dict[exp_name][data_type])
+                    df_quantity_pr_pg_toadd["Experiment"] = exp_name
                     #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
-                    df_completeness_combined = pd.concat([df_completeness_combined, df_completeness_toadd])  
+                    df_quantity_pr_pg_combined = pd.concat([df_quantity_pr_pg_combined, df_quantity_pr_pg_toadd])  
                     
                 elif data_type == "Manhattan distances" and exp_name == list(json_dict.keys())[0]:
                     #convert into dataframe
@@ -1639,7 +1768,7 @@ class SpatialDataSet:
         self.df_01_filtered_combined = df_01_filtered_combined 
         self.df_01_mean_filtered_combined = df_01_mean_filtered_combined
         
-        self.df_completeness_combined = df_completeness_combined
+        self.df_quantity_pr_pg_combined = df_quantity_pr_pg_combined
         
         self.df_distance_comp = df_distance_comp
 
@@ -1707,9 +1836,11 @@ class SpatialDataSet:
             pca_figure: PCA plot for a specified protein cluster.
         """
     
-        df_pca_for_plotting = self.df_pca_for_plotting
+        df_pca_for_plotting = self.df_pca_for_plotting.copy()
         markerproteins = self.markerproteins
         multi_choice = self.multi_choice
+        
+
         
         if len(multi_choice)>=1:
             pass
@@ -1733,6 +1864,12 @@ class SpatialDataSet:
                         plot_try_pca = df_pca_for_plotting.xs((marker, map_or_exp), level=["Gene names", level_of_interest], drop_level=False)
                         df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
             df_setofproteins_PCA.reset_index(inplace=True)
+            
+            df_setofproteins_PCA = df_setofproteins_PCA.assign(Experiment_lexicographic_sort = pd.Categorical(df_setofproteins_PCA["Experiment"],
+                                                                                                              categories=i_class.sorting_list,
+                                                                                                              ordered=True))
+            df_setofproteins_PCA.sort_values("Experiment_lexicographic_sort", inplace=True)
+                    
             pca_figure = px.scatter_3d(df_setofproteins_PCA, 
                                        x="PC1", 
                                        y="PC2", 
@@ -1936,9 +2073,9 @@ class SpatialDataSet:
         
     def distance_ranking_barplot_comparison(self):
         """
-            For each cluster and for each experiment the median ditance is calculated. The smallest median is set to 1, while the other medians will be normalized accordingly. For the
-            "collapsed view" - investigating the global ranking of an experiment across the cluster, the sum of the normlaized medians of each clusters for each experimetn will be 
-            calculated and displayed. 
+            For each cluster and for each experiment the median ditance is calculated. The smallest median is set to 1, while the other medians will be 
+            normalized accordingly. For the "collapsed view" - investigating the global ranking of an experiment across the cluster, the sum of the normlaized
+            medians of each clusters for each experimetn will be calculated and displayed. 
             
         Args:
             self:
@@ -2060,67 +2197,97 @@ class SpatialDataSet:
             return fig_globalRanking
     
     
-    def data_completeness_barplot_comparison(self):
+    def quantity_pr_pg_barplot_comparison(self):
         """
-        Barplot for data/profile completeness is calculated. 
+        Barplot, showing number of protein groups/profiles. 
         
         Args:
             self:
-                df_completeness_combined : df, with information about Data/Profile Completeness, index: "Experiment", "Map", column names: "Data completeness",
-                                           "Profile completeness"
-                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
-                clusters_for_ranking: list of clusters, that will be used to calculate the ranking
-                self.data_or_profile_completeness: string, either "Data completeness" or "Profile completeness"
+                df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
+                                            "data completeness of profiles", "Experiment"
+                self.pg_or_pr: string, "number of protein groups" or "number of profiles" 	
                 multi_choice: list of experiment names
-                collapse_maps: boolean 
                 
         Returns: 
-            data_completeness_barplot_figure: barplot figure, showing either data or profile completeness for indiviual experiments for individual 
-                                              maps/combined maps
+            fig_quantity_pr_pg: barplot, number of protein groups/profiles before/after filtering of the intersection/total quantity
         """
         
-        df_completeness_combined = self.df_completeness_combined.copy()
-        df_completeness_combined = df_completeness_combined[df_completeness_combined.index.get_level_values("Experiment").isin(self.multi_choice)].reset_index()
+        df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()        
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(self.multi_choice)]
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
+                                                                                                                        categories=self.sorting_list, ordered=True))
+        df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
         
-        df_completeness_combined = df_completeness_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_completeness_combined["Experiment"], 
-                                                                                                                  categories=self.sorting_list, ordered=True))
-        df_completeness_combined.sort_values(["Experiment_lexicographic_sort", "Map"], inplace=True)
-        
-        df_singleMaps, df_combinedMaps  = [x for _, x in df_completeness_combined.groupby(df_completeness_combined["Map"] == "Combined Maps")]
-        
-        if self.collapse_maps == False:
-            df_completeness = df_singleMaps
-        else:
-            df_completeness = df_combinedMaps
+        fig_quantity_pr_pg = go.Figure()
+        for t in df_quantity_pr_pg_combined["type"].unique():
+            plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
+            fig_quantity_pr_pg.add_trace(go.Bar(
+                x=[plot_df["Experiment"], plot_df["filtering"]],
+                y=plot_df[self.pg_or_pr],
+                name=t))
             
-        data_completeness_barplot_figure=go.Figure()
-        for i, exp in enumerate(df_completeness["Experiment"].unique()):
-            df_plot=df_completeness[df_completeness["Experiment"]==exp]
-            data_completeness_barplot_figure.add_trace(go.Bar(
-                x=[df_plot["Experiment"], df_plot["Map"]],
-                y=df_plot[self.data_or_profile_completeness],
-                name=exp, 
-            ))
-            
-        data_completeness_barplot_figure.update_layout(boxmode="group", 
-                                                         xaxis_tickangle=0, 
-                                                         title=self.data_or_profile_completeness,
-                                                         autosize=False,
-                                                         width=200*len(self.multi_choice),
-                                                         height=500,
-                                                         xaxis=go.layout.XAxis(linecolor="black",
-                                                                               linewidth=1,
-                                                                               title="Map",
-                                                                               mirror=True),
-                                                         yaxis=go.layout.YAxis(linecolor="black",
-                                                                               linewidth=1,
-                                                                               title="distance",
-                                                                               mirror=True))
+        fig_quantity_pr_pg.update_layout(barmode="overlay", 
+                                         xaxis_tickangle=0, 
+                                         title=self.pg_or_pr,
+                                         autosize=False,
+                                         width=350*len(self.multi_choice),
+                                         height=500,
+                                         xaxis=go.layout.XAxis(linecolor="black",
+                                                               linewidth=1,
+                                                               title="Map",
+                                                               mirror=True),
+                                         yaxis=go.layout.YAxis(linecolor="black",
+                                                               linewidth=1,
+                                                               title="distance",
+                                                               mirror=True))
         
-        data_completeness_barplot_figure.update_layout(yaxis_range=[df_completeness[self.data_or_profile_completeness].min()*0.9,1])
-        
-        return data_completeness_barplot_figure
+        return fig_quantity_pr_pg
     
+    
+    def coverage_comparison(self):
+        """
+        Barplot, showing data completeness of profiles. 
+        
+        Args:
+            self:
+                df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
+                                            "data completeness of profiles", "Experiment"
+                multi_choice: list of experiment names
+                
+        Returns: 
+            fig_pr_dc: barplot, data completeness of profiles before/after filtering of intersection/total qunatity
+        """
+        
+        df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(self.multi_choice)].sort_values("filtering")
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
+                                                                                                                        categories=self.sorting_list, ordered=True))
+        df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
+        
+        fig_pr_dc = go.Figure()
+        for t in df_quantity_pr_pg_combined["filtering"].unique():
+            plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["filtering"] == t]
+            fig_pr_dc.add_trace(go.Bar(
+                x=[plot_df["Experiment"], plot_df["type"]],
+                y=plot_df["data completeness of profiles"],
+                name=t))
+            
+        fig_pr_dc.update_layout(barmode="overlay", 
+                                         xaxis_tickangle=0, 
+                                         title=self.pg_or_pr,
+                                         autosize=False,
+                                         width=350*len(self.multi_choice),
+                                         height=500,
+                                         xaxis=go.layout.XAxis(linecolor="black",
+                                                               linewidth=1,
+                                                               title="Map",
+                                                               mirror=True),
+                                         yaxis=go.layout.YAxis(linecolor="black",
+                                                               linewidth=1,
+                                                               title="distance",
+                                                               mirror=True))
+        
+        return fig_pr_dc
     
     def venn_diagram(self):
         """
