@@ -23,14 +23,13 @@ class SpatialDataSet:
         self.RatioVariability = 30 if "RatioVariability" not in kwargs.keys() else kwargs["RatioVariability"]
             
         self.collapse_maps = False if "collapse_maps" not in kwargs.keys() else kwargs["collapse_maps"]
+        self.collapse_cluster = False if "collapse_cluster" not in kwargs.keys() else kwargs["collapse_cluster"]
         self.collapse_maps_PCA = False if "collapse_maps_PCA" not in kwargs.keys() else kwargs["collapse_maps_PCA"]
         
         self.clusters_for_ranking = ["x", "y"] if "clusters_for_ranking" not in kwargs.keys() else kwargs["clusters_for_ranking"]
         
         self.multi_choice = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
         self.multi_choice_venn = ["x", "y"] if "multi_choice_venn" not in kwargs.keys() else kwargs["multi_choice_venn"]
-        
-        self.pg_or_pr = "x" if "pg_or_pr" not in kwargs.keys() else kwargs["pg_or_pr"]
         
         self.expname = "Experiment_name" if "expname" not in kwargs.keys() else kwargs["expname"]      
         
@@ -809,31 +808,35 @@ class SpatialDataSet:
             
         
         """
-                                                                                
-        fig_npr_dc = px.bar(self.df_quantity_pr_pg.sort_values("filtering"), 
-                            x="type", 
-                            y="data completeness of profiles", 
-                            color="filtering", 
-                            barmode="overlay", 
-                            title="Coverage"
-                           )
+        df_quantity_pr_pg = self.df_quantity_pr_pg
         
-        fig_npr = px.bar(self.df_quantity_pr_pg, 
-                         x="filtering", 
-                         y="number of profiles", 
-                         color="type", 
-                         barmode="overlay", 
-                         title="Number of Profiles"
-                        )
+        fig_npg = go.Figure()
+        for t in df_quantity_pr_pg["type"].unique():
+            plot_df = df_quantity_pr_pg[df_quantity_pr_pg["type"] == t]
+            fig_npg.add_trace(go.Bar(
+                x=plot_df["filtering"],
+                y=plot_df["number of protein groups"],
+                name=t))
+        fig_npg.update_layout(barmode="overlay", title="Number of Protein Groups")
+                
+        fig_npr = go.Figure()
+        for t in df_quantity_pr_pg["type"].unique():
+            plot_df = df_quantity_pr_pg[df_quantity_pr_pg["type"] == t]
+            fig_npr.add_trace(go.Bar(
+                x=plot_df["filtering"],
+                y=plot_df["number of profiles"],
+                name=t))
+        fig_npr.update_layout(barmode="overlay", title="Number of Profiles")
         
-        fig_npg = px.bar(self.df_quantity_pr_pg, 
-                         x="filtering", 
-                         y="number of protein groups", 
-                         color="type", 
-                         barmode="overlay", 
-                         title="Number of Protein Groups"
-                        )
-                                                                                
+        df_quantity_pr_pg = df_quantity_pr_pg.sort_values("filtering")
+        fig_npr_dc = go.Figure()
+        for t in df_quantity_pr_pg["filtering"].unique():
+            plot_df = df_quantity_pr_pg[df_quantity_pr_pg["filtering"] == t]
+            fig_npr_dc.add_trace(go.Bar(
+                x=plot_df["type"],
+                y=plot_df["data completeness of profiles"],
+                name=t))
+        fig_npr_dc.update_layout(barmode="overlay", title="Coverage")
         
         return pn.Column(pn.Row(fig_npg), pn.Row(fig_npr), pn.Row(fig_npr_dc)) 
                                                                               
@@ -1020,7 +1023,7 @@ class SpatialDataSet:
             # fractions get sorted
             df_setofproteins = df_setofproteins.reindex(index=natsort.natsorted(df_setofproteins.index))
     
-            df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+            df_setofproteins_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
     
             # make it available for plotting
             df_setofproteins.reset_index(inplace=True)
@@ -1032,19 +1035,17 @@ class SpatialDataSet:
                                                                                                                                 self.cluster_of_interest)
                                                )
     
-            df_proteinset_median.name = "normalized profile"
+            df_setofproteins_median.name = "normalized profile"
     
             #fractions get sorted
-            df_proteinset_median = df_proteinset_median.reindex(index=natsort.natsorted(df_proteinset_median.index))
+            df_setofproteins_median = df_setofproteins_median.reindex(index=natsort.natsorted(df_setofproteins_median.index))
     
             # make it available for plotting
-            df_proteinset_median = df_proteinset_median.reset_index()
-            self.df_proteinset_median_test1 = df_proteinset_median
-            df_proteinset_median.insert(0, "Gene names", np.repeat("Median profile", len(df_proteinset_median)))
-            self.df_proteinset_median_test2 = df_proteinset_median
+            df_setofproteins_median = df_setofproteins_median.reset_index()
+            df_setofproteins_median.insert(0, "Gene names", np.repeat("Median profile", len(df_setofproteins_median)))
     
-            abundance_profiles_and_median_figure = abundance_profiles_figure.add_scatter(x=df_proteinset_median["Fraction"],
-                                                                                         y=df_proteinset_median["normalized profile"],
+            abundance_profiles_and_median_figure = abundance_profiles_figure.add_scatter(x=df_setofproteins_median["Fraction"],
+                                                                                         y=df_setofproteins_median["normalized profile"],
                                                                                          name="Median profile"
                                                                                         )
     
@@ -1094,7 +1095,8 @@ class SpatialDataSet:
                     continue
                 df_allclusters_onlynorm_fracunstacked_unfiltered = df_allclusters_onlynorm_fracunstacked_unfiltered.append(
                     df_distance_to_median_fracunstacked)
-
+        
+        self.df_allclusters_01_test = df_allclusters_01
         #storage of 0/1 normalized data in global dictionary
         self.analysis_summary_dict["0/1 normalized data"] = df_allclusters_01.reset_index().to_json() 
         # genes are droped, if they are not present in all maps
@@ -1160,14 +1162,19 @@ class SpatialDataSet:
         """
 
         df_setofproteins = pd.DataFrame()
+        df_setofproteins_allMaps = pd.DataFrame()
         df_01_stacked = self.df_01_stacked
 
         # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
         for marker in self.markerproteins[clusters]:
             if marker not in df_01_stacked.index.get_level_values("Gene names"):
                 continue
-            plot_try = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
-            df_setofproteins = df_setofproteins.append(plot_try)
+            df_marker = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
+            df_setofproteins = df_setofproteins.append(df_marker)
+            
+            df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
+            df_setofproteins_allMaps = df_setofproteins_allMaps.append(df_marker_allMaps)
+            
 
         return df_setofproteins
 
@@ -1185,11 +1192,11 @@ class SpatialDataSet:
             are calculated. The data is stored in single level columns (Column names: e.g. "03K", "06K", "12K", "24K", "80K")
         """
         # calculate the median of the "normalized profile" of individual proteins over the fractions
-        df_proteinset_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+        df_setofproteins_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
 
         # substract the median individually from each entry (e.g. 03K_protein_xy - 03K_median)
         df_distance_to_median_fracunstacked = df_setofproteins["normalized profile"].unstack("Fraction")
-        df_distance_to_median_fracunstacked = df_distance_to_median_fracunstacked.apply(lambda x: x - df_proteinset_median, axis=1)
+        df_distance_to_median_fracunstacked = df_distance_to_median_fracunstacked.apply(lambda x: x - df_setofproteins_median, axis=1)
 
         return df_distance_to_median_fracunstacked
 
@@ -1351,14 +1358,12 @@ class SpatialDataSet:
 
         Args:
             self:
-            requires dataframe (df_allclusters_onlynorm_fracunstacked, single level column), stored as attribute
-            (self.df_allclusters_onlynorm_fracunstacked), in which "Fraction" is unstacked. It contains only the
-            normalized data of individual protein clusters substracted by the median of the respective protein cluster
-            for each fraction.
+                df_allclusters_onlynorm_fracunstacked: single level column, "Fraction" is unstacked. It contains only the normalized data of individual protein
+                                                       clusters substracted by the median of the respective protein cluster for each fraction.
 
         Returns:
-            df_distance_noindex: dataframe, index is reset. It contains the column name "distance", in which the e.g.
-            Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
+            df_distance_noindex: dataframe, no index. It contains the column name "distance", in which the e.g. Manhattan distances for each individual
+                                 protein of the specified clusters (see self.markerproteins) are stored
         """
         
         df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked.copy()
@@ -1375,6 +1380,49 @@ class SpatialDataSet:
         
         self.analysis_summary_dict["Manhattan distances"] = df_distance_noindex.to_json() 
 
+        
+    def dynamic_range(self):
+        """
+        Dynamic range of each individual protein clusters (of the median profile) across all maps is calculated and displayed"
+
+        Args:
+            self:
+                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
+                df_01_stacked: "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting. Additionally the columns 
+                               "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are found in LFQ and SILAC data respectively
+
+        Returns:
+            fig_dynamicRange: Bar plot, displaying the dynamic range for each protein cluster
+            self.df_dynamicRange: df, no index, columns: "Max", "Min", "Dynamic Range", "Cluster"
+        """
+
+        df_setofproteins_allMaps = pd.DataFrame()
+        df_dynamicRange = pd.DataFrame()
+        df_01_stacked = self.df_01_stacked
+
+        for clusters in self.markerproteins:
+            try:
+                df_setofproteins_allMaps = pd.DataFrame()
+                for marker in self.markerproteins[clusters]:
+                    if marker not in df_01_stacked.index.get_level_values("Gene names"):
+                        continue
+                    df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
+                    df_setofproteins_allMaps = df_setofproteins_allMaps.append(df_marker_allMaps)
+                df_setofproteins_allMaps_median = df_setofproteins_allMaps["normalized profile"].unstack("Fraction").median()
+                
+                df_dynamicRange = df_dynamicRange.append(pd.DataFrame(np.array([[max(df_setofproteins_allMaps_median), 
+                                                                                 min(df_setofproteins_allMaps_median), 
+                                                                                 max(df_setofproteins_allMaps_median)-min(df_setofproteins_allMaps_median),
+                                                                                 clusters]]), 
+                                                                      columns=["Max", "Min", "Dynamic Range", "Cluster"]))
+            except:
+                continue
+        
+        self.analysis_summary_dict["Dynamic Range"] = df_dynamicRange.reset_index(drop=True).to_json()
+        
+        fig_dynamicRange = px.bar(df_dynamicRange, x="Cluster", y="Dynamic Range", base="Min")
+        return fig_dynamicRange
+        
     
     def results_overview_table(self):
         """
@@ -1599,6 +1647,7 @@ class SpatialDataSet:
                 "0/1 normalized data" : df - individual cluster,
                 "Distances to the median profile" : df - individual cluster,
                 "Manhattan distances" : df - individual cluster,
+                "Dynamic Range": df - individual cluster,
                 "Overview table" : df - individual cluster,
 
                ##if user dis the Misclassification Analysis befor downloading the dictionary AnalysedDatasets.json##
@@ -1667,9 +1716,7 @@ class SpatialDataSet:
                     df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")
                     
                 elif data_type == "0/1 normalized data - mean" and exp_name == list(json_dict.keys())[0]:
-                    #convert into dataframe
                     df_01_mean_combined = pd.read_json(json_dict[exp_name][data_type])
-                    #get only 01 normalized data 
                     df_01_mean_combined = df_01_mean_combined.set_index(["Fraction", "Gene names", "Protein IDs", 
                                                                          "Compartment"])[["normalized profile - mean"]].unstack(["Fraction"])
                     df_01_mean_combined.rename(columns = {"normalized profile - mean":exp_name}, inplace=True)
@@ -1679,24 +1726,19 @@ class SpatialDataSet:
                     df_01_mean_toadd = df_01_mean_toadd.set_index(["Fraction", "Gene names", "Protein IDs", 
                                                                    "Compartment"])[["normalized profile - mean"]].unstack(["Fraction"])
                     df_01_mean_toadd.rename(columns = {"normalized profile - mean":exp_name}, inplace=True)
-                    #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
                     df_01_mean_combined = pd.concat([df_01_mean_combined, df_01_mean_toadd], axis=1)#, join="inner")  
                     
                 elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
-                    #convert into dataframe
                     df_quantity_pr_pg_combined = pd.read_json(json_dict[exp_name][data_type])
                     df_quantity_pr_pg_combined["Experiment"] = exp_name
                     
                 elif data_type == "quantity: profiles/protein groups" and exp_name != list(json_dict.keys())[0]:
                     df_quantity_pr_pg_toadd = pd.read_json(json_dict[exp_name][data_type])
                     df_quantity_pr_pg_toadd["Experiment"] = exp_name
-                    #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
                     df_quantity_pr_pg_combined = pd.concat([df_quantity_pr_pg_combined, df_quantity_pr_pg_toadd])  
                     
                 elif data_type == "Manhattan distances" and exp_name == list(json_dict.keys())[0]:
-                    #convert into dataframe
                     df_distances_combined = pd.read_json(json_dict[exp_name][data_type])
-                    #get only 01 normalized data 
                     df_distances_combined = df_distances_combined.set_index(["Map", "Gene names", "Cluster", "Protein IDs", 
                                                                              "Compartment"])[["distance"]].unstack(["Map"])
                     df_distances_combined.rename(columns = {"distance":exp_name}, inplace=True)
@@ -1705,8 +1747,16 @@ class SpatialDataSet:
                     df_distances_toadd = pd.read_json(json_dict[exp_name][data_type])
                     df_distances_toadd = df_distances_toadd.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"])[["distance"]].unstack(["Map"])
                     df_distances_toadd.rename(columns = {"distance":exp_name}, inplace=True)
-                    #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
                     df_distances_combined = pd.concat([df_distances_combined, df_distances_toadd], axis=1)#, join="inner")
+                
+                elif data_type == "Dynamic Range" and exp_name == list(json_dict.keys())[0]:
+                    df_dynamicRange_combined = pd.read_json(json_dict[exp_name][data_type])
+                    df_dynamicRange_combined["Experiment"] = exp_name
+                    
+                elif data_type == "Dynamic Range" and exp_name != list(json_dict.keys())[0]:
+                    df_dynamicRange_toadd = pd.read_json(json_dict[exp_name][data_type])
+                    df_dynamicRange_toadd["Experiment"] = exp_name
+                    df_dynamicRange_combined = pd.concat([df_dynamicRange_combined, df_dynamicRange_toadd]) 
                 
  #               if data_type == "Overview table" and exp_name == list(json_dict.keys())[0]:
  #                   #convert into dataframe
@@ -1726,7 +1776,6 @@ class SpatialDataSet:
                     
                 try:
                     for paramters in json_dict[exp_name][data_type].keys():
-                        #print("            ", paramters)
                         if paramters=="acquisition":
                             acquisition_loaded.append(json_dict[exp_name][data_type][paramters])
                         #elif parameters=="Non valid profiles":
@@ -1769,6 +1818,7 @@ class SpatialDataSet:
         self.df_01_mean_filtered_combined = df_01_mean_filtered_combined
         
         self.df_quantity_pr_pg_combined = df_quantity_pr_pg_combined
+        self.df_dynamicRange_combined = df_dynamicRange_combined
         
         self.df_distance_comp = df_distance_comp
 
@@ -2156,7 +2206,7 @@ class SpatialDataSet:
         #df_globalRanking["Experiment_lexicographic_sort"] = pd.Categorical(df_globalRanking["Experiment"], categories=self.sorting_list, ordered=True)
         #df_globalRanking.sort_values("Experiment_lexicographic_sort", inplace=True)
         
-        if self.collapse_maps == False:
+        if self.collapse_cluster == False:
             fig_ranking = px.bar(df_ranking, 
                                  x="Cluster", 
                                  y="Normalized Median", 
@@ -2204,8 +2254,7 @@ class SpatialDataSet:
         Args:
             self:
                 df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
-                                            "data completeness of profiles", "Experiment"
-                self.pg_or_pr: string, "number of protein groups" or "number of profiles" 	
+                                            "data completeness of profiles", "Experiment"	
                 multi_choice: list of experiment names
                 
         Returns: 
@@ -2218,30 +2267,42 @@ class SpatialDataSet:
                                                                                                                         categories=self.sorting_list, ordered=True))
         df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
         
-        fig_quantity_pr_pg = go.Figure()
+        layout = go.Layout(barmode="overlay", 
+          xaxis_tickangle=0, 
+          autosize=False,
+          width=350*len(i_class.multi_choice),
+          height=500,
+          xaxis=go.layout.XAxis(linecolor="black",
+                                linewidth=1,
+                                title="Map",
+                                mirror=True),
+          yaxis=go.layout.YAxis(linecolor="black",
+                                linewidth=1,
+                                title="distance",
+                                mirror=True))
+        
+        fig_quantity_pg = go.Figure()
         for t in df_quantity_pr_pg_combined["type"].unique():
             plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
-            fig_quantity_pr_pg.add_trace(go.Bar(
+            fig_quantity_pg.add_trace(go.Bar(
                 x=[plot_df["Experiment"], plot_df["filtering"]],
-                y=plot_df[self.pg_or_pr],
+                y=plot_df["number of protein groups"],
                 name=t))
-            
-        fig_quantity_pr_pg.update_layout(barmode="overlay", 
-                                         xaxis_tickangle=0, 
-                                         title=self.pg_or_pr,
-                                         autosize=False,
-                                         width=350*len(self.multi_choice),
-                                         height=500,
-                                         xaxis=go.layout.XAxis(linecolor="black",
-                                                               linewidth=1,
-                                                               title="Map",
-                                                               mirror=True),
-                                         yaxis=go.layout.YAxis(linecolor="black",
-                                                               linewidth=1,
-                                                               title="distance",
-                                                               mirror=True))
+        fig_quantity_pg.update_layout(title="Number of Protein Groups")
+        fig_quantity_pg.update_layout(layout)
+         
         
-        return fig_quantity_pr_pg
+        fig_quantity_pr = go.Figure()
+        for t in df_quantity_pr_pg_combined["type"].unique():
+            plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
+            fig_quantity_pr.add_trace(go.Bar(
+                x=[plot_df["Experiment"], plot_df["filtering"]],
+                y=plot_df["number of profiles"],
+                name=t))
+        fig_quantity_pr.update_layout(title="Number of Profiles")
+        fig_quantity_pr.update_layout(layout) 
+        
+        return pn.Column(pn.Row(fig_quantity_pg), pn.Row(fig_quantity_pr)) 
     
     
     def coverage_comparison(self):
@@ -2274,7 +2335,7 @@ class SpatialDataSet:
             
         fig_pr_dc.update_layout(barmode="overlay", 
                                          xaxis_tickangle=0, 
-                                         title=self.pg_or_pr,
+                                         title="Data Completeness of Profiles",
                                          autosize=False,
                                          width=350*len(self.multi_choice),
                                          height=500,
@@ -2288,6 +2349,20 @@ class SpatialDataSet:
                                                                mirror=True))
         
         return fig_pr_dc
+    
+    
+    def dynamic_range_comparison(self):
+        """
+        
+        Args:
+            self:
+                multi_choice_venn: list of experiment names, max 3 (slelect widget can only hold max 3 values) 
+                unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
+        
+        Returns:
+            
+        """
+    
     
     def venn_diagram(self):
         """
