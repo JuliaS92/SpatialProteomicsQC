@@ -25,6 +25,7 @@ class SpatialDataSet:
         self.collapse_maps = False if "collapse_maps" not in kwargs.keys() else kwargs["collapse_maps"]
         self.collapse_cluster = False if "collapse_cluster" not in kwargs.keys() else kwargs["collapse_cluster"]
         self.collapse_maps_PCA = False if "collapse_maps_PCA" not in kwargs.keys() else kwargs["collapse_maps_PCA"]
+        self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
         
         self.clusters_for_ranking = ["x", "y"] if "clusters_for_ranking" not in kwargs.keys() else kwargs["clusters_for_ranking"]
         
@@ -50,51 +51,51 @@ class SpatialDataSet:
         }
                
         markerprotein_human = {
-            "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"],
-            "CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
-            "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
+            "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"], 
+                     #       "PSMC1", "PSMC2", "PSMC3"],
+            #"CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
+            #"V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
             "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
             "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"],
             #"MCM complex" : ["MCM2", "MCM3", "MCM4", "MCM5", "MCM7"],
             
             "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"], 
-            "Prefoldin complex" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
-            "AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
+            #"Prefoldin complex" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
+            #"AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
             "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],
-            "AP3 adaptor / AP3-BLOC1 complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
-            "AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1",  "AP4S1"],
-            "Anaphas,e-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
-            "Rnase/Mrp complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
+            #"AP3 adaptor / AP3-BLOC1 complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
+            #"AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1",  "AP4S1"],
+            #"Anaphas,e-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
+            #"Rnase/Mrp complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
             "Class C, Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
-            "Dynactin complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6", "ACTR1A", "CAPZA1"],
-            "CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
-            "Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
+            #"Dynactin complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6", "ACTR1A", "CAPZA1"],
+            #"CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
+            #"Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
             "Wave-2 complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
 
             "TREX complex / THO complex": ["ALYREF", "THOC5", "THOC2", "THOC1", "THOC3", "DDX39B"], #["THOC5", "THOC2", "THOC1"]
             "Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
-            "TNF-alpha/NF-kappa B signaling complex 5": ["POLR2H", "POLR1A", "POLR1B", "CUL1", "KPNA2"],
-            "Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
-            "Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
-            "SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
-            "SF3b complex": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A", "SF3B4"],
-            "CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1"],
-            "Retromer complex": ["VPS29", "VPS35", "VPS26A"],
+            #"TNF-alpha/NF-kappa B signaling complex 5": ["POLR2H", "POLR1A", "POLR1B", "CUL1", "KPNA2"],
+            #"Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
+            #"Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
+            #"SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
+            #"SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
+            "CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
+            #"Retromer complex": ["VPS29", "VPS35", "VPS26A"],
             "Respiratory chain complex I": ["NDUFB6", "NDUFB10", "NDUFA10", "NDUFA8", "NDUFA6", "NDUFB11", "NDUFB3", "NDUFB5", "NDUFAB1", "NDUFA4", "NDUFB9",
                                             "NDUFB7", "NDUFA9", "NDUFA5", "NDUFV3", "NDUFA11", "NDUFV1", "NDUFA12", "NDUFV2", "NDUFA7", "NDUFS6", "NDUFS2",
                                             "NDUFA2", "NDUFS8", "NDUFS1"],
-            "RFC complex": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
+            #"RFC complex": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
             "Nup 107-160 subcomplex": ["NUP85", "NUP37", "NUP160", "NUP98", "NUP107", "NUP133"],
             "Multisynthetase complex": ["EEF1E1", "IARS", "DARS", "EPRS", "AIMP1", "KARS", "LARS", "RARS", "AIMP2", "MARS"],
-            "MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
-            
+            #"MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
             "GAA1-GPI8-PIGT-PIG-PIGS complex": ["PIGT", "PIGS", "PIGU", "PIGK", "GPAA1"],
             "Frataxin complex /f1f0: ATP5L": ["SDHA", "HSPD1", "HSPA9", "AFG3L2"],
             "F1F0-ATP synthase": ["ATP5O", "ATP5I", "ATPIF1", "ATP5A1", "ATP5F1", "ATP5B", "ATP5H", "ATP5L", "ATP5J"],
             "Exosome": ["EXOSC1", "EXOSC3", "EXOSC8", "EXOSC4", "EXOSC2", "EXOSC10"],
-            "Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
-            "DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
-            "COP9 signalosome complex / CNS-P53 complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
+            #"Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
+            #"DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
+            #"COP9 signalosome complex / CNS-P53 complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
             "Arp2/3 protein complex": ["ACTR2", "ARPC1B", "ARPC2", "ARPC3", "ARPC5", "ARPC4", "ACTR3"],
             "60S ribosomal subunit, cytoplasmic": ["RPL10", "RPL10A", "RPL27", "RPL37A", "RPL7A", "RPL23A", "RPL23", "RPL31", "RPL15", "RPL26", "RPL18A", "RPL11",
                                                    "RPL38", "RPL24","RPL36A", "RPL36", "RPL19", "RPL18", "RPL32", "RPL14", "RPL35A", "RPL29", "RPL34", "RPLP0",
@@ -109,8 +110,7 @@ class SpatialDataSet:
             "28S ribosomal subunit, mitochondrial": ["MRPS31", "MRPS24", "MRPS30", "MRPS28", "MRPS17", "MRPS7", "MRPS16", "MRPS23", "MRPS18B", "MRPS27", "MRPS9",
                                                      "MRPS34", "DAP3", "MRPS15", "MRPS11", "MRPS36", "MRPS5", "MRPS35", "MRPS10", "MRPS22", "MRPS12", "MRPS6"],
  ###"OLDmitochondrial ribosomal subunits" : ["MRPL1", "MRPL13", "MRPL15", "MRPL16", "MRPL18", "MRPL23", "MRPL30", "MRPL38", "MRPL40",#39S proteins;MRPL12;SLC25A10
-            "26S proteasome": ["PSMC1", "PSMC2", "PSMC3"]}
-        
+        }
         
         self.markerproteins = markerprotein_human if "markerprotein" not in kwargs.keys() else kwargs["markerprotein"]
         
@@ -155,7 +155,7 @@ class SpatialDataSet:
         }
         
         self.css_color = ["#b2df8a", "#6a3d9a", "#e31a1c", "#b15928", "#fdbf6f", "#ff7f00", "#cab2d6", "#fb9a99", "#1f78b4", "#ffff99", "#a6cee3", 
-                          "#33a02c", "green", "blue", "orange", "purple", "goldenrod", "yellow", "lightcoral", "magenta", "brown", "lightpink", "red", "turquoise",
+                          "#33a02c", "blue", "orange", "goldenrod", "lightcoral", "magenta", "brown", "lightpink", "red", "turquoise",
                           "khaki", "darkgoldenrod","darkturquoise", "darkviolet", "greenyellow", "darksalmon", "hotpink", "indianred", "indigo","darkolivegreen", 
                           "coral", "aqua", "beige", "bisque", "black", "blanchedalmond", "blueviolet", "burlywood", "cadetblue", "yellowgreen", "chartreuse",
                           "chocolate", "cornflowerblue", "cornsilk", "darkblue", "darkcyan", "darkgray", "darkgrey", "darkgreen", "darkkhaki", "darkmagenta", 
@@ -362,7 +362,7 @@ class SpatialDataSet:
                 RatioHLcount_1: int, 3
                 RatioHLcount_2: int, 2
                 RatioVariability: int, 30 
-                df_eLifeMarkers: df, columns: "Gene names" 	"Compartment", no index 
+                df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index 
                 fractions: list of fractions e.g. ["01K", "03K", ...]
 
             Returns:
@@ -432,7 +432,7 @@ class SpatialDataSet:
                                plotting is possible now
                 self:
                     analysis_summary_dict["Data/Profile Completeness"] : df, with information about Data/Profile Completeness
-                                        column: "Experiment" 	"Map" 	"Data completeness" 	"Profile completeness"
+                                        column: "Experiment", "Map", "Data completeness", "Profile completeness"
                                         no row index
             """
 
@@ -486,7 +486,7 @@ class SpatialDataSet:
             Args:
                 df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Typ
                 self:
-                    df_eLifeMarkers: df, columns: "Gene names" 	"Compartment", no index
+                    df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index
                     fractions: list of fractions e.g. ["01K", "03K", ...]
                     summed_MSMS_counts: int, 2
                     consecutiveLFQi: int, 4
@@ -677,7 +677,7 @@ class SpatialDataSet:
             
         Returns:
             self:
-                df_quantity_pr_pg: df; no index, columns: "filtering" 	"type" 	"npg" 	"npr" 	"npr_dc"; containign following information:
+                df_quantity_pr_pg: df; no index, columns: "filtering", "type", "npg", "npr", "npr_dc"; containign following information:
                     npg_t: protein groups per experiment total quantity
                     npgf_t = groups with valid profiles per experiment total quanitity
                     npr_t: profiles with any valid values
@@ -752,13 +752,13 @@ class SpatialDataSet:
         
         dict_npgf = {}
         dict_npgf_dc = {}
-        for maps in i_class.map_names:
+        for maps in self.map_names:
             dict_npgf_map = {}
             dict_npgf_map_dc = {}
             df_01_map = df_01_MapStacked.xs(maps, level="Map")
             npg_m = df_index_map.shape[0]
             dict_npgf_map["npgf_m"] = npg_m
-            for fraction in i_class.fractions:
+            for fraction in self.fractions:
                 npgf_f_dc = 1-df_01_map[fraction].isna().sum()/len(df_01_map[fraction])
                 npgf_f = df_01_map[fraction].dropna().shape[0]
                 dict_npgf_map[fraction] = npgf_f
@@ -769,40 +769,22 @@ class SpatialDataSet:
         df_npgf_dc = pd.DataFrame.from_dict(dict_npgf_dc).T
         df_npgf = pd.DataFrame.from_dict(dict_npgf).T
         
-        dictio_quantity_pr_pg = {"before filtering": {"total": {"number of protein groups" : npg_t,
-                                                                "number of profiles" : npr_t/len(i_class.map_names),
-                                                                "data completeness of profiles" : npr_t_dc,
-                                                               },
-                                                      "intersection" : {"number of protein groups" : npg_i,
-                                                                        "number of profiles" : npr_i/len(i_class.map_names),
-                                                                        "data completeness of profiles" : npr_i_dc,
-                                                                       },
-                                                     },
-                                 "after filtering": {"total": {"number of protein groups" : npgf_t,
-                                                               "number of profiles" : nprf_t/len(i_class.map_names),
-                                                               "data completeness of profiles" : nprf_t_dc,
-                                                              },
-                                                     "intersection" : {"number of protein groups" : npgf_i,
-                                                                       "number of profiles" : nprf_i/len(i_class.map_names),
-                                                                       "data completeness of profiles" : nprf_i_dc,
-                                                                      },
-                                                     }
-                                                 }
-        df_quantity_pr_pg = pd.DataFrame.from_dict({(i,j): dictio_quantity_pr_pg[i][j]
-                                                    for i in dictio_quantity_pr_pg.keys()
-                                                    for j in dictio_quantity_pr_pg[i].keys()},
-                                                   orient="index")
-        df_quantity_pr_pg.index.names = ["filtering","type"]
+        df_quantity_pr_pg = pd.DataFrame(np.array([["before filtering", "total", npg_t, npr_t/len(self.map_names), npr_t_dc],
+                                                   ["before filtering", "intersection", npg_i, npr_i/len(self.map_names), npr_i_dc],
+                                                   ["after filtering", "total", npgf_t, nprf_t/len(self.map_names), nprf_t_dc],
+                                                   ["after filtering", "intersection", npgf_i, nprf_i/len(self.map_names), nprf_i_dc]]), 
+                                         columns=["filtering", "type", "number of protein groups", "number of profiles", "data completeness of profiles"])
+        
         self.df_quantity_pr_pg = df_quantity_pr_pg.reset_index()
         self.analysis_summary_dict["quantity: profiles/protein groups"] = self.df_quantity_pr_pg.to_json() 
             
-                                                                            
+            
     def plot_quantity_profiles_proteinGroups(self):
         """
         
         Args:
             self:
-                df_quantity_pr_pg: df; no index, columns: "filtering" 	"type" 	"npg" 	"npr" 	"npr_dc"; further information: see above
+                df_quantity_pr_pg: df; no index, columns: "filtering", "type", "npg", "npr", "npr_dc"; further information: see above
                 
         Returns:
             
@@ -858,11 +840,11 @@ class SpatialDataSet:
         Returns:
             self:
                 df_pca: df, PCA was performed, while keeping the information of the Maps 
-                            columns: "PC1" 	"PC2" 	"PC3"
-                            index: "Protein IDs" 	"Majority protein IDs" 	"Protein names" 	"Gene names" 	"Q-value" 	"Score" 	"id" 	"Map" "Compartment"
+                            columns: "PC1", "PC2", "PC3"
+                            index: "Protein IDs", "Majority protein IDs", "Protein names", "Gene names", "Q-value", "Score", "id", "Map" "Compartment"
                 df_pca_combined: df, PCA was performed across the Maps 
-                            columns: "PC1" 	"PC2" 	"PC3"
-                            index: "Protein IDs" 	"Majority protein IDs" 	"Protein names" 	"Gene names" 	"Q-value" 	"Score" 	"id" 	"Compartment"
+                            columns: "PC1", "PC2", "PC3"
+                            index: "Protein IDs", "Majority protein IDs", "Protein names", "Gene names", "Q-value", "Score", "id", "Compartment"
                 df_pca_all_marker_cluster_maps: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3", filtered for marker genes, that are consistent 
                                                 throughout all maps / coverage filtering.
         """
@@ -913,9 +895,9 @@ class SpatialDataSet:
 
         Args:
             self:
-                df_eLifeMarkers: df, columns: "Gene names" 	"Compartment", no index
+                df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index
                 df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3",
-                    index: "Gene names" 	"Protein IDs" 	"C-Score" 	"Q-value" 	"Map" 	"Compartment" 	
+                    index: "Gene names", "Protein IDs", "C-Score", "Q-value", "Map", "Compartment", 
 
         Returns:
             pca_figure: global PCA plot
@@ -1124,8 +1106,8 @@ class SpatialDataSet:
         
         Args:
             self.df_allclusters_onlynorm_fracunstacked_unfiltered 
-                columns: 01K 	03K 	06K 	12K 	24K 	80K
-                index: Gene names 	Protein IDs 	C-Score 	Q-value 	Map 	Compartment 	Cluster
+                columns: 01K, 03K, 06K, 12K, 24K, 80K
+                index: Gene names, Protein IDs, C-Score, Q-value, Map, Compartment, Cluster
             
         Returns:
             df
@@ -1420,7 +1402,7 @@ class SpatialDataSet:
         
         self.analysis_summary_dict["Dynamic Range"] = df_dynamicRange.reset_index(drop=True).to_json()
         
-        fig_dynamicRange = px.bar(df_dynamicRange, x="Cluster", y="Dynamic Range", base="Min")
+        fig_dynamicRange = px.bar(df_dynamicRange, x="Cluster", y="Dynamic Range", base="Min", width=1200, height=800).update_xaxes(categoryorder="total ascending")
         return fig_dynamicRange
         
     
@@ -1498,12 +1480,12 @@ class SpatialDataSet:
         Returns:
             df_01ORlog_svm: 
                 LFQ:
-                columns: "MS/MS count_Map1_01K" 	"normalized profile_Map1_01K"
-                index: "Gene names" 	"Protein IDs" 	"C-Score" 	"Q-value" 	"Compartment"
+                columns: "MS/MS count_Map1_01K", "normalized profile_Map1_01K"
+                index: "Gene names", "Protein IDs", "C-Score", "Q-value", "Compartment"
                 
                 SILAC:
-                columns: e.g. "Ratio H/L count_MAP2_80K" 	"Ratio H/L variability [%]_MAP1_03K" 	"normalized profile_MAP5_03K" 
-                index: "Q-value" 	"Score" 	"Protein IDs" 	"Majority protein IDs" 	"Protein names" 	"Gene names" 	"id" 	"Compartment"
+                columns: e.g. "Ratio H/L count_MAP2_80K", "Ratio H/L variability [%]_MAP1_03K", "normalized profile_MAP5_03K" 
+                index: "Q-value", "Score", "Protein IDs", "Majority protein IDs", "Protein names", "Gene names", "id", "Compartment"
                 
         """
         
@@ -1681,6 +1663,7 @@ class SpatialDataSet:
                             "distance": Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
                 df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
                                             "data completeness of profiles", "Experiment"
+                df_dynamicRange_combined: df, no index, column names: "Max", "Min", "Dynamic Range", "Cluster", "Experiment"
                 unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
                 exp_map_names: list of unique Exp_Map - fusions e.g. LFQ_Map1
                 exp_names: list of unique Experiment names - e.g. LFQ
@@ -1793,10 +1776,10 @@ class SpatialDataSet:
         df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
         
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
-        df_01_mean_filtered_combined = df_01_mean_combined.dropna()    
-        df_01_mean_filtered_combined.columns.names = ["Experiment", "Fraction"]
+        #df_01_mean_filtered_combined = df_01_mean_combined.dropna()    
+        df_01_mean_combined.columns.names = ["Experiment", "Fraction"]
         #reframe it to make it ready for PCA
-        df_01_mean_filtered_combined = df_01_mean_filtered_combined.stack(["Experiment"]).dropna(axis=1)
+        df_01_mean_filtered_combined = df_01_mean_combined.stack(["Experiment"]).dropna(axis=1)
         df_01_mean_filtered_combined = df_01_mean_filtered_combined.div(df_01_mean_filtered_combined.sum(axis=1), axis=0)
         
         df_distances_combined.columns.names = ["Experiment", "Map"]
@@ -1830,25 +1813,27 @@ class SpatialDataSet:
         Args:
             self:
                 df_01_filtered_combined: df, which contains 0/1 normalized data across all maps (mean) - for all experiments and for the specified protein clusters
-                    columns: Fractions, e.g. "03K" 	"06K" 	"12K" 	"24K" 	"80K"
-                    index: "Protein IDs" 	"Gene names" 	"Compartment" 	"Experiment" 	"Map" 	"Exp_Map"	
+                    columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
+                    index: "Protein IDs", "Gene names", "Compartment", "Experiment", "Map", "Exp_Map"	
                 df_01_mean_filtered_combined: df, which contains (global) 0/1 normalized data across all maps (mean) - for all experiments and for all protein IDs, 
                     that are consistent throughout all experiments
-                    columns: Fractions, e.g. "03K" 	"06K" 	"12K" 	"24K" 	"80K"
-                    index: "Gene names" 	"Protein IDs" 	"Compartment" 	"Experiment"
+                    columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
+                    index: "Gene names", "Protein IDs", "Compartment", "Experiment"
                     
         Returns:
             self:
                 df_pca_for_plotting: PCA processed dataframe
-                    index: "Experiment" 	"Gene names" 	"Map" 	"Exp_Map"
-                    columns: "PC1" 	"PC2" 	"PC3"
+                    index: "Experiment", "Gene names", "Map", "Exp_Map"
+                    columns: "PC1", "PC2", "PC3"
                     contains only marker genes, that are consistent throughout all maps / experiments
                 df_global_pca_for_plotting: PCA processed dataframe
-                    index: "Gene names" 	"Protein IDs" 	"Compartment" 	"Experiment" 	
-                    columns: "PC1" 	"PC2" 	"PC3"
+                    index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
+                    columns: "PC1", "PC2", "PC3"
                     contains all protein IDs, that are consistent throughout all experiments
         """
 
+        markerproteins = self.markerproteins.copy()
+        
         df_01_filtered_combined = self.df_01_filtered_combined
         df_01_mean_filtered_combined = self.df_01_mean_filtered_combined 
         
@@ -1862,8 +1847,21 @@ class SpatialDataSet:
         df_global_pca.columns = ["PC1", "PC2", "PC3"]
         df_global_pca.index = df_01_mean_filtered_combined.index
         
+        try:
+            markerproteins["PSMA subunits"] = [item for sublist in [re.findall("PSMA.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
+            markerproteins["PSMB subunits"] = [item for sublist in [re.findall("PSMB.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
+            del markerproteins["Proteasome"]
+        except:
+            pass 
+        
+        
+        df_cluster = pd.DataFrame([(k, i) for k, l in markerproteins.items() for i in l], columns=["Cluster", "Gene names"])
+        df_global_pca_annotated = df_global_pca.reset_index().merge(df_cluster, how="left", on="Gene names")
+        df_global_pca_annotated.Cluster.replace(np.NaN, "Undefined", inplace=True)
+        
+        self.markerproteins_splitProteasome = markerproteins
         self.df_pca_for_plotting = df_pca
-        self.df_global_pca_for_plotting = df_global_pca
+        self.df_global_pca_for_plotting = df_global_pca_annotated
             
             
     def plot_pca_comparison(self):
@@ -1878,8 +1876,8 @@ class SpatialDataSet:
                 collapse_maps: boolean
                 cluster_of_interest_comparison: string, protein cluster (key in markerproteins, e.g. "Proteasome")
                 df_pca_for_plotting: PCA processed dataframe
-                    index: "Experiment" 	"Gene names" 	"Map" 	"Exp_Map"
-                    columns: "PC1" 	"PC2" 	"PC3"
+                    index: "Experiment", "Gene names", "Map", "Exp_Map"
+                    columns: "PC1", "PC2", "PC3"
                     contains only marker genes, that are consistent throughout all maps / experiments
     
         Returns:
@@ -1916,7 +1914,7 @@ class SpatialDataSet:
             df_setofproteins_PCA.reset_index(inplace=True)
             
             df_setofproteins_PCA = df_setofproteins_PCA.assign(Experiment_lexicographic_sort = pd.Categorical(df_setofproteins_PCA["Experiment"],
-                                                                                                              categories=i_class.sorting_list,
+                                                                                                              categories=self.sorting_list,
                                                                                                               ordered=True))
             df_setofproteins_PCA.sort_values("Experiment_lexicographic_sort", inplace=True)
                     
@@ -1946,12 +1944,12 @@ class SpatialDataSet:
     
         Args:
             self:
-                df_eLifeMarkers: df, columns: "Gene names" 	"Compartment", no index
+                df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index
                 multi_choice: list of experiment names
                 css_color: list of colors
                 df_global_pca_for_plotting: PCA processed dataframe
-                    index: "Gene names" 	"Protein IDs" 	"Compartment" 	"Experiment" 	
-                    columns: "PC1" 	"PC2" 	"PC3"
+                    index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
+                    columns: "PC1", "PC2", "PC3"
                     contains all protein IDs, that are consistent throughout all experiments	
     
         Returns:
@@ -1965,27 +1963,39 @@ class SpatialDataSet:
         else:
             return ("Please select experiments for comparison")
         
-        df_global_pca = self.df_global_pca_for_plotting[self.df_global_pca_for_plotting.index.get_level_values("Experiment").isin(multi_choice)]
+        df_global_pca = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(self.multi_choice)]
         df_global_pca.reset_index(inplace=True)
         
         
         for i in self.markerproteins[self.cluster_of_interest_comparison]:
             df_global_pca.loc[df_global_pca["Gene names"] == i, "Compartment"] = "Selection"
 
-        compartments = self.df_eLifeMarkers["Compartment"].unique()
+        compartments = list(self.df_eLifeMarkers["Compartment"].unique())
         compartment_color = dict(zip(compartments, self.css_color))
         compartment_color["Selection"] = "black"
         compartment_color["undefined"] = "lightgrey"
         
-        df_global_pca = df_global_pca.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca["Compartment"], 
-                                                                                             categories=[x for x in sorted(compartment_color.keys(), reverse=True)], ordered=True))
-        df_global_pca.sort_values("Compartment_lexicographic_sort", inplace=True)
-        
-        fig_global_pca = px.scatter(data_frame=df_global_pca,
+        compartments.insert(0, "undefined")
+        compartments.insert(len(compartments), "Selection")
+
+            
+        cluster = self.markerproteins_splitProteasome.keys()
+        cluster_color = dict(zip(cluster, self.css_color))
+        cluster_color["Undefined"] = "lightgrey"
+                
+        df_global_pca = df_global_pca.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca["Compartment"], categories=[x for x in compartments], 
+                                                                                             ordered=True))
+        if self.markerset_or_cluster == False:
+            df_global_pca.sort_values("Compartment_lexicographic_sort", inplace=True)
+        else:
+            df_global_pca_cluster = df_global_pca[df_global_pca.Cluster!="Undefined"].sort_values(by="Cluster")
+            df_global_pca_cluster = df_global_pca[df_global_pca.Cluster=="Undefined"].append(df_global_pca_cluster)
+            
+        fig_global_pca = px.scatter(data_frame=df_global_pca if self.markerset_or_cluster == False else df_global_pca_cluster,
                                     x=self.x_PCA_comp,
                                     y=self.y_PCA_comp,
-                                    color="Compartment",
-                                    color_discrete_map=compartment_color,
+                                    color="Compartment" if self.markerset_or_cluster == False else "Cluster",
+                                    color_discrete_map=compartment_color if self.markerset_or_cluster == False else cluster_color,
                                     title="Protein subcellular localization by PCA",
                                     hover_data=["Protein IDs", "Gene names", "Compartment"],
                                     facet_col="Experiment",
@@ -1993,8 +2003,22 @@ class SpatialDataSet:
                                     opacity=0.9
                                     )
         
+#            px.scatter(data_frame=df_marker,
+#           x=self.x_PCA_comp,
+#           y=i_class.y_PCA_comp,
+#           color="Cluster",
+#           color_discrete_map=compartment_color,
+#           title="Protein subcellular localization by PCA",
+#           hover_data=["Protein IDs", "Gene names", "Compartment"],
+#           facet_col="Experiment",
+#           facet_col_wrap=2,
+#           opacity=0.9,
+#           height=2000
+#           )
+        
+        
         fig_global_pca.update_layout(autosize=False, 
-                                     width=1500, 
+                                     width=1500 if self.markerset_or_cluster == False else 1600, 
                                      height=500*(int(len(multi_choice) / 2) + (len(multi_choice) % 2 > 0))
                                     )
         
@@ -2004,8 +2028,7 @@ class SpatialDataSet:
     def distance_boxplot_comparison(self):
         """
         A box plot for desired experiments (multi_choice) and 1 desired cluster is generated displaying the distribution of the e.g.
-        Manhattan distance.
-        Either the maps for every single experiment are displayed individually or in a combined manner.
+        Manhattan distance. Either the maps for every single experiment are displayed individually or in a combined manner.
 
         Args:
             self:
@@ -2265,12 +2288,14 @@ class SpatialDataSet:
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(self.multi_choice)]
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
                                                                                                                         categories=self.sorting_list, ordered=True))
-        df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
+        #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
+        df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "type"], ascending=[True, False], inplace=True)
+        #df_quantity_pr_pg_combined.sort_values("type", ascending=False, inplace=True)
         
         layout = go.Layout(barmode="overlay", 
           xaxis_tickangle=0, 
           autosize=False,
-          width=350*len(i_class.multi_choice),
+          width=350*len(self.multi_choice),
           height=500,
           xaxis=go.layout.XAxis(linecolor="black",
                                 linewidth=1,
@@ -2323,7 +2348,9 @@ class SpatialDataSet:
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(self.multi_choice)].sort_values("filtering")
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
                                                                                                                         categories=self.sorting_list, ordered=True))
-        df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
+        #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
+        df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], inplace=True)
+
         
         fig_pr_dc = go.Figure()
         for t in df_quantity_pr_pg_combined["filtering"].unique():
@@ -2349,19 +2376,6 @@ class SpatialDataSet:
                                                                mirror=True))
         
         return fig_pr_dc
-    
-    
-    def dynamic_range_comparison(self):
-        """
-        
-        Args:
-            self:
-                multi_choice_venn: list of experiment names, max 3 (slelect widget can only hold max 3 values) 
-                unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
-        
-        Returns:
-            
-        """
     
     
     def venn_diagram(self):
@@ -2410,7 +2424,32 @@ class SpatialDataSet:
         plt.clf()
         
         return im
+    
+    
+    def dynamic_range_comparison(self):
+        """
+        A box plot for desired experiments (multi_choice) and all protein clusters is generated displaying the dynamic range
+        
+        Args:
+            self:
+                multi_choice: list of experiment names 
+                df_dynamicRange_combined: df, no index, column names: "Max", "Min", "Dynamic Range", "Cluster", "Experiment"
+        
+        Returns:
+            fig_dynamic_range: bar plot, dynamic range of each protein cluster for desired experiments is displayed.
+        """
+        
+        df_dynamicRange_combined = self.df_dynamicRange_combined.copy()
+        df_dynamicRange_combined = df_dynamicRange_combined[df_dynamicRange_combined["Experiment"].isin(self.multi_choice)]
+        df_dynamicRange_combined = df_dynamicRange_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_dynamicRange_combined["Experiment"],
+                                                                                                                categories=self.sorting_list, ordered=True))
+        df_dynamicRange_combined.sort_values(["Experiment_lexicographic_sort", "Dynamic Range"], inplace=True)
+        
+        fig_dynamic_range = px.bar(df_dynamicRange_combined, x="Cluster", y="Dynamic Range", base="Min", facet_row="Experiment", height=400*len(self.multi_choice),
+                                   width=1200)
 
+        return fig_dynamic_range
+        
         
     def __repr__(self):
         return "This is a spatial dataset with {} lines.".format(len(self.df_original))
