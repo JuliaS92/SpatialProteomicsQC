@@ -1886,15 +1886,8 @@ class SpatialDataSet:
     
         df_pca_for_plotting = self.df_pca_for_plotting.copy()
         markerproteins = self.markerproteins
-        multi_choice = self.multi_choice
-        
+        multi_choice = self.multi_choice        
 
-        
-        if len(multi_choice)>=1:
-            pass
-        else:
-            return ("Please select experiments for comparison")
-        
         if self.collapse_maps == False:
             map_or_exp_names= df_pca_for_plotting[df_pca_for_plotting.index.get_level_values("Experiment").isin(multi_choice)].index.get_level_values("Exp_Map").unique()
             level_of_interest = "Exp_Map"
@@ -1913,8 +1906,7 @@ class SpatialDataSet:
                         df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
             df_setofproteins_PCA.reset_index(inplace=True)
             
-            df_setofproteins_PCA = df_setofproteins_PCA.assign(Experiment_lexicographic_sort = pd.Categorical(df_setofproteins_PCA["Experiment"],
-                                                                                                              categories=self.sorting_list,
+            df_setofproteins_PCA = df_setofproteins_PCA.assign(Experiment_lexicographic_sort=pd.Categorical(df_setofproteins_PCA["Experiment"], categories=self.sorting_list,
                                                                                                               ordered=True))
             df_setofproteins_PCA.sort_values("Experiment_lexicographic_sort", inplace=True)
                     
@@ -1958,40 +1950,33 @@ class SpatialDataSet:
         
         multi_choice = self.multi_choice
         
-        if len(multi_choice)>=1:
-            pass
-        else:
-            return ("Please select experiments for comparison")
-        
-        df_global_pca = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(self.multi_choice)]
-        df_global_pca.reset_index(inplace=True)
-        
-        
-        for i in self.markerproteins[self.cluster_of_interest_comparison]:
-            df_global_pca.loc[df_global_pca["Gene names"] == i, "Compartment"] = "Selection"
+        df_global_pca_exp = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(self.multi_choice)]
+        df_global_pca_exp.reset_index(inplace=True)
 
         compartments = list(self.df_eLifeMarkers["Compartment"].unique())
         compartment_color = dict(zip(compartments, self.css_color))
         compartment_color["Selection"] = "black"
         compartment_color["undefined"] = "lightgrey"
-        
         compartments.insert(0, "undefined")
         compartments.insert(len(compartments), "Selection")
-
             
         cluster = self.markerproteins_splitProteasome.keys()
         cluster_color = dict(zip(cluster, self.css_color))
         cluster_color["Undefined"] = "lightgrey"
                 
-        df_global_pca = df_global_pca.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca["Compartment"], categories=[x for x in compartments], 
-                                                                                             ordered=True))
-        if self.markerset_or_cluster == False:
-            df_global_pca.sort_values("Compartment_lexicographic_sort", inplace=True)
+        
+        if self.markerset_or_cluster == True:
+            df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster!="Undefined"].sort_values(by="Cluster")
+            df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster=="Undefined"].append(df_global_pca)
         else:
-            df_global_pca_cluster = df_global_pca[df_global_pca.Cluster!="Undefined"].sort_values(by="Cluster")
-            df_global_pca_cluster = df_global_pca[df_global_pca.Cluster=="Undefined"].append(df_global_pca_cluster)
+            for i in self.markerproteins[self.cluster_of_interest_comparison]:
+                df_global_pca_exp.loc[df_global_pca_exp["Gene names"] == i, "Compartment"] = "Selection"
+            df_global_pca = df_global_pca_exp.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca_exp["Compartment"], 
+                                                                                                     categories=[x for x in compartments], 
+                                                                                                     ordered=True))
+            df_global_pca.sort_values(["Compartment_lexicographic_sort", "Experiment"], inplace=True)
             
-        fig_global_pca = px.scatter(data_frame=df_global_pca if self.markerset_or_cluster == False else df_global_pca_cluster,
+        fig_global_pca = px.scatter(data_frame=df_global_pca,
                                     x=self.x_PCA_comp,
                                     y=self.y_PCA_comp,
                                     color="Compartment" if self.markerset_or_cluster == False else "Cluster",
@@ -2176,29 +2161,33 @@ class SpatialDataSet:
         else:
             return ("")
         
-        df_distance_comp = self.df_distance_comp.copy().set_index(["Gene names", "Experiment", "Cluster"])
-        df_distance_comp = df_distance_comp[df_distance_comp.index.get_level_values("Experiment").isin(multi_choice)]
-        df_distance_comp = df_distance_comp[df_distance_comp.index.get_level_values("Cluster").isin(self.clusters_for_ranking)]
-        
+        df_distance_comp = self.df_distance_comp.copy()
+        df_distance_comp = df_distance_comp[df_distance_comp["Experiment"].isin(multi_choice)]
+        df_distance_comp = df_distance_comp[df_distance_comp["Cluster"].isin(self.clusters_for_ranking)]
+
         df_quantified_cluster = df_distance_comp.reset_index()
         df_quantified_cluster = df_quantified_cluster.drop_duplicates(subset=["Cluster", "Experiment"]).set_index(["Cluster", 
                                                                                                                    "Experiment"])["distance"].unstack("Cluster")
         self.df_quantified_cluster = df_quantified_cluster.notnull().replace({True: "x", False: "-"})
         
         dict_cluster_normalizedMedian = {}
+        dict_median_distance_ranking = {}
         for cluster in self.markerproteins.keys():
             try:
-                df_cluster = df_distance_comp.xs(cluster, level="Cluster")
+                df_cluster = df_distance_comp[df_distance_comp["Cluster"]==cluster]
                 all_median_one_cluster_several_exp = {}
                 for exp in multi_choice:
-                    median = df_cluster.xs(exp, level="Experiment").median()
+                    median = df_cluster[df_cluster["Experiment"]==exp].median()
                     all_median_one_cluster_several_exp[exp] = float(median)
+                dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
                 min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
                 median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
                 dict_cluster_normalizedMedian[cluster] = median_ranking
             except:
                 continue
-            
+        
+        self.df_median_distance_ranking = pd.DataFrame(dict_median_distance_ranking)
+        
         df_cluster_normalizedMedian = pd.DataFrame(dict_cluster_normalizedMedian)
         df_cluster_normalizedMedian.index.name="Experiment"
         df_cluster_normalizedMedian.rename_axis("Cluster", axis=1, inplace=True)
