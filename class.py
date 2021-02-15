@@ -41,6 +41,7 @@ class SpatialDataSet:
         self.y_PCA_comp = "PC3" if "y_PCA_comp" not in kwargs.keys() else kwargs["y_PCA_comp"]
                 
         self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
+        self.ref_exp = "Exp_name" if "ref_exp" not in kwargs.keys() else kwargs["ref_exp"]
         
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
@@ -756,7 +757,7 @@ class SpatialDataSet:
             dict_npgf_map = {}
             dict_npgf_map_dc = {}
             df_01_map = df_01_MapStacked.xs(maps, level="Map")
-            npg_m = df_index_map.shape[0]
+            npg_m = df_01_map.shape[0]
             dict_npgf_map["npgf_m"] = npg_m
             for fraction in self.fractions:
                 npgf_f_dc = 1-df_01_map[fraction].isna().sum()/len(df_01_map[fraction])
@@ -799,7 +800,7 @@ class SpatialDataSet:
                 x=plot_df["filtering"],
                 y=plot_df["number of protein groups"],
                 name=t))
-        fig_npg.update_layout(barmode="overlay", title="Number of Protein Groups")
+        fig_npg.update_layout(barmode="overlay", title="Number of Protein Groups", autosize=False, width=300, height=500)
                 
         fig_npr = go.Figure()
         for t in df_quantity_pr_pg["type"].unique():
@@ -808,7 +809,7 @@ class SpatialDataSet:
                 x=plot_df["filtering"],
                 y=plot_df["number of profiles"],
                 name=t))
-        fig_npr.update_layout(barmode="overlay", title="Number of Profiles")
+        fig_npr.update_layout(barmode="overlay", title="Number of Profiles", autosize=False, width=300, height=500)
         
         df_quantity_pr_pg = df_quantity_pr_pg.sort_values("filtering")
         fig_npr_dc = go.Figure()
@@ -818,9 +819,9 @@ class SpatialDataSet:
                 x=plot_df["type"],
                 y=plot_df["data completeness of profiles"],
                 name=t))
-        fig_npr_dc.update_layout(barmode="overlay", title="Coverage")
+        fig_npr_dc.update_layout(barmode="overlay", title="Coverage", autosize=False, width=300, height=500)
         
-        return pn.Column(pn.Row(fig_npg), pn.Row(fig_npr), pn.Row(fig_npr_dc)) 
+        return pn.Row(pn.Column(fig_npg), pn.Column(fig_npr), pn.Column(fig_npr_dc)) 
                                                                               
                                                                                 
     def perform_pca(self):
@@ -2143,6 +2144,7 @@ class SpatialDataSet:
                 clusters_for_ranking: list of clusters, that will be used to calculate the ranking
                 multi_choice: list of experiment names
                 collapse_maps: boolean
+                ref_exp: stirng, reference experiment for normalization
         
         Returns:
             fig_globalRanking: figure, barplot. 
@@ -2170,7 +2172,8 @@ class SpatialDataSet:
                                                                                                                    "Experiment"])["distance"].unstack("Cluster")
         self.df_quantified_cluster = df_quantified_cluster.notnull().replace({True: "x", False: "-"})
         
-        dict_cluster_normalizedMedian = {}
+        #dict_cluster_normalizedMedian = {}
+        dict_cluster_normalizedMedian_ref = {}
         dict_median_distance_ranking = {}
         for cluster in self.markerproteins.keys():
             try:
@@ -2179,52 +2182,67 @@ class SpatialDataSet:
                 for exp in multi_choice:
                     median = df_cluster[df_cluster["Experiment"]==exp].median()
                     all_median_one_cluster_several_exp[exp] = float(median)
+                    #new
+                    if exp == self.ref_exp:
+                        ref = median
                 dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
                 min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
-                median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
-                dict_cluster_normalizedMedian[cluster] = median_ranking
+                #median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
+                #dict_cluster_normalizedMedian[cluster] = median_ranking
+                #new
+                median_ranking_ref = {exp: median/ref[0] for exp, median in all_median_one_cluster_several_exp.items()}
+                dict_cluster_normalizedMedian_ref[cluster] = median_ranking_ref
             except:
                 continue
         
-        self.df_median_distance_ranking = pd.DataFrame(dict_median_distance_ranking)
-        
-        df_cluster_normalizedMedian = pd.DataFrame(dict_cluster_normalizedMedian)
-        df_cluster_normalizedMedian.index.name="Experiment"
-        df_cluster_normalizedMedian.rename_axis("Cluster", axis=1, inplace=True)
-        
-        df_ranking = df_cluster_normalizedMedian.stack("Cluster")
-        df_ranking.name="Normalized Median"
-        df_ranking = df_ranking.reset_index()
-        
-        ranking_sum = df_cluster_normalizedMedian.sum(axis=1).round(2)
-        ranking_sum.name = "Normalized Median - Sum"
-        ranking_product = df_cluster_normalizedMedian.product(axis=1).round(2)
-        ranking_product.name = "Normalized Median - Product"
-        df_globalRanking = pd.concat([pd.DataFrame(ranking_sum), pd.DataFrame(ranking_product)], axis=1).reset_index()
-        
-        self.sorting_list = list(df_globalRanking.sort_values("Normalized Median - Sum")["Experiment"])
-        
+        #df_cluster_normalizedMedian = pd.DataFrame(dict_cluster_normalizedMedian)
+        #df_cluster_normalizedMedian.index.name="Experiment"
+        #df_cluster_normalizedMedian.rename_axis("Cluster", axis=1, inplace=True)
+        #df_ranking = df_cluster_normalizedMedian.stack("Cluster")
+        #df_ranking.name="Normalized Median"
+        #df_ranking = df_ranking.reset_index()
+        #ranking_sum = df_cluster_normalizedMedian.sum(axis=1).round(2)
+        #ranking_sum.name = "Normalized Median - Sum"
+        #ranking_product = df_cluster_normalizedMedian.product(axis=1).round(2)
+        #ranking_product.name = "Normalized Median - Product"
+        #df_globalRanking = pd.concat([pd.DataFrame(ranking_sum), pd.DataFrame(ranking_product)], axis=1).reset_index()
+        #self.sorting_list = list(df_globalRanking.sort_values("Normalized Median - Sum")["Experiment"])
         #set categroical column, allowing lexicographic sorting
-        df_ranking = df_ranking.assign(Experiment_lexicographic_sort = pd.Categorical(df_ranking["Experiment"], categories=self.sorting_list, ordered=True))
-        df_ranking.sort_values("Experiment_lexicographic_sort", inplace=True)
-        
-        df_globalRanking = df_globalRanking.assign(Experiment_lexicographic_sort = pd.Categorical(df_globalRanking["Experiment"], categories=self.sorting_list,
-                                                                                                  ordered=True))
-        df_globalRanking.sort_values("Experiment_lexicographic_sort", inplace=True)
-        
+        #df_ranking = df_ranking.assign(Experiment_lexicographic_sort = pd.Categorical(df_ranking["Experiment"], categories=self.sorting_list, ordered=True))
+        #df_ranking.sort_values("Experiment_lexicographic_sort", inplace=True)
+        #df_globalRanking = df_globalRanking.assign(Experiment_lexicographic_sort = pd.Categorical(df_globalRanking["Experiment"], categories=self.sorting_list,
+        #                                                                                          ordered=True))
+        #df_globalRanking.sort_values("Experiment_lexicographic_sort", inplace=True)
         #df_ranking["Experiment_lexicographic_sort"] = pd.Categorical(df_ranking["Experiment"], categories=self.sorting_list, ordered=True)
         #df_ranking.sort_values("Experiment_lexicographic_sort", inplace=True)
-        #
         #df_globalRanking["Experiment_lexicographic_sort"] = pd.Categorical(df_globalRanking["Experiment"], categories=self.sorting_list, ordered=True)
         #df_globalRanking.sort_values("Experiment_lexicographic_sort", inplace=True)
         
+        df_cluster_normalizedMedian_ref = pd.DataFrame(dict_cluster_normalizedMedian_ref)
+        df_cluster_normalizedMedian_ref.index.name="Experiment"
+        df_cluster_normalizedMedian_ref.rename_axis("Cluster", axis=1, inplace=True)
+        
+        #median makes a huge differnece, improves result of DIA, MQ, libary
+        df_RelDistanceRanking = pd.concat([df_cluster_normalizedMedian_ref.median(axis=1), df_cluster_normalizedMedian_ref.sem(axis=1)], axis=1, 
+                                          keys=["Distance Ranking (rel, median)", "SEM"]).reset_index().sort_values("Distance Ranking (rel, median)")
+        self.sorting_list = list(df_RelDistanceRanking["Experiment"])
+        
+        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.stack("Cluster")
+        df_cluster_normalizedMedian_ref.name="Normalized Median"
+        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.reset_index()
+        
+        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], 
+                                                                                                                                categories=self.sorting_list, ordered=True))
+        df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
+
+        
         if self.collapse_cluster == False:
-            fig_ranking = px.bar(df_ranking, 
+            fig_ranking = px.bar(df_cluster_normalizedMedian_ref, 
                                  x="Cluster", 
                                  y="Normalized Median", 
                                  color="Experiment", 
                                  barmode="group", 
-                                 title="Ranking - normalization to smallest median (=1)"
+                                 title="Ranking - normalization to reference experiment: {}".format(self.ref_exp)
                                 )
             
             fig_ranking.update_xaxes(categoryorder="total ascending")
@@ -2232,32 +2250,48 @@ class SpatialDataSet:
                                       width=1200 if len(multi_choice)<=3 else 300*len(multi_choice),
                                       height=500
                                      )
+            
+            #fig_ranking = px.bar(df_ranking, 
+            #                     x="Cluster", 
+            #                     y="Normalized Median", 
+            #                     color="Experiment", 
+            #                     barmode="group", 
+            #                     title="Ranking - normalization to smallest median (=1)"
+            #                    )
+            #
+            #fig_ranking.update_xaxes(categoryorder="total ascending")
+            #fig_ranking.update_layout(autosize=False,
+            #                          width=1200 if len(multi_choice)<=3 else 300*len(multi_choice),
+            #                          height=500
+            #                         )
+            #
+            #return pn.Column(pn.Row(fig_ranking), pn.Row(fig_ranking2))
             return fig_ranking
         
         else:
-            fig_globalRanking = px.bar(df_globalRanking, 
-                                       x="Experiment", 
-                                       y="Normalized Median - Sum", 
-                                       color="Experiment", 
-                                       title="Ranking - sum of all individual normalized medians"
-                                      )
+            #fig_globalRanking = px.bar(df_globalRanking, 
+            #                           x="Experiment", 
+            #                           y="Normalized Median - Sum", 
+            #                           color="Experiment", 
+            #                           title="Ranking - sum of all individual normalized medians"
+            #                          )
+            #fig_globalRanking.update_layout(autosize=False,
+            #                                width=250*len(multi_choice),
+            #                                height=500,
+            #                               )
+            fig_globalRanking = px.bar(df_RelDistanceRanking.sort_values("Distance Ranking (rel, median)"), 
+                                        x="Experiment",
+                                        y="Distance Ranking (rel, median)", 
+                                        title="Ranking - median of all individual normalized medians - reference experiment: {}".format(self.ref_exp),
+                                        error_x="SEM", error_y="SEM", 
+                                        color="Experiment")
             
             fig_globalRanking.update_layout(autosize=False,
                                             width=250*len(multi_choice),
                                             height=500,
-                                            xaxis=go.layout.XAxis(
-                                                linecolor="black",
-                                                linewidth=1,
-                                                title="Map",
-                                                mirror=True),
-                                            yaxis=go.layout.YAxis(
-                                                linecolor="black",
-                                                linewidth=1,
-                                                title="distance",
-                                                mirror=True)
                                            )
+            #return pn.Column(pn.Row(fig_globalRanking), pn.Row(fig_globalRanking2))
             return fig_globalRanking
-    
     
     def quantity_pr_pg_barplot_comparison(self):
         """
@@ -2427,18 +2461,55 @@ class SpatialDataSet:
         Returns:
             fig_dynamic_range: bar plot, dynamic range of each protein cluster for desired experiments is displayed.
         """
-        
+        multi_choice = self.multi_choice
         df_dynamicRange_combined = self.df_dynamicRange_combined.copy()
-        df_dynamicRange_combined = df_dynamicRange_combined[df_dynamicRange_combined["Experiment"].isin(self.multi_choice)]
+        df_dynamicRange_combined = df_dynamicRange_combined[df_dynamicRange_combined["Experiment"].isin(multi_choice)]
         df_dynamicRange_combined = df_dynamicRange_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_dynamicRange_combined["Experiment"],
                                                                                                                 categories=self.sorting_list, ordered=True))
+        
         df_dynamicRange_combined.sort_values(["Experiment_lexicographic_sort", "Dynamic Range"], inplace=True)
         
-        fig_dynamic_range = px.bar(df_dynamicRange_combined, x="Cluster", y="Dynamic Range", base="Min", facet_row="Experiment", height=400*len(self.multi_choice),
+        fig_dynamic_range = px.bar(df_dynamicRange_combined, x="Cluster", y="Dynamic Range", base="Min", facet_row="Experiment", height=400*len(multi_choice),
                                    width=1200)
-
-        return fig_dynamic_range
         
+        df_dynamicRange_combined_ref = df_dynamicRange_combined.drop(["Experiment_lexicographic_sort"], axis=1)
+        df_dynamicRange_combined_ref = df_dynamicRange_combined.set_index(["Cluster", "Experiment"], drop=False).unstack("Cluster")["Dynamic Range"]
+        df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.div(df_dynamicRange_combined_ref.xs(self.ref_exp))
+        df_RelDynamicRange = pd.concat([df_dynamicRange_combined_ref.median(axis=1), df_dynamicRange_combined_ref.sem(axis=1)], axis=1, 
+                                       keys=["Dynamic Range (rel, median)", "SEM"]).reset_index()
+        
+        if self.collapse_cluster == False:
+            df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.stack("Cluster")
+            df_dynamicRange_combined_ref.name="Normalized Dynamic Range"
+            df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.reset_index()
+            
+            fig_RelDynamicRange = px.bar(df_dynamicRange_combined_ref, 
+                                         x="Cluster", 
+                                         y="Normalized Dynamic Range", 
+                                         title="Dynamic Range - normalization to reference experiment: {}".format(self.ref_exp),
+                                         barmode="group", 
+                                         color="Experiment")
+            fig_RelDynamicRange.update_xaxes(categoryorder="total ascending")
+            fig_RelDynamicRange.update_layout(autosize=False,
+                                              width=1200 if len(multi_choice)<=3 else 300*len(multi_choice),
+                                              height=500,
+                                               )
+        else:
+            fig_RelDynamicRange = px.bar(df_RelDynamicRange.sort_values("Dynamic Range (rel, median)"), 
+                                         x="Experiment", 
+                                         y="Dynamic Range (rel, median)", 
+                                         error_x="SEM", error_y="SEM",
+                                         title="Dynamic Range - median of all individual normalized medians - reference experiment: {}".format(self.ref_exp),
+                                         color="Experiment")
+            fig_RelDynamicRange.update_layout(autosize=False,
+                                                width=250*len(multi_choice),
+                                                height=500,
+                                               )
+            
+            
+        return pn.Column(pn.Row(fig_dynamic_range), pn.Row(fig_RelDynamicRange)) 
+    
+    
         
     def __repr__(self):
         return "This is a spatial dataset with {} lines.".format(len(self.df_original))
