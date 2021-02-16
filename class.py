@@ -710,65 +710,71 @@ class SpatialDataSet:
             df_index = self.df_index["LFQ intensity"]
             df_01_stacked = self.df_01_stacked_for_quantity["normalized profile"]
         
+        #unfiltered
         npg_t = df_index.shape[0]
         df_index_MapStacked = df_index.stack("Map")
         npr_t = df_index_MapStacked.shape[0]
         npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/(df_index_MapStacked.shape[0]*df_index_MapStacked.shape[1])
         
-        dict_npg = {}
-        dict_npg_dc = {}
-        for maps in self.map_names:
-            dict_npg_map = {}
-            dict_npg_dc_map = {}
-            #remove profile, if the whole row contians nan (how="all")
-            df_index_map = df_index.xs(maps, level="Map", axis=1).dropna(axis=0, how="all")
-            npg_m = df_index_map.shape[0]
-            dict_npg_map["npg_m"] = npg_m
-            for fraction in self.fractions:
-                npg_f_dc = 1-df_index_map[fraction].isna().sum()/len(df_index_map[fraction])
-                npg_f = df_index_map[fraction].dropna().shape[0]
-                dict_npg_map[fraction] = npg_f
-                dict_npg_dc_map[fraction] = npg_f_dc
-            dict_npg[maps] = dict_npg_map
-            dict_npg_dc[maps] = dict_npg_dc_map
-        df_npg_dc = pd.DataFrame.from_dict(dict_npg_dc).T
-        df_npg = pd.DataFrame.from_dict(dict_npg).T
-        
-        df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
-        npr_i = df_index_intersection.shape[0]
-        npr_i_dc = 1-df_index_intersection.isna().sum().sum()/(df_index_intersection.shape[0]*df_index_intersection.shape[1])
-        npg_i = df_index_intersection.unstack("Map").shape[0]
-        
-        
+        #filtered
         df_01_stacked.unstack(["Map", "Fraction"]).sort_index(axis=1)
         npgf_t = df_01_stacked.unstack(["Map", "Fraction"]).shape[0]
         df_01_MapStacked = df_01_stacked.unstack("Fraction")
         nprf_t = df_01_MapStacked.shape[0]
         nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/(df_01_MapStacked.shape[0]*df_01_MapStacked.shape[1])
         
+        #unfiltered
+        df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        npr_i = df_index_intersection.shape[0]
+        npr_i_dc = 1-df_index_intersection.isna().sum().sum()/(df_index_intersection.shape[0]*df_index_intersection.shape[1])
+        npg_i = df_index_intersection.unstack("Map").shape[0]
+        
+        #filtered
         df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
         nprf_i = df_01_intersection.shape[0]
         nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/(df_01_intersection.shape[0]*df_01_intersection.shape[1])
         npgf_i = df_01_intersection.unstack("Map").shape[0]
         
+                
         dict_npgf = {}
         dict_npgf_dc = {}
-        for maps in self.map_names:
-            dict_npgf_map = {}
-            dict_npgf_map_dc = {}
-            df_01_map = df_01_MapStacked.xs(maps, level="Map")
-            npg_m = df_01_map.shape[0]
-            dict_npgf_map["npgf_m"] = npg_m
-            for fraction in self.fractions:
-                npgf_f_dc = 1-df_01_map[fraction].isna().sum()/len(df_01_map[fraction])
-                npgf_f = df_01_map[fraction].dropna().shape[0]
-                dict_npgf_map[fraction] = npgf_f
-                dict_npgf_map_dc[fraction] = npgf_f_dc
-            dict_npgf[maps] = dict_npgf_map
-            dict_npgf_dc[maps] = dict_npgf_map_dc
+        dict_npg = {}
+        dict_npg_dc = {}
+        for df_intersection in [df_index_intersection, df_01_intersection]:
+            for fraction in i_class.fractions:
+                df_intersection_frac = df_intersection[fraction]
+                npgF_f_dc = 1-df_intersection_frac.isna().sum()/len(df_intersection_frac)
+                npgF_f = df_intersection_frac.unstack("Map").isnull().sum(axis=1).value_counts()
+                if df_intersection.shape==df_index_intersection.shape:
+                    dict_npg[fraction] = npgF_f
+                    dict_npg_dc[fraction] = [npgF_f_dc]
+                else:
+                    dict_npgf[fraction] = npgF_f
+                    dict_npgf_dc[fraction] = [npgF_f_dc]
+                    
+                    
+        df_npg = pd.DataFrame(dict_npg)
+        df_npg.index.name =  "Number of NaN"
+        df_npg.rename_axis("Fraction", axis=1, inplace=True)
+        df_npg = df_npg.stack("Fraction").reset_index()
+        self.df_npg = df_npg.rename({0: "Protein Groups"}, axis=1)
         
-        df_npgf_dc = pd.DataFrame.from_dict(dict_npgf_dc).T
-        df_npgf = pd.DataFrame.from_dict(dict_npgf).T
+        df_npg_dc = pd.DataFrame(dict_npgf_dc)
+        df_npg_dc.rename_axis("Fraction", axis=1, inplace=True)
+        df_npg_dc = df_npg_dc.rename({0:"Data completeness"}, axis="index").T
+        self.df_npg_dc = df_npg_dc.reset_index()
+                    
+        df_npgf = pd.DataFrame(dict_npgf)
+        df_npgf.index.name =  "Number of NaN"
+        df_npgf.rename_axis("Fraction", axis=1, inplace=True)
+        df_npgf = df_npgf.stack("Fraction").reset_index()
+        self.df_npgf = df_npgf.rename({0: "Protein Groups"}, axis=1)
+        
+        df_npgf_dc = pd.DataFrame(dict_npgf_dc)
+        df_npgf_dc.rename_axis("Fraction", axis=1, inplace=True)
+        df_npgf_dc = df_npgf_dc.rename({0:"Data completeness"}, axis="index").T
+        self.df_npgf_dc = df_npgf_dc.reset_index()
+        
         
         df_quantity_pr_pg = pd.DataFrame(np.array([["before filtering", "total", npg_t, npr_t/len(self.map_names), npr_t_dc],
                                                    ["before filtering", "intersection", npg_i, npr_i/len(self.map_names), npr_i_dc],
@@ -2231,8 +2237,7 @@ class SpatialDataSet:
         df_cluster_normalizedMedian_ref.name="Normalized Median"
         df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.reset_index()
         
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], 
-                                                                                                                                categories=self.sorting_list, ordered=True))
+        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=self.sorting_list, ordered=True))
         df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
 
         
