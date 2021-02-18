@@ -1,4 +1,127 @@
 class SpatialDataSet:
+    
+    regex = {
+        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity"
+    }
+    
+    acquisition_set_dict = {
+        "LFQ" : ["[Ll][Ff][Qq].[Ii]ntensity", "[Mm][Ss]/[Mm][Ss].[cC]ount", "[Ii]ntensity"],
+        "LFQ Spectronaut" : ["LFQ intensity", "MS/MS count"],
+        "SILAC" : [ "[Rr]atio.[Hh]/[Ll](?!.[Vv]aria|.[Cc]ount)","[Rr]atio.[Hh]/[Ll].[Vv]ariability.\[%\]", "[Rr]atio.[Hh]/[Ll].[cC]ount"]
+    }
+    
+    fraction_dict = {
+        "1K": "01K","3K": "03K", "6K": "06K", "12K": "12K", "24K": "24K", "80K": "80K", "01K": "01K","03K": "03K", "06K": "06K", "012K": "12K", "024K": "24K",
+        "080K": "80K", "Cyt": "Cyt", "Mem": "Mem", "Nuc": "Nuc", "Prot": "Prot", "cyt": "Cyt", "mem": "Mem", "nuc": "Nuc", "Prot": "Prot", "prot": "Prot"
+    }
+    
+    Spectronaut_columnRenaming = {
+        "R.Condition": "Map", "PG.Genes" : "Gene names", "PG.Qvalue": "Q-value", "PG.Cscore":"C-Score", 
+        "PG.ProteinGroups" : "Protein IDs", "PG.RunEvidenceCount" : "MS/MS count", "PG.Quantity" : "LFQ intensity"
+    }
+    
+    css_color = ["#b2df8a", "#6a3d9a", "#e31a1c", "#b15928", "#fdbf6f", "#ff7f00", "#cab2d6", "#fb9a99", "#1f78b4", "#ffff99", "#a6cee3", 
+                      "#33a02c", "blue", "orange", "goldenrod", "lightcoral", "magenta", "brown", "lightpink", "red", "turquoise",
+                      "khaki", "darkgoldenrod","darkturquoise", "darkviolet", "greenyellow", "darksalmon", "hotpink", "indianred", "indigo","darkolivegreen", 
+                      "coral", "aqua", "beige", "bisque", "black", "blanchedalmond", "blueviolet", "burlywood", "cadetblue", "yellowgreen", "chartreuse",
+                      "chocolate", "cornflowerblue", "cornsilk", "darkblue", "darkcyan", "darkgray", "darkgrey", "darkgreen", "darkkhaki", "darkmagenta", 
+                      "darkorange", "darkorchid", "darkred", "darkseagreen", "darkslateblue", "snow", "springgreen", "darkslategrey", "mediumpurple", "oldlace", 
+                      "olive", "lightseagreen", "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue", "firebrick", "floralwhite", "forestgreen", 
+                      "fuchsia", "gainsboro", "ghostwhite", "gold", "gray", "ivory", "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcyan",
+                      "lightgoldenrodyellow", "lightgray", "lightgrey", "lightgreen", "lightsalmon", "lightskyblue", "lightslategray", "lightslategrey",
+                      "lightsteelblue", "lightyellow", "lime", "limegreen", "linen", "maroon", "mediumaquamarine", "mediumblue", "mediumseagreen",
+                      "mediumslateblue", "mediumspringgreen", "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin",
+                      "olivedrab", "orangered", "orchid", "palegoldenrod", "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
+                      "pink", "plum", "powderblue", "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell", "sienna", "silver",
+                      "skyblue", "slateblue", "steelblue", "teal", "thistle", "tomato", "violet", "wheat", "white", "whitesmoke", "slategray", "slategrey",
+                      "aquamarine", "azure","crimson", "cyan", "darkslategray", "grey","mediumorchid","navajowhite", "navy"]
+    
+    markerproteins = {
+            "Human - Swissprot" :
+            {
+                "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"], 
+                        #       "PSMC1", "PSMC2", "PSMC3"],
+                #"CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
+                #"V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
+                "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
+                "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"],
+                #"MCM complex" : ["MCM2", "MCM3", "MCM4", "MCM5", "MCM7"],
+                
+                "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"], 
+                #"Prefoldin complex" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
+                #"AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
+                "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],
+                #"AP3 adaptor / AP3-BLOC1 complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
+                #"AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1",  "AP4S1"],
+                #"Anaphas,e-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
+                #"Rnase/Mrp complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
+                "Class C, Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
+                #"Dynactin complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6", "ACTR1A", "CAPZA1"],
+                #"CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
+                #"Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
+                "Wave-2 complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
+                
+                "TREX complex / THO complex": ["ALYREF", "THOC5", "THOC2", "THOC1", "THOC3", "DDX39B"], #["THOC5", "THOC2", "THOC1"]
+                "Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
+                #"TNF-alpha/NF-kappa B signaling complex 5": ["POLR2H", "POLR1A", "POLR1B", "CUL1", "KPNA2"],
+                #"Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
+                #"Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
+                #"SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
+                #"SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
+                "CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
+                #"Retromer complex": ["VPS29", "VPS35", "VPS26A"],
+                "Respiratory chain complex I": ["NDUFB6", "NDUFB10", "NDUFA10", "NDUFA8", "NDUFA6", "NDUFB11", "NDUFB3", "NDUFB5", "NDUFAB1", "NDUFA4", "NDUFB9",
+                                                "NDUFB7", "NDUFA9", "NDUFA5", "NDUFV3", "NDUFA11", "NDUFV1", "NDUFA12", "NDUFV2", "NDUFA7", "NDUFS6", "NDUFS2",
+                                                "NDUFA2", "NDUFS8", "NDUFS1"],
+                #"RFC complex": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
+                "Nup 107-160 subcomplex": ["NUP85", "NUP37", "NUP160", "NUP98", "NUP107", "NUP133"],
+                "Multisynthetase complex": ["EEF1E1", "IARS", "DARS", "EPRS", "AIMP1", "KARS", "LARS", "RARS", "AIMP2", "MARS"],
+                #"MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
+                "GAA1-GPI8-PIGT-PIG-PIGS complex": ["PIGT", "PIGS", "PIGU", "PIGK", "GPAA1"],
+                "Frataxin complex /f1f0: ATP5L": ["SDHA", "HSPD1", "HSPA9", "AFG3L2"],
+                "F1F0-ATP synthase": ["ATP5O", "ATP5I", "ATPIF1", "ATP5A1", "ATP5F1", "ATP5B", "ATP5H", "ATP5L", "ATP5J"],
+                "Exosome": ["EXOSC1", "EXOSC3", "EXOSC8", "EXOSC4", "EXOSC2", "EXOSC10"],
+                #"Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
+                #"DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
+                #"COP9 signalosome complex / CNS-P53 complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
+                "Arp2/3 protein complex": ["ACTR2", "ARPC1B", "ARPC2", "ARPC3", "ARPC5", "ARPC4", "ACTR3"],
+                "60S ribosomal subunit, cytoplasmic": ["RPL10", "RPL10A", "RPL27", "RPL37A", "RPL7A", "RPL23A", "RPL23", "RPL31", "RPL15", "RPL26", "RPL18A", "RPL11",
+                                                    "RPL38", "RPL24","RPL36A", "RPL36", "RPL19", "RPL18", "RPL32", "RPL14", "RPL35A", "RPL29", "RPL34", "RPLP0",
+                                                    "RPL7", "RPL17", "RPL13", "RPL12", "RPL9", "RPL22", "RPLP1", "RPLP2", "RPL3", "RPL13A", "RPL35", "RPL27A",
+                                                    "RPL5", "RPL21", "RPL28", "RPL30", "RPL8", "RPL6", "RPL4"],
+                "40S ribosomal subunit, cytoplasmic": ["RPS9", "RPS18", "RPS29", "RPS4X", "RPS6", "RPS15", "FAU", "RPS26", "RPS28", "RPS21", "RPS23", "RPS25", "RPS14",
+                                                    "RPS16", "RPS3","RPSA", "RPS2", "RPS12", "RPS19", "RPS27", "RPS17", "RPS5", "RPS20", "RPS3A", "RPS7", "RPS8",
+                                                    "RPS10", "RPS15A", "RPS11", "RPS13"],#RPS24 ###RPS17;RPS17L; RPS26;RPS26P11
+                "39S ribosomal subunit, mitochondrial": ["MRPL37", "MRPL20", "MRPL9", "MRPL46", "MRPL4", "MRPL44", "MRPL17", "MRPL22", "MRPL39", "MRPL11", "MRPL47",
+                                                        "MRPL32", "MRPL48", "MRPL45", "MRPL3", "MRPL19", "MRPL28", "MRPL49", "MRPL2", "MRPL14", "MRPL12", "MRPL55",
+                                                        "MRPL10", "MRPL50", "MRPL43", "MRPL24", "MRPL53"],
+                "28S ribosomal subunit, mitochondrial": ["MRPS31", "MRPS24", "MRPS30", "MRPS28", "MRPS17", "MRPS7", "MRPS16", "MRPS23", "MRPS18B", "MRPS27", "MRPS9",
+                                                        "MRPS34", "DAP3", "MRPS15", "MRPS11", "MRPS36", "MRPS5", "MRPS35", "MRPS10", "MRPS22", "MRPS12", "MRPS6"],
+ ###"OLDmitochondrial ribosomal subunits" : ["MRPL1", "MRPL13", "MRPL15", "MRPL16", "MRPL18", "MRPL23", "MRPL30", "MRPL38", "MRPL40",#39S proteins;MRPL12;SLC25A10
+            }, 
+            "Arabidopsis - Araport" :
+            {
+                "CCT complex": ["AT3G11830", "AT5G16070", "AT5G20890", "AT5G26360", "AT1G24510", "AT3G18190", "AT3G20050", "AT3G03960"],
+                "Coatomer": ["AT1G62020", "AT4G34450", "AT4G31490", "AT1G79990", "AT1G30630", "AT4G08520"],
+                "SAGA complex": ["AT5G25150", "AT3G54610", "AT1G54360", "AT1G54140", "AT4G38130", "AT4G31720"],
+                "AP1/2": ["AT1G60070","AT2G17380", "AT4G23460", "AT5G22780", "AT1G47830", "AT5G46630", "AT1G10730"],
+                "20S proteasome": ["AT1G13060",  "AT1G21720", "AT3G22110", "AT3G22630", "AT5G40580", "AT1G16470", "AT1G47250", "AT1G53850",
+                                  "AT1G56450","AT2G27020", "AT3G60820", "AT4G31300", "AT5G35590", "AT3G51260", "AT3G53230"],
+                "cis Golgi proteins": ["AT1G05720", "AT1G07230", "AT1G10950", "AT1G15020", "AT1G18580", "AT1G20270", "AT1G29060", "AT1G29310",
+                                      "AT1G51590", "AT1G52420", "AT1G53710", "AT1G62330", "AT1G65820", "AT1G76270", "AT1G77370", "AT1G78920",
+                                      "AT2G01070", "AT2G14740", "AT2G17720", "AT2G20130", "AT2G20810", "AT2G40280", "AT2G43080", "AT2G47320",
+                                      "AT3G06300", "AT3G09090", "AT3G21160", "AT3G24160", "AT3G28480", "AT3G48280", "AT4G01210", "AT4G24530",
+                                      "AT5G04480", "AT5G06660", "AT5G14430", "AT5G14950", "AT5G18900", "AT5G27330", "AT5G47780", "AT5G65470",
+                                      "AT5G66060"],
+                "photosystem": ["AT2G33040", "AT5G13450", "ATCG00280", "AT1G31330", "AT1G29920", "ATCG00340", "ATCG00350", "AT1G61520",
+                               "ATCG00580", "ATCG00710", "AT4G12800", "AT4G10340", "AT3G08940", "AT3G54890", "ATCG00270", "ATCG00020",
+                               "AT5G13440", "AT1G55670", "AT4G22890", "AT3G47470", "AT1G45474"]
+            },
+            "Mouse - Swissprot" :
+            {
+                "STH" : ["STH"]
+            },
+        }
 
     def __init__(self, **kwargs):
         
@@ -45,147 +168,35 @@ class SpatialDataSet:
         
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
-        self.shape_dict = {} 
         
-        self.regex = {
-            "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity"
-        }
-               
-        markerprotein_human = {
-            "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"], 
-                     #       "PSMC1", "PSMC2", "PSMC3"],
-            #"CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
-            #"V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
-            "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
-            "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"],
-            #"MCM complex" : ["MCM2", "MCM3", "MCM4", "MCM5", "MCM7"],
-            
-            "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"], 
-            #"Prefoldin complex" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
-            #"AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
-            "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],
-            #"AP3 adaptor / AP3-BLOC1 complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
-            #"AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1",  "AP4S1"],
-            #"Anaphas,e-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
-            #"Rnase/Mrp complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
-            "Class C, Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
-            #"Dynactin complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6", "ACTR1A", "CAPZA1"],
-            #"CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
-            #"Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
-            "Wave-2 complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
-
-            "TREX complex / THO complex": ["ALYREF", "THOC5", "THOC2", "THOC1", "THOC3", "DDX39B"], #["THOC5", "THOC2", "THOC1"]
-            "Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
-            #"TNF-alpha/NF-kappa B signaling complex 5": ["POLR2H", "POLR1A", "POLR1B", "CUL1", "KPNA2"],
-            #"Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
-            #"Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
-            #"SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
-            #"SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
-            "CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
-            #"Retromer complex": ["VPS29", "VPS35", "VPS26A"],
-            "Respiratory chain complex I": ["NDUFB6", "NDUFB10", "NDUFA10", "NDUFA8", "NDUFA6", "NDUFB11", "NDUFB3", "NDUFB5", "NDUFAB1", "NDUFA4", "NDUFB9",
-                                            "NDUFB7", "NDUFA9", "NDUFA5", "NDUFV3", "NDUFA11", "NDUFV1", "NDUFA12", "NDUFV2", "NDUFA7", "NDUFS6", "NDUFS2",
-                                            "NDUFA2", "NDUFS8", "NDUFS1"],
-            #"RFC complex": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
-            "Nup 107-160 subcomplex": ["NUP85", "NUP37", "NUP160", "NUP98", "NUP107", "NUP133"],
-            "Multisynthetase complex": ["EEF1E1", "IARS", "DARS", "EPRS", "AIMP1", "KARS", "LARS", "RARS", "AIMP2", "MARS"],
-            #"MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
-            "GAA1-GPI8-PIGT-PIG-PIGS complex": ["PIGT", "PIGS", "PIGU", "PIGK", "GPAA1"],
-            "Frataxin complex /f1f0: ATP5L": ["SDHA", "HSPD1", "HSPA9", "AFG3L2"],
-            "F1F0-ATP synthase": ["ATP5O", "ATP5I", "ATPIF1", "ATP5A1", "ATP5F1", "ATP5B", "ATP5H", "ATP5L", "ATP5J"],
-            "Exosome": ["EXOSC1", "EXOSC3", "EXOSC8", "EXOSC4", "EXOSC2", "EXOSC10"],
-            #"Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
-            #"DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
-            #"COP9 signalosome complex / CNS-P53 complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
-            "Arp2/3 protein complex": ["ACTR2", "ARPC1B", "ARPC2", "ARPC3", "ARPC5", "ARPC4", "ACTR3"],
-            "60S ribosomal subunit, cytoplasmic": ["RPL10", "RPL10A", "RPL27", "RPL37A", "RPL7A", "RPL23A", "RPL23", "RPL31", "RPL15", "RPL26", "RPL18A", "RPL11",
-                                                   "RPL38", "RPL24","RPL36A", "RPL36", "RPL19", "RPL18", "RPL32", "RPL14", "RPL35A", "RPL29", "RPL34", "RPLP0",
-                                                   "RPL7", "RPL17", "RPL13", "RPL12", "RPL9", "RPL22", "RPLP1", "RPLP2", "RPL3", "RPL13A", "RPL35", "RPL27A",
-                                                   "RPL5", "RPL21", "RPL28", "RPL30", "RPL8", "RPL6", "RPL4"],
-            "40S ribosomal subunit, cytoplasmic": ["RPS9", "RPS18", "RPS29", "RPS4X", "RPS6", "RPS15", "FAU", "RPS26", "RPS28", "RPS21", "RPS23", "RPS25", "RPS14",
-                                                   "RPS16", "RPS3","RPSA", "RPS2", "RPS12", "RPS19", "RPS27", "RPS17", "RPS5", "RPS20", "RPS3A", "RPS7", "RPS8",
-                                                   "RPS10", "RPS15A", "RPS11", "RPS13"],#RPS24 ###RPS17;RPS17L; RPS26;RPS26P11
-            "39S ribosomal subunit, mitochondrial": ["MRPL37", "MRPL20", "MRPL9", "MRPL46", "MRPL4", "MRPL44", "MRPL17", "MRPL22", "MRPL39", "MRPL11", "MRPL47",
-                                                     "MRPL32", "MRPL48", "MRPL45", "MRPL3", "MRPL19", "MRPL28", "MRPL49", "MRPL2", "MRPL14", "MRPL12", "MRPL55",
-                                                     "MRPL10", "MRPL50", "MRPL43", "MRPL24", "MRPL53"],
-            "28S ribosomal subunit, mitochondrial": ["MRPS31", "MRPS24", "MRPS30", "MRPS28", "MRPS17", "MRPS7", "MRPS16", "MRPS23", "MRPS18B", "MRPS27", "MRPS9",
-                                                     "MRPS34", "DAP3", "MRPS15", "MRPS11", "MRPS36", "MRPS5", "MRPS35", "MRPS10", "MRPS22", "MRPS12", "MRPS6"],
- ###"OLDmitochondrial ribosomal subunits" : ["MRPL1", "MRPL13", "MRPL15", "MRPL16", "MRPL18", "MRPL23", "MRPL30", "MRPL38", "MRPL40",#39S proteins;MRPL12;SLC25A10
-        }
-        
-        self.markerproteins = markerprotein_human if "markerprotein" not in kwargs.keys() else kwargs["markerprotein"]
-        
-        self.all_markerproteins = {
-            "Human - Swissprot" : markerprotein_human, 
-            "Arabidopsis - Araport" : {
-                "CCT complex": ["AT3G11830", "AT5G16070", "AT5G20890", "AT5G26360", "AT1G24510", "AT3G18190", "AT3G20050", "AT3G03960"],
-                "Coatomer": ["AT1G62020", "AT4G34450", "AT4G31490", "AT1G79990", "AT1G30630", "AT4G08520"],
-                "SAGA complex": ["AT5G25150", "AT3G54610", "AT1G54360", "AT1G54140", "AT4G38130", "AT4G31720"],
-                "AP1/2": ["AT1G60070","AT2G17380", "AT4G23460", "AT5G22780", "AT1G47830", "AT5G46630", "AT1G10730"],
-                "20S proteasome": ["AT1G13060",  "AT1G21720", "AT3G22110", "AT3G22630", "AT5G40580", "AT1G16470", "AT1G47250", "AT1G53850",
-                                  "AT1G56450","AT2G27020", "AT3G60820", "AT4G31300", "AT5G35590", "AT3G51260", "AT3G53230"],
-                "cis Golgi proteins": ["AT1G05720", "AT1G07230", "AT1G10950", "AT1G15020", "AT1G18580", "AT1G20270", "AT1G29060", "AT1G29310",
-                                      "AT1G51590", "AT1G52420", "AT1G53710", "AT1G62330", "AT1G65820", "AT1G76270", "AT1G77370", "AT1G78920",
-                                      "AT2G01070", "AT2G14740", "AT2G17720", "AT2G20130", "AT2G20810", "AT2G40280", "AT2G43080", "AT2G47320",
-                                      "AT3G06300", "AT3G09090", "AT3G21160", "AT3G24160", "AT3G28480", "AT3G48280", "AT4G01210", "AT4G24530",
-                                      "AT5G04480", "AT5G06660", "AT5G14430", "AT5G14950", "AT5G18900", "AT5G27330", "AT5G47780", "AT5G65470",
-                                      "AT5G66060"],
-                "photosystem": ["AT2G33040", "AT5G13450", "ATCG00280", "AT1G31330", "AT1G29920", "ATCG00340", "ATCG00350", "AT1G61520",
-                               "ATCG00580", "ATCG00710", "AT4G12800", "AT4G10340", "AT3G08940", "AT3G54890", "ATCG00270", "ATCG00020",
-                               "AT5G13440", "AT1G55670", "AT4G22890", "AT3G47470", "AT1G45474"]
-            },
-            "Mouse - Swissprot" : {
-                "STH" : ["STH"]
-            },
-        }
-        
-        self.acquisition_set_dict = {
-            "LFQ" : ["[Ll][Ff][Qq].[Ii]ntensity", "[Mm][Ss]/[Mm][Ss].[cC]ount", "[Ii]ntensity"],
-            "LFQ Spectronaut" : ["LFQ intensity", "MS/MS count"],
-            "SILAC" : [ "[Rr]atio.[Hh]/[Ll](?!.[Vv]aria|.[Cc]ount)","[Rr]atio.[Hh]/[Ll].[Vv]ariability.\[%\]", "[Rr]atio.[Hh]/[Ll].[cC]ount"]
-        }
-        
-        self.fraction_dict = {
-            "1K": "01K","3K": "03K", "6K": "06K", "12K": "12K", "24K": "24K", "80K": "80K", "01K": "01K","03K": "03K", "06K": "06K", "012K": "12K", "024K": "24K",
-            "080K": "80K", "Cyt": "Cyt", "Mem": "Mem", "Nuc": "Nuc", "Prot": "Prot", "cyt": "Cyt", "mem": "Mem", "nuc": "Nuc", "Prot": "Prot", "prot": "Prot"
-        }
-        
-        self.Spectronaut_columnRenaming = {
-            "R.Condition": "Map", "PG.Genes" : "Gene names", "PG.Qvalue": "Q-value", "PG.Cscore":"C-Score", 
-            "PG.ProteinGroups" : "Protein IDs", "PG.RunEvidenceCount" : "MS/MS count", "PG.Quantity" : "LFQ intensity"
-        }
-        
-        self.css_color = ["#b2df8a", "#6a3d9a", "#e31a1c", "#b15928", "#fdbf6f", "#ff7f00", "#cab2d6", "#fb9a99", "#1f78b4", "#ffff99", "#a6cee3", 
-                          "#33a02c", "blue", "orange", "goldenrod", "lightcoral", "magenta", "brown", "lightpink", "red", "turquoise",
-                          "khaki", "darkgoldenrod","darkturquoise", "darkviolet", "greenyellow", "darksalmon", "hotpink", "indianred", "indigo","darkolivegreen", 
-                          "coral", "aqua", "beige", "bisque", "black", "blanchedalmond", "blueviolet", "burlywood", "cadetblue", "yellowgreen", "chartreuse",
-                          "chocolate", "cornflowerblue", "cornsilk", "darkblue", "darkcyan", "darkgray", "darkgrey", "darkgreen", "darkkhaki", "darkmagenta", 
-                          "darkorange", "darkorchid", "darkred", "darkseagreen", "darkslateblue", "snow", "springgreen", "darkslategrey", "mediumpurple", "oldlace", 
-                          "olive", "lightseagreen", "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue", "firebrick", "floralwhite", "forestgreen", 
-                          "fuchsia", "gainsboro", "ghostwhite", "gold", "gray", "ivory", "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcyan",
-                          "lightgoldenrodyellow", "lightgray", "lightgrey", "lightgreen", "lightsalmon", "lightskyblue", "lightslategray", "lightslategrey",
-                          "lightsteelblue", "lightyellow", "lime", "limegreen", "linen", "maroon", "mediumaquamarine", "mediumblue", "mediumseagreen",
-                          "mediumslateblue", "mediumspringgreen", "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin",
-                          "olivedrab", "orangered", "orchid", "palegoldenrod", "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
-                          "pink", "plum", "powderblue", "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell", "sienna", "silver",
-                          "skyblue", "slateblue", "steelblue", "teal", "thistle", "tomato", "violet", "wheat", "white", "whitesmoke", "slategray", "slategrey",
-                          "aquamarine", "azure","crimson", "cyan", "darkslategray", "grey","mediumorchid","navajowhite", "navy"]
+        self.markerproteins = self.markerproteins["Human - Swissprot"] if "organism" not in kwargs.keys() else self.markerproteins[kwargs["organism"]]
 
         
-    def data_reading(self):
+    def data_reading(self, filename=None, content=None):
         """
-        Data import. However, not performed within the class but in Interactive_Data_model.ipynb - independent of Spectronaut/MQ output 
+        Data import. Can read the df_original from a file or buffer.
 
         Args:
             self:
                 filename: string
                 regex["imported_columns"] : dictionry; columns that correspond to this regular expression will be imported
+            filename: default None, to use the class attribute. Otherwise overwrites the class attribute upon success.
+            content: default None, to use the filename. Any valid input to pd.read_csv can be provided, e.g. a StringIO buffer.
 
         Returns:
             self.df_orginal: raw, unprocessed dataframe, single level column index
         """
+        
+        # use instance attribute if no filename is provided
+        if filename is None:
+            filename = self.filename
+        # if no buffer is provided for the content read straight from the file
+        if content is None:
+            content = filename
 
-        self.df_original = pd.read_csv(self.filename, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
+        self.df_original = pd.read_csv(content, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
+        
+        self.filename = filename
 
         return self.df_original
     
@@ -194,8 +205,8 @@ class SpatialDataSet:
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
         characterized by a flat column index. These tasks is performed by following functions:
-            def indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern, shape_dict)
-            def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern, shape_dict)
+            def indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
+            def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
             def stringency_silac(df_index)
             def normalization_01_silac(df_stringency_mapfracstacked):
             def logarithmization_silac(df_stringency_mapfracstacked):
@@ -225,7 +236,9 @@ class SpatialDataSet:
                                                                 "summed MS/MS counts" : ...
                                                                }
         """
-    
+        
+        shape_dict = {}
+        
         def indexingdf(self):
             """
             For data output from MaxQuant, all columns - except of "MS/MS count" and "LFQ intensity" (LFQ) | "Ratio H/L count", "Ratio H/L variability [%]" 
@@ -268,7 +281,7 @@ class SpatialDataSet:
             df_original.columns = multiindex
             df_original.sort_index(1, inplace=True)
             
-            self.shape_dict["Original size"] = df_original.shape
+            shape_dict["Original size"] = df_original.shape
             
             df_index = df_original.xs(
                     np.nan, 0, "Reverse").xs(
@@ -277,7 +290,7 @@ class SpatialDataSet:
             )
             
             df_index.replace(0, np.nan, inplace=True)
-            self.shape_dict["Shape after categorical filtering"] = df_index.shape
+            shape_dict["Shape after categorical filtering"] = df_index.shape
 
             fraction_wCyt = list(df_index.columns.get_level_values("Fraction").unique())
             
@@ -334,7 +347,7 @@ class SpatialDataSet:
             df_index = df_index.unstack(["Map", "Fraction"])
             df_index.replace(0, np.nan, inplace=True)
             df_index.rename(columns=self.fraction_dict, inplace=True)
-            self.shape_dict["Original size"]=df_index.shape
+            shape_dict["Original size"]=df_index.shape
             
             fraction_wCyt = list(df_index.columns.get_level_values("Fraction").unique())
             #Cyt is removed only if it is not an NMC split
@@ -384,7 +397,7 @@ class SpatialDataSet:
             df_countvarfiltered_stacked = df_stack.loc[[count>=self.RatioHLcount_1 or (count>=self.RatioHLcount_2 and var<self.RatioVariability) 
                                             for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack["Ratio H/L count"])]]
             
-            self.shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] = df_countvarfiltered_stacked.shape
+            shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] = df_countvarfiltered_stacked.shape
 
             # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
             # np.median([...]): only entries, that are not NANs are considered
@@ -397,7 +410,7 @@ class SpatialDataSet:
             # dataframe is grouped (Map, id), that allows the filtering for complete profiles
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.groupby(["Map", "id"]).filter(lambda x: len(x)>=len(self.fractions))
             
-            self.shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.shape
+            shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.shape
             
             # Ratio H/L is converted into Ratio L/H
             df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1/x)
@@ -506,13 +519,13 @@ class SpatialDataSet:
 
             df_index = df_index.stack("Map")
 
-            # sorting the level 0, in order to have LFQ intensity -	MS/MS count instead of continuous alternation
+            # sorting the level 0, in order to have LFQ intensity -    MS/MS count instead of continuous alternation
             df_index.sort_index(axis=1, level=0, inplace=True)
             
             # "MS/MS count"-column: take the sum over the fractions; if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
             df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= (len(self.fractions) * self.summed_MSMS_counts)]
 
-            self.shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.shape
+            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.shape
             
             df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
 
@@ -522,7 +535,7 @@ class SpatialDataSet:
                     np.invert(np.isnan(x)).rolling(window=self.consecutiveLFQi).sum() >=
                     self.consecutiveLFQi), axis=1)]
             
-            self.shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.shape
+            shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.shape
 
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.copy().stack("Fraction")
             
@@ -605,7 +618,7 @@ class SpatialDataSet:
 
 
         if self.acquisition == "SILAC":
-            df_index = indexingdf(self)#self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern, self.shape_dict)
+            df_index = indexingdf(self)#self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern)
             
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
@@ -619,17 +632,15 @@ class SpatialDataSet:
 
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
-            self.analysis_summary_dict["changes in shape after filtering"] = self.shape_dict.copy() 
-            self.analysis_parameters = {"acquisition" : self.acquisition, 
-                                        "filename" : self.filename,
-                                        "Ratio H/L count 1 (>=X)" : self.RatioHLcount_1,
-                                        "Ratio H/L count 2 (>=Y, var<Z)" : self.RatioHLcount_2,
-                                        "Ratio variability (<Z, count>=Y)" : self.RatioVariability
-                                       }
-            self.analysis_summary_dict["Analysis parameters"] = self.analysis_parameters.copy() 
-            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
-            self.shape_dict.clear()
-            self.analysis_parameters.clear() 
+            self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
+            analysis_parameters = {"acquisition" : self.acquisition, 
+                                   "filename" : self.filename,
+                                   "Ratio H/L count 1 (>=X)" : self.RatioHLcount_1,
+                                   "Ratio H/L count 2 (>=Y, var<Z)" : self.RatioHLcount_2,
+                                   "Ratio variability (<Z, count>=Y)" : self.RatioVariability
+                                  }
+            self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
+            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy()
             #return self.df_01_stacked
 
 
@@ -650,16 +661,14 @@ class SpatialDataSet:
                 name="normalized profile - mean").reset_index().to_json() 
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
-            self.analysis_summary_dict["changes in shape after filtering"] = self.shape_dict.copy() 
-            self.analysis_parameters = {"acquisition" : self.acquisition, 
-                                        "filename" : self.filename,
-                                        "consecutive data points" : self.consecutiveLFQi,
-                                        "summed MS/MS counts" : self.summed_MSMS_counts
-                                       }
-            self.analysis_summary_dict["Analysis parameters"] = self.analysis_parameters.copy() 
-            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
-            self.shape_dict.clear()
-            self.analysis_parameters.clear() 
+            self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
+            analysis_parameters = {"acquisition" : self.acquisition, 
+                                   "filename" : self.filename,
+                                   "consecutive data points" : self.consecutiveLFQi,
+                                   "summed MS/MS counts" : self.summed_MSMS_counts
+                                  }
+            self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
+            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy()
             #return self.df_01_stacked
 
         else:
@@ -1821,7 +1830,7 @@ class SpatialDataSet:
             self:
                 df_01_filtered_combined: df, which contains 0/1 normalized data across all maps (mean) - for all experiments and for the specified protein clusters
                     columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
-                    index: "Protein IDs", "Gene names", "Compartment", "Experiment", "Map", "Exp_Map"	
+                    index: "Protein IDs", "Gene names", "Compartment", "Experiment", "Map", "Exp_Map"    
                 df_01_mean_filtered_combined: df, which contains (global) 0/1 normalized data across all maps (mean) - for all experiments and for all protein IDs, 
                     that are consistent throughout all experiments
                     columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
@@ -1949,7 +1958,7 @@ class SpatialDataSet:
                 df_global_pca_for_plotting: PCA processed dataframe
                     index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
                     columns: "PC1", "PC2", "PC3"
-                    contains all protein IDs, that are consistent throughout all experiments	
+                    contains all protein IDs, that are consistent throughout all experiments    
     
         Returns:
             pca_figure: global PCA plot, clusters based on the markerset based (df_eLifeMarkers) are color coded. 
@@ -2305,7 +2314,7 @@ class SpatialDataSet:
         Args:
             self:
                 df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
-                                            "data completeness of profiles", "Experiment"	
+                                            "data completeness of profiles", "Experiment"    
                 multi_choice: list of experiment names
                 
         Returns: 
