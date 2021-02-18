@@ -180,23 +180,23 @@ class SpatialDataSet:
             self:
                 filename: string
                 regex["imported_columns"] : dictionry; columns that correspond to this regular expression will be imported
-			filename: default None, to use the class attribute. Otherwise overwrites the class attribute upon success.
-			content: default None, to use the filename. Any valid input to pd.read_csv can be provided, e.g. a StringIO buffer.
+            filename: default None, to use the class attribute. Otherwise overwrites the class attribute upon success.
+            content: default None, to use the filename. Any valid input to pd.read_csv can be provided, e.g. a StringIO buffer.
 
         Returns:
             self.df_orginal: raw, unprocessed dataframe, single level column index
         """
-		
-		# use instance attribute if no filename is provided
-		if filename is None:
-			filename = self.filename
-		# if no buffer is provided for the content read straight from the file
-		if content is None:
-			content = filename
+        
+        # use instance attribute if no filename is provided
+        if filename is None:
+            filename = self.filename
+        # if no buffer is provided for the content read straight from the file
+        if content is None:
+            content = filename
 
         self.df_original = pd.read_csv(content, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
-		
-		self.filename = filename
+        
+        self.filename = filename
 
         return self.df_original
     
@@ -517,7 +517,7 @@ class SpatialDataSet:
 
             df_index = df_index.stack("Map")
 
-            # sorting the level 0, in order to have LFQ intensity -	MS/MS count instead of continuous alternation
+            # sorting the level 0, in order to have LFQ intensity -    MS/MS count instead of continuous alternation
             df_index.sort_index(axis=1, level=0, inplace=True)
             
             # "MS/MS count"-column: take the sum over the fractions; if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
@@ -1830,7 +1830,7 @@ class SpatialDataSet:
             self:
                 df_01_filtered_combined: df, which contains 0/1 normalized data across all maps (mean) - for all experiments and for the specified protein clusters
                     columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
-                    index: "Protein IDs", "Gene names", "Compartment", "Experiment", "Map", "Exp_Map"	
+                    index: "Protein IDs", "Gene names", "Compartment", "Experiment", "Map", "Exp_Map"    
                 df_01_mean_filtered_combined: df, which contains (global) 0/1 normalized data across all maps (mean) - for all experiments and for all protein IDs, 
                     that are consistent throughout all experiments
                     columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
@@ -1958,7 +1958,7 @@ class SpatialDataSet:
                 df_global_pca_for_plotting: PCA processed dataframe
                     index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
                     columns: "PC1", "PC2", "PC3"
-                    contains all protein IDs, that are consistent throughout all experiments	
+                    contains all protein IDs, that are consistent throughout all experiments    
     
         Returns:
             pca_figure: global PCA plot, clusters based on the markerset based (df_eLifeMarkers) are color coded. 
@@ -2314,7 +2314,7 @@ class SpatialDataSet:
         Args:
             self:
                 df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
-                                            "data completeness of profiles", "Experiment"	
+                                            "data completeness of profiles", "Experiment"    
                 multi_choice: list of experiment names
                 
         Returns: 
