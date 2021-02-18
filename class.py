@@ -620,16 +620,15 @@ class SpatialDataSet:
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = self.shape_dict.copy() 
-            self.analysis_parameters = {"acquisition" : self.acquisition, 
-                                        "filename" : self.filename,
-                                        "Ratio H/L count 1 (>=X)" : self.RatioHLcount_1,
-                                        "Ratio H/L count 2 (>=Y, var<Z)" : self.RatioHLcount_2,
-                                        "Ratio variability (<Z, count>=Y)" : self.RatioVariability
-                                       }
-            self.analysis_summary_dict["Analysis parameters"] = self.analysis_parameters.copy() 
+            analysis_parameters = {"acquisition" : self.acquisition, 
+                                   "filename" : self.filename,
+                                   "Ratio H/L count 1 (>=X)" : self.RatioHLcount_1,
+                                   "Ratio H/L count 2 (>=Y, var<Z)" : self.RatioHLcount_2,
+                                   "Ratio variability (<Z, count>=Y)" : self.RatioVariability
+                                  }
+            self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
             self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
             self.shape_dict.clear()
-            self.analysis_parameters.clear() 
             #return self.df_01_stacked
 
 
@@ -651,15 +650,14 @@ class SpatialDataSet:
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = self.shape_dict.copy() 
-            self.analysis_parameters = {"acquisition" : self.acquisition, 
-                                        "filename" : self.filename,
-                                        "consecutive data points" : self.consecutiveLFQi,
-                                        "summed MS/MS counts" : self.summed_MSMS_counts
-                                       }
-            self.analysis_summary_dict["Analysis parameters"] = self.analysis_parameters.copy() 
+            analysis_parameters = {"acquisition" : self.acquisition, 
+                                   "filename" : self.filename,
+                                   "consecutive data points" : self.consecutiveLFQi,
+                                   "summed MS/MS counts" : self.summed_MSMS_counts
+                                  }
+            self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
             self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
             self.shape_dict.clear()
-            self.analysis_parameters.clear() 
             #return self.df_01_stacked
 
         else:
