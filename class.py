@@ -45,7 +45,6 @@ class SpatialDataSet:
         
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
-        self.shape_dict = {} 
         
         self.regex = {
             "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity"
@@ -205,8 +204,8 @@ class SpatialDataSet:
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
         characterized by a flat column index. These tasks is performed by following functions:
-            def indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern, shape_dict)
-            def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern, shape_dict)
+            def indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
+            def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
             def stringency_silac(df_index)
             def normalization_01_silac(df_stringency_mapfracstacked):
             def logarithmization_silac(df_stringency_mapfracstacked):
@@ -236,7 +235,9 @@ class SpatialDataSet:
                                                                 "summed MS/MS counts" : ...
                                                                }
         """
-    
+        
+        shape_dict = {}
+        
         def indexingdf(self):
             """
             For data output from MaxQuant, all columns - except of "MS/MS count" and "LFQ intensity" (LFQ) | "Ratio H/L count", "Ratio H/L variability [%]" 
@@ -279,7 +280,7 @@ class SpatialDataSet:
             df_original.columns = multiindex
             df_original.sort_index(1, inplace=True)
             
-            self.shape_dict["Original size"] = df_original.shape
+            shape_dict["Original size"] = df_original.shape
             
             df_index = df_original.xs(
                     np.nan, 0, "Reverse").xs(
@@ -288,7 +289,7 @@ class SpatialDataSet:
             )
             
             df_index.replace(0, np.nan, inplace=True)
-            self.shape_dict["Shape after categorical filtering"] = df_index.shape
+            shape_dict["Shape after categorical filtering"] = df_index.shape
 
             fraction_wCyt = list(df_index.columns.get_level_values("Fraction").unique())
             
@@ -345,7 +346,7 @@ class SpatialDataSet:
             df_index = df_index.unstack(["Map", "Fraction"])
             df_index.replace(0, np.nan, inplace=True)
             df_index.rename(columns=self.fraction_dict, inplace=True)
-            self.shape_dict["Original size"]=df_index.shape
+            shape_dict["Original size"]=df_index.shape
             
             fraction_wCyt = list(df_index.columns.get_level_values("Fraction").unique())
             #Cyt is removed only if it is not an NMC split
@@ -395,7 +396,7 @@ class SpatialDataSet:
             df_countvarfiltered_stacked = df_stack.loc[[count>=self.RatioHLcount_1 or (count>=self.RatioHLcount_2 and var<self.RatioVariability) 
                                             for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack["Ratio H/L count"])]]
             
-            self.shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] = df_countvarfiltered_stacked.shape
+            shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] = df_countvarfiltered_stacked.shape
 
             # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
             # np.median([...]): only entries, that are not NANs are considered
@@ -408,7 +409,7 @@ class SpatialDataSet:
             # dataframe is grouped (Map, id), that allows the filtering for complete profiles
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.groupby(["Map", "id"]).filter(lambda x: len(x)>=len(self.fractions))
             
-            self.shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.shape
+            shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.shape
             
             # Ratio H/L is converted into Ratio L/H
             df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1/x)
@@ -523,7 +524,7 @@ class SpatialDataSet:
             # "MS/MS count"-column: take the sum over the fractions; if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
             df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= (len(self.fractions) * self.summed_MSMS_counts)]
 
-            self.shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.shape
+            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.shape
             
             df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
 
@@ -533,7 +534,7 @@ class SpatialDataSet:
                     np.invert(np.isnan(x)).rolling(window=self.consecutiveLFQi).sum() >=
                     self.consecutiveLFQi), axis=1)]
             
-            self.shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.shape
+            shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.shape
 
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.copy().stack("Fraction")
             
@@ -616,7 +617,7 @@ class SpatialDataSet:
 
 
         if self.acquisition == "SILAC":
-            df_index = indexingdf(self)#self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern, self.shape_dict)
+            df_index = indexingdf(self)#self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern)
             
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
@@ -630,7 +631,7 @@ class SpatialDataSet:
 
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
-            self.analysis_summary_dict["changes in shape after filtering"] = self.shape_dict.copy() 
+            self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
                                    "Ratio H/L count 1 (>=X)" : self.RatioHLcount_1,
@@ -638,8 +639,7 @@ class SpatialDataSet:
                                    "Ratio variability (<Z, count>=Y)" : self.RatioVariability
                                   }
             self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
-            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
-            self.shape_dict.clear()
+            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy()
             #return self.df_01_stacked
 
 
@@ -660,15 +660,14 @@ class SpatialDataSet:
                 name="normalized profile - mean").reset_index().to_json() 
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
-            self.analysis_summary_dict["changes in shape after filtering"] = self.shape_dict.copy() 
+            self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
                                    "consecutive data points" : self.consecutiveLFQi,
                                    "summed MS/MS counts" : self.summed_MSMS_counts
                                   }
             self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
-            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
-            self.shape_dict.clear()
+            self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy()
             #return self.df_01_stacked
 
         else:
