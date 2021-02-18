@@ -172,7 +172,7 @@ class SpatialDataSet:
                           "aquamarine", "azure","crimson", "cyan", "darkslategray", "grey","mediumorchid","navajowhite", "navy"]
 
         
-    def data_reading(self):
+    def data_reading(self, filename=None, content=None):
         """
         Data import. However, not performed within the class but in Interactive_Data_model.ipynb - independent of Spectronaut/MQ output 
 
@@ -184,8 +184,17 @@ class SpatialDataSet:
         Returns:
             self.df_orginal: raw, unprocessed dataframe, single level column index
         """
+		
+		# use instance attribute if no filename is provided
+		if filename is None:
+			filename = self.filename
+		# if no buffer is provided for the content read straight from the file
+		if content is None:
+			content = filename
 
-        self.df_original = pd.read_csv(self.filename, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
+        self.df_original = pd.read_csv(content, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
+		
+		self.filename = filename
 
         return self.df_original
     
