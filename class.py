@@ -174,12 +174,14 @@ class SpatialDataSet:
         
     def data_reading(self, filename=None, content=None):
         """
-        Data import. However, not performed within the class but in Interactive_Data_model.ipynb - independent of Spectronaut/MQ output 
+        Data import. Can read the df_original from a file or buffer.
 
         Args:
             self:
                 filename: string
                 regex["imported_columns"] : dictionry; columns that correspond to this regular expression will be imported
+			filename: default None, to use the class attribute. Otherwise overwrites the class attribute upon success.
+			content: default None, to use the filename. Any valid input to pd.read_csv can be provided, e.g. a StringIO buffer.
 
         Returns:
             self.df_orginal: raw, unprocessed dataframe, single level column index
