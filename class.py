@@ -130,9 +130,7 @@ class SpatialDataSet:
         
         self.name_pattern = ".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)" if "name_pattern" not in kwargs.keys() else kwargs["name_pattern"]
         
-        self.json_filename = "AnalysedDatasets.json" if "json_filename" not in kwargs.keys() else kwargs["json_filename"]
-        
-        self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
+        #self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
         
         self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs["cluster_of_interest"]
         
@@ -141,13 +139,12 @@ class SpatialDataSet:
         self.summed_MSMS_counts = 2 if "summed_MSMS_counts" not in kwargs.keys() else kwargs["summed_MSMS_counts"]
         self.consecutiveLFQi = 4 if "consecutiveLFQi" not in kwargs.keys() else kwargs["consecutiveLFQi"]
         
-        self.RatioHLcount_1 = 3 if "RatioHLcount_1" not in kwargs.keys() else kwargs["RatioHLcount_1"]
-        self.RatioHLcount_2 = 2 if "RatioHLcount_2" not in kwargs.keys() else kwargs["RatioHLcount_2"]
+        self.RatioHLcount = 2 if "RatioHLcount" not in kwargs.keys() else kwargs["RatioHLcount"]
         self.RatioVariability = 30 if "RatioVariability" not in kwargs.keys() else kwargs["RatioVariability"]
             
         self.collapse_maps = False if "collapse_maps" not in kwargs.keys() else kwargs["collapse_maps"]
         self.collapse_cluster = False if "collapse_cluster" not in kwargs.keys() else kwargs["collapse_cluster"]
-        self.collapse_maps_PCA = False if "collapse_maps_PCA" not in kwargs.keys() else kwargs["collapse_maps_PCA"]
+        #self.collapse_maps_PCA = False if "collapse_maps_PCA" not in kwargs.keys() else kwargs["collapse_maps_PCA"]
         self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
         
         self.clusters_for_ranking = ["x", "y"] if "clusters_for_ranking" not in kwargs.keys() else kwargs["clusters_for_ranking"]
@@ -157,8 +154,8 @@ class SpatialDataSet:
         
         self.expname = "Experiment_name" if "expname" not in kwargs.keys() else kwargs["expname"]      
         
-        self.x_PCA = "PC1" if "x_PCA" not in kwargs.keys() else kwargs["x_PCA"]
-        self.y_PCA = "PC3" if "y_PCA" not in kwargs.keys() else kwargs["y_PCA"]
+        #self.x_PCA = "PC1" if "x_PCA" not in kwargs.keys() else kwargs["x_PCA"]
+        #self.y_PCA = "PC3" if "y_PCA" not in kwargs.keys() else kwargs["y_PCA"]
         
         self.x_PCA_comp = "PC1" if "x_PCA_comp" not in kwargs.keys() else kwargs["x_PCA_comp"]
         self.y_PCA_comp = "PC3" if "y_PCA_comp" not in kwargs.keys() else kwargs["y_PCA_comp"]
@@ -373,8 +370,7 @@ class SpatialDataSet:
 
             Args:
                 df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Type
-                RatioHLcount_1: int, 3
-                RatioHLcount_2: int, 2
+                RatioHLcount: int, 2
                 RatioVariability: int, 30 
                 df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index 
                 fractions: list of fractions e.g. ["01K", "03K", ...]
@@ -394,7 +390,7 @@ class SpatialDataSet:
             # only if the filtering parameters are fulfilled the data will be introduced into df_countvarfiltered_stacked
             #defasult setting: RatioHLcount_1 = 3 ; RatioHLcount_2 = 2 ; RatioVariability = 30
             
-            df_countvarfiltered_stacked = df_stack.loc[[count>=self.RatioHLcount_1 or (count>=self.RatioHLcount_2 and var<self.RatioVariability) 
+            df_countvarfiltered_stacked = df_stack.loc[[count>self.RatioHLcount or (count>=self.RatioHLcount and var<self.RatioVariability) 
                                             for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack["Ratio H/L count"])]]
             
             shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] = df_countvarfiltered_stacked.shape
@@ -905,7 +901,7 @@ class SpatialDataSet:
         self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps
 
         
-    def global_pca_plot(self):
+    def global_pca_plot(self, map_of_interest, cluster_of_interest, x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
         """"
         PCA plot will be generated
 
@@ -919,12 +915,12 @@ class SpatialDataSet:
             pca_figure: global PCA plot
         """
         
-        if self.collapse_maps_PCA == False:
-            df_global_pca = self.df_pca.unstack("Map").swaplevel(0,1, axis=1)[self.map_of_interest].reset_index()
+        if collapse_maps == False:
+            df_global_pca = self.df_pca.unstack("Map").swaplevel(0,1, axis=1)[map_of_interest].reset_index()
         else:
             df_global_pca = self.df_pca_combined.reset_index()
             
-        for i in self.markerproteins[self.cluster_of_interest]:
+        for i in self.markerproteins[cluster_of_interest]:
             df_global_pca.loc[df_global_pca["Gene names"] == i, "Compartment"] = "Selection"
 
         compartments = self.df_eLifeMarkers["Compartment"].unique()
@@ -933,19 +929,19 @@ class SpatialDataSet:
         compartment_color["undefined"] = "lightgrey"
         
         fig_global_pca = px.scatter(data_frame=df_global_pca,
-                                    x=self.x_PCA,
-                                    y=self.y_PCA,
+                                    x=x_PCA,
+                                    y=y_PCA,
                                     color="Compartment",
                                     color_discrete_map=compartment_color,
-                                    title= "Protein subcellular localization by PCA for {}".format(self.map_of_interest) 
-                                        if self.collapse_maps_PCA == False else "Protein subcellular localization by PCA of combined maps", 
+                                    title= "Protein subcellular localization by PCA for {}".format(map_of_interest) 
+                                        if collapse_maps == False else "Protein subcellular localization by PCA of combined maps", 
                                     hover_data=["Protein IDs", "Gene names", "Compartment"],
                                     opacity=0.9
                                     )
         return fig_global_pca                         
             
             
-    def pca_plot(self):
+    def pca_plot(self, cluster_of_interest):
         """
         PCA plot will be generated
 
@@ -966,7 +962,7 @@ class SpatialDataSet:
         try:
             for maps in map_names:
                 df_setofproteins_PCA = pd.DataFrame()
-                for marker in markerproteins[self.cluster_of_interest]:
+                for marker in markerproteins[cluster_of_interest]:
                     if marker not in df_pca_all_marker_cluster_maps.index.get_level_values("Gene names"):
                         continue
                     plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Gene names", "Map"],
@@ -993,14 +989,14 @@ class SpatialDataSet:
                                                      ))
 
             pca_figure.update_layout(autosize=False, width=500, height=500,
-                                  title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest))
+                                  title="PCA plot for <br>the protein cluster: {}".format(cluster_of_interest))
             return pca_figure
         
         except:
             return "This protein cluster was not quantified"
             
 
-    def profiles_plot(self):
+    def profiles_plot(self, map_of_interest, cluster_of_interest):
         """
         The function allows the plotting of filtered and normalized spatial proteomic data using plotly.express.
         The median profile is also calculated and displayed
@@ -1014,7 +1010,7 @@ class SpatialDataSet:
         """
         
         try:
-            df_setofproteins = self.cluster_isolation_df(self.map_of_interest, self.cluster_of_interest)
+            df_setofproteins = self.cluster_isolation_df(map_of_interest, cluster_of_interest)
             
             df_setofproteins = df_setofproteins.copy()
     
@@ -1029,8 +1025,7 @@ class SpatialDataSet:
                                                 x="Fraction", 
                                                 y="normalized profile",
                                                 color="Gene names",
-                                                title="Relative abundance profile for {} of <br>the protein cluster: {}".format(self.map_of_interest,
-                                                                                                                                self.cluster_of_interest)
+                                                title="Relative abundance profile for {} of <br>the protein cluster: {}".format(map_of_interest, cluster_of_interest)
                                                )
     
             df_setofproteins_median.name = "normalized profile"
@@ -1117,7 +1112,7 @@ class SpatialDataSet:
         self.genenames_sortedout_list = genenames_sortedout_list
 
 
-    def quantification_overview(self):
+    def quantification_overview(self, cluster_of_interest):
         """
         
         Args:
@@ -1129,7 +1124,7 @@ class SpatialDataSet:
             df
         """
         
-        df_quantification_overview = self.df_allclusters_onlynorm_fracunstacked_unfiltered.xs(self.cluster_of_interest, 
+        df_quantification_overview = self.df_allclusters_onlynorm_fracunstacked_unfiltered.xs(cluster_of_interest, 
                                                                  level="Cluster").unstack("Map")[self.df_allclusters_onlynorm_fracunstacked_unfiltered.columns[0]]
         df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i=="Gene names"])
         df_quantification_overview = df_quantification_overview.notnull().replace({True: "x", False: "-"})
@@ -1199,7 +1194,7 @@ class SpatialDataSet:
         return df_distance_to_median_fracunstacked
 
     
-    def distance_boxplot(self):
+    def distance_boxplot(self, cluster_of_interest):
         """
         A box plot for 1 desired cluster, and across all maps is generated displaying the distribution of the e.g.
         Manhattan distance.
@@ -1228,7 +1223,7 @@ class SpatialDataSet:
         # for each individual map and a defined cluster data will be extracted from the dataframe
         # "df_distance_map_cluster_gene_in_index" and appended to the new dataframe df_cluster_xmaps_distance_with_index
             for maps in map_names:
-                plot_try = df_distance_map_cluster_gene_in_index.xs((self.cluster_of_interest, maps),
+                plot_try = df_distance_map_cluster_gene_in_index.xs((cluster_of_interest, maps),
                                                                     level=["Cluster", "Map"], drop_level=False)
                 df_cluster_xmaps_distance_with_index = df_cluster_xmaps_distance_with_index.append(plot_try)
                 
@@ -1260,7 +1255,7 @@ class SpatialDataSet:
             ))  
     
             distance_boxplot_figure.update_layout(
-                title="Manhattan distance distribution for <br>the protein cluster: {}".format(self.cluster_of_interest),
+                title="Manhattan distance distribution for <br>the protein cluster: {}".format(cluster_of_interest),
                 autosize=False,
                 showlegend=False,
                 width=500,
@@ -1285,7 +1280,7 @@ class SpatialDataSet:
             
 
         
-    def distance_to_median_boxplot(self):
+    def distance_to_median_boxplot(self, cluster_of_interest):
         """
         A box plot for 1 desired cluster, across all maps and fractions is generated displaying the
         distribution of the distance to the median. For each fraction, one box plot will be displayed.
@@ -1319,7 +1314,7 @@ class SpatialDataSet:
         # for each individual map and a defined cluster data will be extracted from the dataframe
         # "df_allclusters_onlynorm_fracunstacked" and appended to the new dataframe df_boxplot_manymaps
             for maps in map_names:
-                plot_try = df_allclusters_onlynorm_fracunstacked.xs((self.cluster_of_interest, maps), level=["Cluster", "Map"], drop_level=False)
+                plot_try = df_allclusters_onlynorm_fracunstacked.xs((cluster_of_interest, maps), level=["Cluster", "Map"], drop_level=False)
                 df_boxplot_manymaps = df_boxplot_manymaps.append(plot_try)
             
             self.df_boxplot_manymaps = df_boxplot_manymaps
@@ -1341,7 +1336,7 @@ class SpatialDataSet:
                                                        facet_row="Fraction",
                                                        boxmode="overlay", height=300 * 5, width=250 * 4, points="all",
                                                        hover_name="Gene names",
-                                                       title="Distribution of the distance to the median for <br>the protein cluster: {}".format(self.cluster_of_interest))
+                                                       title="Distribution of the distance to the median for <br>the protein cluster: {}".format(cluster_of_interest))
     
             return distance_to_median_boxplot_figure
             
