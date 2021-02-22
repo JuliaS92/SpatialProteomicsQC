@@ -123,6 +123,11 @@ class SpatialDataSet:
             },
         }
 
+    df_eLifeMarkers = pd.read_csv("eLife_markers.txt", sep="\t", comment="#",
+                                       usecols=lambda x: bool(re.match("Gene name|Compartment", x)))
+    df_eLifeMarkers = df_eLifeMarkers.rename(columns={"Gene name":"Gene names"})
+    df_eLifeMarkers = df_eLifeMarkers.astype({"Gene names": "str"})
+
     def __init__(self, filename, expname, acquisition, **kwargs):
         
         self.filename = filename
@@ -141,7 +146,8 @@ class SpatialDataSet:
                 self.RatioVariability = kwargs["RatioVariability"]
                 del kwargs["RatioVariability"]
                        
-        elif acquisition == "LFQ" or acquisition == "LFQ Spectronaut":
+        #elif acquisition == "LFQ" or acquisition == "LFQ Spectronaut":
+        else:
             if "summed_MSMS_counts" not in kwargs.keys():
                 self.summed_MSMS_counts = 2
             if "summed_MSMS_counts" in kwargs.keys():
@@ -205,14 +211,16 @@ class SpatialDataSet:
         if content is None:
             content = filename
 
-        self.df_original = pd.read_csv(BytesIO(content), sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
+        self.df_original = pd.read_csv(content, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
+        
+        assert self.df_original.shape[0]>10 and self.df_original.shape[1]>5
         
         self.filename = filename
 
         return self.df_original
     
 
-    def processingdf(self, summed_MS_counts=None, consecutiveLFQi=None, RatioHLcount=None, 
+    def processingdf(self, summed_MSMS_counts=None, consecutiveLFQi=None, RatioHLcount=None, 
     RatioVariability=None):
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
@@ -249,9 +257,16 @@ class SpatialDataSet:
                                                                }
         """
         
-
-        
-
+        if self.acquisition == "SILAC":
+            if RatioHLcount is None:
+                RatioHLcount = self.RatioHLcount
+            if RatioVariability is None:
+                RatioVariability = self.RatioVariability
+        else:
+            if summed_MSMS_counts is None:
+                summed_MSMS_counts = self.summed_MSMS_counts
+            if consecutiveLFQi is None:
+                consecutiveLFQi = self.consecutiveLFQi
             
         shape_dict = {}
         
@@ -633,12 +648,12 @@ class SpatialDataSet:
 
 
         if self.acquisition == "SILAC":
-            if not RatioHLcount:
-                RatioHLcount = self.RatioHLcount
-            if not RatioVariability:
-                RatioVariability = self.RatioVariability
+            #if not RatioHLcount:
+            #    RatioHLcount = self.RatioHLcount
+            #if not RatioVariability:
+            #    RatioVariability = self.RatioVariability
                 
-            df_index = indexingdf(self)
+            df_index = indexingdf()
             
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
@@ -665,15 +680,15 @@ class SpatialDataSet:
 
         elif self.acquisition == "LFQ" or self.acquisition == "LFQ Spectronaut":
         
-            if not summed_MS_counts:
-                summed_MS_counts = self.summed_MS_counts
-            if not consecutiveLFQi:
-                consecutiveLFQi = self.consecutiveLFQi
+            #if not summed_MS_counts:
+            #    summed_MS_counts = self.summed_MS_counts
+            #if not consecutiveLFQi:
+            #    consecutiveLFQi = self.consecutiveLFQi
         
             if self.acquisition == "LFQ":
-                df_index = indexingdf(self)
+                df_index = indexingdf()
             elif self.acquisition == "LFQ Spectronaut":
-                df_index = spectronaut_LFQ_indexingdf(self)
+                df_index = spectronaut_LFQ_indexingdf()
             
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
