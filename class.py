@@ -123,28 +123,46 @@ class SpatialDataSet:
             },
         }
 
-    def __init__(self, **kwargs):
+    def __init__(self, filename, expname, acquisition, **kwargs):
         
-        # df_original contains all information of the raw file; tab separated file is imported,
-        self.filename = "6_deep_maps.txt" if "filename" not in kwargs.keys() else kwargs["filename"]
+        self.filename = filename
+        self.expname = expname
+        self.acquisition = acquisition
         
+        if acquisition == "SILAC":
+            if "RatioHLcount" not in kwargs.keys():
+                self.RatioHLcount = 2
+            if "RatioHLcount" in kwargs.keys():
+                self.RatioHLcount = kwargs["RatioHLcount"]
+                del kwargs["RatioHLcount"]
+            if "RatioVariability" not in kwargs.keys():
+                self.RatioVariability = 30
+            if "RatioVariability" in kwargs.keys():
+                self.RatioVariability = kwargs["RatioVariability"]
+                del kwargs["RatioVariability"]
+                       
+        elif acquisition == "LFQ" or acquisition == "LFQ Spectronaut":
+            if "summed_MSMS_counts" not in kwargs.keys():
+                self.summed_MSMS_counts = 2
+            if "summed_MSMS_counts" in kwargs.keys():
+                self.summed_MSMS_counts = kwargs["summed_MSMS_counts"]
+                del kwargs["summed_MSMS_counts"]
+            if "consecutiveLFQi" not in kwargs.keys():
+                self.consecutiveLFQi = 4
+            if "consecutiveLFQi" in kwargs.keys():
+                self.consecutiveLFQi = kwargs["consecutiveLFQi"]
+                del kwargs["consecutiveLFQi"]        
+        
+
         self.name_pattern = ".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)" if "name_pattern" not in kwargs.keys() else kwargs["name_pattern"]
-        
-        #self.map_of_interest = "MAP1" if "map_of_interest" not in kwargs.keys() else kwargs["map_of_interest"]
         
         self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs["cluster_of_interest"]
         
         self.cluster_of_interest_comparison = "Proteasome" if "cluster_of_interest_comparison" not in kwargs.keys() else kwargs["cluster_of_interest_comparison"]
 
-        self.summed_MSMS_counts = 2 if "summed_MSMS_counts" not in kwargs.keys() else kwargs["summed_MSMS_counts"]
-        self.consecutiveLFQi = 4 if "consecutiveLFQi" not in kwargs.keys() else kwargs["consecutiveLFQi"]
-        
-        self.RatioHLcount = 2 if "RatioHLcount" not in kwargs.keys() else kwargs["RatioHLcount"]
-        self.RatioVariability = 30 if "RatioVariability" not in kwargs.keys() else kwargs["RatioVariability"]
-            
+     
         self.collapse_maps = False if "collapse_maps" not in kwargs.keys() else kwargs["collapse_maps"]
         self.collapse_cluster = False if "collapse_cluster" not in kwargs.keys() else kwargs["collapse_cluster"]
-        #self.collapse_maps_PCA = False if "collapse_maps_PCA" not in kwargs.keys() else kwargs["collapse_maps_PCA"]
         self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
         
         self.clusters_for_ranking = ["x", "y"] if "clusters_for_ranking" not in kwargs.keys() else kwargs["clusters_for_ranking"]
@@ -152,15 +170,10 @@ class SpatialDataSet:
         self.multi_choice = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
         self.multi_choice_venn = ["x", "y"] if "multi_choice_venn" not in kwargs.keys() else kwargs["multi_choice_venn"]
         
-        self.expname = "Experiment_name" if "expname" not in kwargs.keys() else kwargs["expname"]      
-        
-        #self.x_PCA = "PC1" if "x_PCA" not in kwargs.keys() else kwargs["x_PCA"]
-        #self.y_PCA = "PC3" if "y_PCA" not in kwargs.keys() else kwargs["y_PCA"]
         
         self.x_PCA_comp = "PC1" if "x_PCA_comp" not in kwargs.keys() else kwargs["x_PCA_comp"]
         self.y_PCA_comp = "PC3" if "y_PCA_comp" not in kwargs.keys() else kwargs["y_PCA_comp"]
                 
-        self.acquisition = "SILAC" if "acquisition" not in kwargs.keys() else kwargs["acquisition"]
         self.ref_exp = "Exp_name" if "ref_exp" not in kwargs.keys() else kwargs["ref_exp"]
         
         self.analysed_datasets_dict = {}
@@ -171,7 +184,8 @@ class SpatialDataSet:
         
     def data_reading(self, filename=None, content=None):
         """
-        Data import. Can read the df_original from a file or buffer.
+        Data import. Can read the df_original from a file or buffer. 
+        df_original contains all information of the raw file; tab separated file is imported,
 
         Args:
             self:
@@ -191,14 +205,15 @@ class SpatialDataSet:
         if content is None:
             content = filename
 
-        self.df_original = pd.read_csv(content, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
+        self.df_original = pd.read_csv(BytesIO(content), sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)))
         
         self.filename = filename
 
         return self.df_original
     
 
-    def processingdf(self):
+    def processingdf(self, summed_MS_counts=None, consecutiveLFQi=None, RatioHLcount=None, 
+    RatioVariability=None):
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
         characterized by a flat column index. These tasks is performed by following functions:
@@ -234,9 +249,13 @@ class SpatialDataSet:
                                                                }
         """
         
+
+        
+
+            
         shape_dict = {}
         
-        def indexingdf(self):
+        def indexingdf():
             """
             For data output from MaxQuant, all columns - except of "MS/MS count" and "LFQ intensity" (LFQ) | "Ratio H/L count", "Ratio H/L variability [%]" 
             (SILAC) - will be set as index. A multiindex will be generated, containing "Set" ("MS/MS count", "LFQ intensity"|  "Ratio H/L count", "Ratio H/L
@@ -303,7 +322,7 @@ class SpatialDataSet:
             return df_index
 
 
-        def spectronaut_LFQ_indexingdf(self):
+        def spectronaut_LFQ_indexingdf():
             """
             For data generated from the Spectronaut software, columns will be renamed, such it fits in the scheme of MaxQuant output data.  Subsequently, all
             columns - except of "MS/MS count" and "LFQ intensity" will be set as index. A multiindex will be generated, containing "Set" ("MS/MS count" and 
@@ -388,9 +407,9 @@ class SpatialDataSet:
             # filtering for sufficient number of quantifications (count in "Ratio H/L count"), taken variability (var in Ratio H/L variability [%]) into account
             # zip: allows direct comparison of count and var
             # only if the filtering parameters are fulfilled the data will be introduced into df_countvarfiltered_stacked
-            #defasult setting: RatioHLcount_1 = 3 ; RatioHLcount_2 = 2 ; RatioVariability = 30
+            #default setting: RatioHLcount = 2 ; RatioVariability = 30
             
-            df_countvarfiltered_stacked = df_stack.loc[[count>self.RatioHLcount or (count>=self.RatioHLcount and var<self.RatioVariability) 
+            df_countvarfiltered_stacked = df_stack.loc[[count>RatioHLcount or (count>=RatioHLcount and var<RatioVariability) 
                                             for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack["Ratio H/L count"])]]
             
             shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] = df_countvarfiltered_stacked.shape
@@ -614,7 +633,12 @@ class SpatialDataSet:
 
 
         if self.acquisition == "SILAC":
-            df_index = indexingdf(self)#self.df_original, self.acquisition_set_dict, self.acquisition, self.fraction_dict, self.name_pattern)
+            if not RatioHLcount:
+                RatioHLcount = self.RatioHLcount
+            if not RatioVariability:
+                RatioVariability = self.RatioVariability
+                
+            df_index = indexingdf(self)
             
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
@@ -631,8 +655,7 @@ class SpatialDataSet:
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
-                                   "Ratio H/L count 1 (>=X)" : self.RatioHLcount_1,
-                                   "Ratio H/L count 2 (>=Y, var<Z)" : self.RatioHLcount_2,
+                                   "Ratio H/L count" : self.RatioHLcount,
                                    "Ratio variability (<Z, count>=Y)" : self.RatioVariability
                                   }
             self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
@@ -641,6 +664,12 @@ class SpatialDataSet:
 
 
         elif self.acquisition == "LFQ" or self.acquisition == "LFQ Spectronaut":
+        
+            if not summed_MS_counts:
+                summed_MS_counts = self.summed_MS_counts
+            if not consecutiveLFQi:
+                consecutiveLFQi = self.consecutiveLFQi
+        
             if self.acquisition == "LFQ":
                 df_index = indexingdf(self)
             elif self.acquisition == "LFQ Spectronaut":
@@ -2299,7 +2328,12 @@ class SpatialDataSet:
                                             width=250*len(multi_choice),
                                             height=500,
                                            )
+                                           
             #return pn.Column(pn.Row(fig_globalRanking), pn.Row(fig_globalRanking2))
+            
+            
+            
+            
             return fig_globalRanking
     
     def quantity_pr_pg_barplot_comparison(self):
