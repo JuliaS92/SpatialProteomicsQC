@@ -123,16 +123,20 @@ class SpatialDataSet:
             },
         }
 
-    df_eLifeMarkers = pd.read_csv("eLife_markers.txt", sep="\t", comment="#",
+    df_organellarMarkerSet = pd.read_csv("eLife_markers.txt", sep="\t", comment="#",
                                        usecols=lambda x: bool(re.match("Gene name|Compartment", x)))
-    df_eLifeMarkers = df_eLifeMarkers.rename(columns={"Gene name":"Gene names"})
-    df_eLifeMarkers = df_eLifeMarkers.astype({"Gene names": "str"})
+    df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
+    df_organellarMarkerSet = df_organellarMarkerSet.astype({"Gene names": "str"})
 
-    def __init__(self, filename, expname, acquisition, **kwargs):
+    def __init__(self, filename, expname, acquisition, name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)" , **kwargs):
         
         self.filename = filename
         self.expname = expname
         self.acquisition = acquisition
+        self.name_pattern = name_pattern
+        
+        self.fractions, self.map_names = [], []
+        self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
         
         if acquisition == "SILAC":
             if "RatioHLcount" not in kwargs.keys():
@@ -157,29 +161,23 @@ class SpatialDataSet:
                 self.consecutiveLFQi = 4
             if "consecutiveLFQi" in kwargs.keys():
                 self.consecutiveLFQi = kwargs["consecutiveLFQi"]
-                del kwargs["consecutiveLFQi"]        
+                del kwargs["consecutiveLFQi"]
         
-
-        self.name_pattern = ".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)" if "name_pattern" not in kwargs.keys() else kwargs["name_pattern"]
+        #self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs["cluster_of_interest"]
         
-        self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs["cluster_of_interest"]
         
-        self.cluster_of_interest_comparison = "Proteasome" if "cluster_of_interest_comparison" not in kwargs.keys() else kwargs["cluster_of_interest_comparison"]
-
-     
+        #both: single analysis and comparison
         self.collapse_maps = False if "collapse_maps" not in kwargs.keys() else kwargs["collapse_maps"]
+        
+        #only for comparison
         self.collapse_cluster = False if "collapse_cluster" not in kwargs.keys() else kwargs["collapse_cluster"]
         self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
-        
+        self.cluster_of_interest_comparison = "Proteasome" if "cluster_of_interest_comparison" not in kwargs.keys() else kwargs["cluster_of_interest_comparison"]
         self.clusters_for_ranking = ["x", "y"] if "clusters_for_ranking" not in kwargs.keys() else kwargs["clusters_for_ranking"]
-        
         self.multi_choice = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
         self.multi_choice_venn = ["x", "y"] if "multi_choice_venn" not in kwargs.keys() else kwargs["multi_choice_venn"]
-        
-        
         self.x_PCA_comp = "PC1" if "x_PCA_comp" not in kwargs.keys() else kwargs["x_PCA_comp"]
-        self.y_PCA_comp = "PC3" if "y_PCA_comp" not in kwargs.keys() else kwargs["y_PCA_comp"]
-                
+        self.y_PCA_comp = "PC3" if "y_PCA_comp" not in kwargs.keys() else kwargs["y_PCA_comp"]       
         self.ref_exp = "Exp_name" if "ref_exp" not in kwargs.keys() else kwargs["ref_exp"]
         
         self.analysed_datasets_dict = {}
@@ -220,8 +218,7 @@ class SpatialDataSet:
         return self.df_original
     
 
-    def processingdf(self, summed_MSMS_counts=None, consecutiveLFQi=None, RatioHLcount=None, 
-    RatioVariability=None):
+    def processingdf(self, name_pattern=None, summed_MSMS_counts=None, consecutiveLFQi=None, RatioHLcount=None, RatioVariability=None):
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
         characterized by a flat column index. These tasks is performed by following functions:
@@ -256,6 +253,9 @@ class SpatialDataSet:
                                                                 "summed MS/MS counts" : ...
                                                                }
         """
+        
+        if name_pattern is None:
+            name_pattern = self.name_pattern
         
         if self.acquisition == "SILAC":
             if RatioHLcount is None:
@@ -406,7 +406,7 @@ class SpatialDataSet:
                 df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Type
                 RatioHLcount: int, 2
                 RatioVariability: int, 30 
-                df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index 
+                df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index 
                 fractions: list of fractions e.g. ["01K", "03K", ...]
 
             Returns:
@@ -446,10 +446,10 @@ class SpatialDataSet:
             df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1/x)
             
             #Annotation with marker genes
-            df_eLifeMarkers = self.df_eLifeMarkers
+            df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_eLifeMarkers, how="outer", on="Gene names", indicator=True)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="outer", on="Gene names", indicator=True)
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[df_stringency_mapfracstacked["_merge"].isin(["both", 
                                                                                                                          "left_only"])].drop("_merge", axis=1)
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
@@ -530,7 +530,7 @@ class SpatialDataSet:
             Args:
                 df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Typ
                 self:
-                    df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index
+                    df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
                     fractions: list of fractions e.g. ["01K", "03K", ...]
                     summed_MSMS_counts: int, 2
                     consecutiveLFQi: int, 4
@@ -570,10 +570,10 @@ class SpatialDataSet:
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.copy().stack("Fraction")
             
             #Annotation with marker genes
-            df_eLifeMarkers = self.df_eLifeMarkers
+            df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_eLifeMarkers, 
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, 
                                                                               how="outer", on="Gene names", indicator=True)
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[df_stringency_mapfracstacked["_merge"].isin(["both", 
                                                                                                                          "left_only"])].drop("_merge", axis=1)
@@ -951,7 +951,7 @@ class SpatialDataSet:
 
         Args:
             self:
-                df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index
+                df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
                 df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3",
                     index: "Gene names", "Protein IDs", "C-Score", "Q-value", "Map", "Compartment", 
 
@@ -967,7 +967,7 @@ class SpatialDataSet:
         for i in self.markerproteins[cluster_of_interest]:
             df_global_pca.loc[df_global_pca["Gene names"] == i, "Compartment"] = "Selection"
 
-        compartments = self.df_eLifeMarkers["Compartment"].unique()
+        compartments = self.df_organellarMarkerSet["Compartment"].unique()
         compartment_color = dict(zip(compartments, self.css_color))
         compartment_color["Selection"] = "black"
         compartment_color["undefined"] = "lightgrey"
@@ -1091,7 +1091,6 @@ class SpatialDataSet:
         except:
             return "This protein cluster was not quantified"
             
-
 
     def multiple_iterations(self):
         """
@@ -1322,8 +1321,7 @@ class SpatialDataSet:
         except:
             self.cache_cluster_quantified = False
             
-
-        
+    
     def distance_to_median_boxplot(self, cluster_of_interest):
         """
         A box plot for 1 desired cluster, across all maps and fractions is generated displaying the
@@ -1991,7 +1989,7 @@ class SpatialDataSet:
     
         Args:
             self:
-                df_eLifeMarkers: df, columns: "Gene names", "Compartment", no index
+                df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
                 multi_choice: list of experiment names
                 css_color: list of colors
                 df_global_pca_for_plotting: PCA processed dataframe
@@ -2000,7 +1998,7 @@ class SpatialDataSet:
                     contains all protein IDs, that are consistent throughout all experiments    
     
         Returns:
-            pca_figure: global PCA plot, clusters based on the markerset based (df_eLifeMarkers) are color coded. 
+            pca_figure: global PCA plot, clusters based on the markerset based (df_organellarMarkerSet) are color coded. 
         """
         
         multi_choice = self.multi_choice
@@ -2008,7 +2006,7 @@ class SpatialDataSet:
         df_global_pca_exp = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(self.multi_choice)]
         df_global_pca_exp.reset_index(inplace=True)
 
-        compartments = list(self.df_eLifeMarkers["Compartment"].unique())
+        compartments = list(self.df_organellarMarkerSet["Compartment"].unique())
         compartment_color = dict(zip(compartments, self.css_color))
         compartment_color["Selection"] = "black"
         compartment_color["undefined"] = "lightgrey"
@@ -2350,6 +2348,7 @@ class SpatialDataSet:
             
             
             return fig_globalRanking
+                 
     
     def quantity_pr_pg_barplot_comparison(self):
         """
@@ -2570,4 +2569,5 @@ class SpatialDataSet:
     
         
     def __repr__(self):
-        return "This is a spatial dataset with {} lines.".format(len(self.df_original))
+        return str(self.__dict__)
+        #return "This is a spatial dataset with {} lines.".format(len(self.df_original))
