@@ -36,7 +36,7 @@ class SpatialDataSet:
                       "skyblue", "slateblue", "steelblue", "teal", "thistle", "tomato", "violet", "wheat", "white", "whitesmoke", "slategray", "slategrey",
                       "aquamarine", "azure","crimson", "cyan", "darkslategray", "grey","mediumorchid","navajowhite", "navy"]
     
-    markerproteins = {
+    markerproteins_set = {
             "Human - Swissprot" :
             {
                 "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"], 
@@ -163,27 +163,18 @@ class SpatialDataSet:
                 self.consecutiveLFQi = kwargs["consecutiveLFQi"]
                 del kwargs["consecutiveLFQi"]
         
-        #self.cluster_of_interest = "Proteasome" if "cluster_of_interest" not in kwargs.keys() else kwargs["cluster_of_interest"]
-        
-        
-        #both: single analysis and comparison
-        self.collapse_maps = False if "collapse_maps" not in kwargs.keys() else kwargs["collapse_maps"]
-        
-        #only for comparison
-        self.collapse_cluster = False if "collapse_cluster" not in kwargs.keys() else kwargs["collapse_cluster"]
-        self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
-        self.cluster_of_interest_comparison = "Proteasome" if "cluster_of_interest_comparison" not in kwargs.keys() else kwargs["cluster_of_interest_comparison"]
-        self.clusters_for_ranking = ["x", "y"] if "clusters_for_ranking" not in kwargs.keys() else kwargs["clusters_for_ranking"]
-        self.multi_choice = ["x", "y"] if "multi_choice" not in kwargs.keys() else kwargs["multi_choice"]
-        self.multi_choice_venn = ["x", "y"] if "multi_choice_venn" not in kwargs.keys() else kwargs["multi_choice_venn"]
-        self.x_PCA_comp = "PC1" if "x_PCA_comp" not in kwargs.keys() else kwargs["x_PCA_comp"]
-        self.y_PCA_comp = "PC3" if "y_PCA_comp" not in kwargs.keys() else kwargs["y_PCA_comp"]       
-        self.ref_exp = "Exp_name" if "ref_exp" not in kwargs.keys() else kwargs["ref_exp"]
+        #self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
+        if "organism" not in kwargs.keys():
+            self.markerproteins = self.markerproteins_set["Human - Swissprot"]
+        else:
+            assert kwargs["organism"] in self.markerproteins_set.keys()
+            self.markerproteins = self.markerproteins_set[kwargs["organism"]]
+            del kwargs["organism"]
         
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
         
-        self.markerproteins = self.markerproteins["Human - Swissprot"] if "organism" not in kwargs.keys() else self.markerproteins[kwargs["organism"]]
+        
 
         
     def data_reading(self, filename=None, content=None):
@@ -945,7 +936,7 @@ class SpatialDataSet:
         self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps
 
         
-    def global_pca_plot(self, map_of_interest, cluster_of_interest, x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
+    def global_pca_plot(self, map_of_interest="Map1", cluster_of_interest="Proteasome", x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
         """"
         PCA plot will be generated
 
@@ -985,7 +976,7 @@ class SpatialDataSet:
         return fig_global_pca                         
             
             
-    def pca_plot(self, cluster_of_interest):
+    def pca_plot(self, cluster_of_interest="Proteasome"):
         """
         PCA plot will be generated
 
@@ -1040,7 +1031,7 @@ class SpatialDataSet:
             return "This protein cluster was not quantified"
             
 
-    def profiles_plot(self, map_of_interest, cluster_of_interest):
+    def profiles_plot(self, map_of_interest="Map1", cluster_of_interest="Proteasome"):
         """
         The function allows the plotting of filtered and normalized spatial proteomic data using plotly.express.
         The median profile is also calculated and displayed
@@ -1155,7 +1146,7 @@ class SpatialDataSet:
         self.genenames_sortedout_list = genenames_sortedout_list
 
 
-    def quantification_overview(self, cluster_of_interest):
+    def quantification_overview(self, cluster_of_interest="Proteasome"):
         """
         
         Args:
@@ -1237,7 +1228,7 @@ class SpatialDataSet:
         return df_distance_to_median_fracunstacked
 
     
-    def distance_boxplot(self, cluster_of_interest):
+    def distance_boxplot(self, cluster_of_interest="Proteasome"):
         """
         A box plot for 1 desired cluster, and across all maps is generated displaying the distribution of the e.g.
         Manhattan distance.
@@ -1322,7 +1313,7 @@ class SpatialDataSet:
             self.cache_cluster_quantified = False
             
     
-    def distance_to_median_boxplot(self, cluster_of_interest):
+    def distance_to_median_boxplot(self, cluster_of_interest="Proteasome"):
         """
         A box plot for 1 desired cluster, across all maps and fractions is generated displaying the
         distribution of the distance to the median. For each fraction, one box plot will be displayed.
@@ -1638,7 +1629,32 @@ class SpatialDataSet:
         SVM_dict.clear()
 
 
-    def read_jsonFile(self):
+
+class SpatialDataSetComparison:
+    
+        
+    css_color = SpatialDataSet.css_color
+    markerproteins_set = SpatialDataSet.markerproteins_set
+
+
+    def __init__(self, clusters_for_ranking=["Proteasome", "Lysosome"], ref_exp="Exp2", **kwargs):
+        
+        self.clusters_for_ranking = clusters_for_ranking
+        self.ref_exp = ref_exp
+        self.json_dict = {}
+        #self.fractions, self.map_names = [], []  #self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
+        #collapse_maps,collapse_cluster,  cluster_of_interest_comparison, multi_choice, multi_choice_venn, x_PCA_comp, y_PCA_comp
+        
+        
+        if "organism" not in kwargs.keys():
+            self.markerproteins = self.markerproteins_set["Human - Swissprot"]
+        else:
+            assert kwargs["organism"] in self.markerproteins_set.keys()
+            self.markerproteins = self.markerproteins_set[kwargs["organism"]]
+            del kwargs["organism"]
+        
+
+    def read_jsonFile(self): #, content=None
         """
         Read-out of the JSON-file and currently analysed dataset, stored in "analysed_datasets_dict". It wil create df_distances_combined ("Gene
         names", "Cluster" are stacked; "Map" and Experiment names (are not stored in an additional level name) are unstacked. Layout will be 
@@ -1725,10 +1741,12 @@ class SpatialDataSet:
         json_dict = self.json_dict
         
         #add experiments that are not stored in AnalysedDAtasets.json for comparison
-        try:
-            json_dict.update(self.analysed_datasets_dict)
-        except:
-            pass
+        #try:
+        #if len(SpatialDataSet.analysed_datasets_dict.keys())>=1:
+        #    json_dict.update(SpatialDataSet.analysed_datasets_dict)
+        ##except:
+        #else:
+        #    pass
     
         acquisition_loaded = []
         unique_proteins_total = {}
@@ -1917,7 +1935,7 @@ class SpatialDataSet:
         self.df_global_pca_for_plotting = df_global_pca_annotated
             
             
-    def plot_pca_comparison(self):
+    def plot_pca_comparison(self, collapse_maps=False, cluster_of_interest_comparison="Proteasome", multi_choice=["Exp1", "Exp2"]):
         """
         A PCA plot for desired experiments (multi_choice) and 1 desired cluster is generated.
         Either the maps for every single experiment are displayed individually or in a combined manner
@@ -1939,9 +1957,8 @@ class SpatialDataSet:
     
         df_pca_for_plotting = self.df_pca_for_plotting.copy()
         markerproteins = self.markerproteins
-        multi_choice = self.multi_choice        
 
-        if self.collapse_maps == False:
+        if collapse_maps == False:
             map_or_exp_names= df_pca_for_plotting[df_pca_for_plotting.index.get_level_values("Experiment").isin(multi_choice)].index.get_level_values("Exp_Map").unique()
             level_of_interest = "Exp_Map"
             symbol_pca = "Experiment"     
@@ -1952,7 +1969,7 @@ class SpatialDataSet:
         try:
             df_setofproteins_PCA = pd.DataFrame()
             for map_or_exp in map_or_exp_names:
-                    for marker in markerproteins[self.cluster_of_interest_comparison]:
+                    for marker in markerproteins[cluster_of_interest_comparison]:
                         if marker not in df_pca_for_plotting.index.get_level_values("Gene names"):
                             continue
                         plot_try_pca = df_pca_for_plotting.xs((marker, map_or_exp), level=["Gene names", level_of_interest], drop_level=False)
@@ -1983,7 +2000,8 @@ class SpatialDataSet:
             return "This protein cluster was not identified in across all experiments"
     
                 
-    def plot_global_pca_comparison(self):
+    def plot_global_pca_comparison(self, cluster_of_interest_comparison="Proteasome", x_PCA="PC1", y_PCA="PC3", 
+    markerset_or_cluster=False, multi_choice=["Exp1", "Exp2"]):
         """"
         PCA plot will be generated
     
@@ -2001,12 +2019,11 @@ class SpatialDataSet:
             pca_figure: global PCA plot, clusters based on the markerset based (df_organellarMarkerSet) are color coded. 
         """
         
-        multi_choice = self.multi_choice
         
-        df_global_pca_exp = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(self.multi_choice)]
+        df_global_pca_exp = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(multi_choice)]
         df_global_pca_exp.reset_index(inplace=True)
 
-        compartments = list(self.df_organellarMarkerSet["Compartment"].unique())
+        compartments = list(SpatialDataSet.df_organellarMarkerSet["Compartment"].unique())
         compartment_color = dict(zip(compartments, self.css_color))
         compartment_color["Selection"] = "black"
         compartment_color["undefined"] = "lightgrey"
@@ -2018,11 +2035,11 @@ class SpatialDataSet:
         cluster_color["Undefined"] = "lightgrey"
                 
         
-        if self.markerset_or_cluster == True:
+        if markerset_or_cluster == True:
             df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster!="Undefined"].sort_values(by="Cluster")
             df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster=="Undefined"].append(df_global_pca)
         else:
-            for i in self.markerproteins[self.cluster_of_interest_comparison]:
+            for i in self.markerproteins[cluster_of_interest_comparison]:
                 df_global_pca_exp.loc[df_global_pca_exp["Gene names"] == i, "Compartment"] = "Selection"
             df_global_pca = df_global_pca_exp.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca_exp["Compartment"], 
                                                                                                      categories=[x for x in compartments], 
@@ -2030,10 +2047,10 @@ class SpatialDataSet:
             df_global_pca.sort_values(["Compartment_lexicographic_sort", "Experiment"], inplace=True)
             
         fig_global_pca = px.scatter(data_frame=df_global_pca,
-                                    x=self.x_PCA_comp,
-                                    y=self.y_PCA_comp,
-                                    color="Compartment" if self.markerset_or_cluster == False else "Cluster",
-                                    color_discrete_map=compartment_color if self.markerset_or_cluster == False else cluster_color,
+                                    x=x_PCA,
+                                    y=y_PCA,
+                                    color="Compartment" if markerset_or_cluster == False else "Cluster",
+                                    color_discrete_map=compartment_color if markerset_or_cluster == False else cluster_color,
                                     title="Protein subcellular localization by PCA",
                                     hover_data=["Protein IDs", "Gene names", "Compartment"],
                                     facet_col="Experiment",
@@ -2056,14 +2073,14 @@ class SpatialDataSet:
         
         
         fig_global_pca.update_layout(autosize=False, 
-                                     width=1500 if self.markerset_or_cluster == False else 1600, 
+                                     width=1500 if markerset_or_cluster == False else 1600, 
                                      height=500*(int(len(multi_choice) / 2) + (len(multi_choice) % 2 > 0))
                                     )
         
         return fig_global_pca 
     
     
-    def distance_boxplot_comparison(self):
+    def distance_boxplot_comparison(self, cluster_of_interest_comparison="Proteasome", collapse_maps=False, multi_choice=["Exp1", "Exp2"]):
         """
         A box plot for desired experiments (multi_choice) and 1 desired cluster is generated displaying the distribution of the e.g.
         Manhattan distance. Either the maps for every single experiment are displayed individually or in a combined manner.
@@ -2082,8 +2099,6 @@ class SpatialDataSet:
             distance_boxplot_figure: boxplot. Along the x-axis the maps, along the y-axis the distances are shown
         """
         
-        multi_choice = self.multi_choice
-        
         #an error massage, if no Experiments are selected, will be displayed already, that is why: return ""
         if len(multi_choice)>=1:
             pass
@@ -2095,11 +2110,11 @@ class SpatialDataSet:
         df_distance_comp["Experiment_lexicographic_sort"] = pd.Categorical(df_distance_comp["Experiment"], categories=self.sorting_list, ordered=True)
         df_distance_comp.sort_values(["Experiment_lexicographic_sort", "Map"], inplace=True)
         
-        if self.collapse_maps == False:
+        if collapse_maps == False:
             #get only values form experiment of interest
             df_distance_selectedExp = df_distance_comp.loc[df_distance_comp["Experiment"].isin(multi_choice)]
             #get only values form cluster of interest
-            df_distance_selectedExp = df_distance_selectedExp.loc[df_distance_selectedExp["Cluster"]==self.cluster_of_interest_comparison]
+            df_distance_selectedExp = df_distance_selectedExp.loc[df_distance_selectedExp["Cluster"]==cluster_of_interest_comparison]
             
             if df_distance_selectedExp.shape[0] == 0:
                 self.cache_cluster_quantified = False
@@ -2121,7 +2136,7 @@ class SpatialDataSet:
                     
                 individual_distance_boxplot_figure.update_layout(boxmode="group", 
                                                                  xaxis_tickangle=0, 
-                                                                 title="Manhattan distance distribution for <br>the protein cluster: {}".format(self.cluster_of_interest_comparison),
+                                                                 title="Manhattan distance distribution for <br>the protein cluster: {}".format(cluster_of_interest_comparison),
                                                                  autosize=False,
                                                                  width=350*len(multi_choice),
                                                                  height=500,
@@ -2150,7 +2165,7 @@ class SpatialDataSet:
             # for each individual map and a defined cluster data will be extracted from the dataframe
             # "df_distance_selectedExp_global" and appended to the new dataframe df_cluster_xmaps_distance_global
             for map_or_exp in map_or_exp_names:
-                plot_try = df_distance_selectedExp_global.xs((self.cluster_of_interest_comparison, map_or_exp), level=["Cluster", 
+                plot_try = df_distance_selectedExp_global.xs((cluster_of_interest_comparison, map_or_exp), level=["Cluster", 
                                                                                                                        level_of_interest], drop_level=False)
                 df_cluster_xmaps_distance_global = df_cluster_xmaps_distance_global.append(plot_try)
             
@@ -2163,7 +2178,7 @@ class SpatialDataSet:
                                              points="all",
                                              hover_name="Gene names", 
                                              color=boxplot_color,
-                                             title="Global Manhattan distance distribution for <br>the protein cluster: {}".format(self.cluster_of_interest_comparison)
+                                             title="Global Manhattan distance distribution for <br>the protein cluster: {}".format(cluster_of_interest_comparison)
                                              )
     
             distance_boxplot_figure.update_layout(autosize=False,
@@ -2182,7 +2197,7 @@ class SpatialDataSet:
             return distance_boxplot_figure
         
         
-    def distance_ranking_barplot_comparison(self):
+    def distance_ranking_barplot_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], clusters_for_ranking=None, ref_exp="Exp1"):
         """
             For each cluster and for each experiment the median ditance is calculated. The smallest median is set to 1, while the other medians will be 
             normalized accordingly. For the "collapsed view" - investigating the global ranking of an experiment across the cluster, the sum of the normlaized
@@ -2208,7 +2223,10 @@ class SpatialDataSet:
             
         """
         
-        multi_choice = self.multi_choice
+        
+        if clusters_for_ranking is None:
+            clusters_for_ranking = self.clusters_for_ranking
+        
         #an error massage, if no Experiments are selected, will be displayed already, that is why: return ""
         if len(multi_choice)>=1:
             pass
@@ -2217,7 +2235,7 @@ class SpatialDataSet:
         
         df_distance_comp = self.df_distance_comp.copy()
         df_distance_comp = df_distance_comp[df_distance_comp["Experiment"].isin(multi_choice)]
-        df_distance_comp = df_distance_comp[df_distance_comp["Cluster"].isin(self.clusters_for_ranking)]
+        df_distance_comp = df_distance_comp[df_distance_comp["Cluster"].isin(clusters_for_ranking)]
 
         df_quantified_cluster = df_distance_comp.reset_index()
         df_quantified_cluster = df_quantified_cluster.drop_duplicates(subset=["Cluster", "Experiment"]).set_index(["Cluster", 
@@ -2235,7 +2253,7 @@ class SpatialDataSet:
                     median = df_cluster[df_cluster["Experiment"]==exp].median()
                     all_median_one_cluster_several_exp[exp] = float(median)
                     #new
-                    if exp == self.ref_exp:
+                    if exp == ref_exp:
                         ref = median
                 dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
                 min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
@@ -2287,13 +2305,13 @@ class SpatialDataSet:
         df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
 
         
-        if self.collapse_cluster == False:
+        if collapse_cluster == False:
             fig_ranking = px.bar(df_cluster_normalizedMedian_ref, 
                                  x="Cluster", 
                                  y="Normalized Median", 
                                  color="Experiment", 
                                  barmode="group", 
-                                 title="Ranking - normalization to reference experiment: {}".format(self.ref_exp)
+                                 title="Ranking - normalization to reference experiment: {}".format(ref_exp)
                                 )
             
             fig_ranking.update_xaxes(categoryorder="total ascending")
@@ -2333,7 +2351,7 @@ class SpatialDataSet:
             fig_globalRanking = px.bar(df_RelDistanceRanking.sort_values("Distance Ranking (rel, median)"), 
                                         x="Experiment",
                                         y="Distance Ranking (rel, median)", 
-                                        title="Ranking - median of all individual normalized medians - reference experiment: {}".format(self.ref_exp),
+                                        title="Ranking - median of all individual normalized medians - reference experiment: {}".format(ref_exp),
                                         error_x="SEM", error_y="SEM", 
                                         color="Experiment")
             
@@ -2350,7 +2368,7 @@ class SpatialDataSet:
             return fig_globalRanking
                  
     
-    def quantity_pr_pg_barplot_comparison(self):
+    def quantity_pr_pg_barplot_comparison(self, multi_choice=["Exp1", "Exp2"]):
         """
         Barplot, showing number of protein groups/profiles. 
         
@@ -2365,7 +2383,7 @@ class SpatialDataSet:
         """
         
         df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()        
-        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(self.multi_choice)]
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)]
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
                                                                                                                         categories=self.sorting_list, ordered=True))
         #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
@@ -2375,7 +2393,7 @@ class SpatialDataSet:
         layout = go.Layout(barmode="overlay", 
           xaxis_tickangle=0, 
           autosize=False,
-          width=350*len(self.multi_choice),
+          width=350*len(multi_choice),
           height=500,
           xaxis=go.layout.XAxis(linecolor="black",
                                 linewidth=1,
@@ -2410,7 +2428,7 @@ class SpatialDataSet:
         return pn.Column(pn.Row(fig_quantity_pg), pn.Row(fig_quantity_pr)) 
     
     
-    def coverage_comparison(self):
+    def coverage_comparison(self, multi_choice=["Exp1", "Exp2"]):
         """
         Barplot, showing data completeness of profiles. 
         
@@ -2425,7 +2443,7 @@ class SpatialDataSet:
         """
         
         df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
-        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(self.multi_choice)].sort_values("filtering")
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)].sort_values("filtering")
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
                                                                                                                         categories=self.sorting_list, ordered=True))
         #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
@@ -2444,7 +2462,7 @@ class SpatialDataSet:
                                          xaxis_tickangle=0, 
                                          title="Data Completeness of Profiles",
                                          autosize=False,
-                                         width=350*len(self.multi_choice),
+                                         width=350*len(multi_choice),
                                          height=500,
                                          xaxis=go.layout.XAxis(linecolor="black",
                                                                linewidth=1,
@@ -2458,7 +2476,7 @@ class SpatialDataSet:
         return fig_pr_dc
     
     
-    def venn_diagram(self):
+    def venn_diagram(self, multi_choice_venn=["Exp1", "Exp2"]):
         """
         Venn diagram based on 2/3 experiments is created using matplotlib. Figure has to be transforme dfrom matplotlib object to jpg, to make it available for the 
         webinterface via panel/holoviz
@@ -2471,9 +2489,6 @@ class SpatialDataSet:
         Returns:
             im: Venn diagram, made availabe flor plotly/webinterface
         """
-        
-        
-        multi_choice_venn = self.multi_choice_venn
         
         if len(multi_choice_venn)==2:
             vd = venn2([set(self.unique_proteins_total[i]) for i in multi_choice_venn], 
@@ -2506,7 +2521,7 @@ class SpatialDataSet:
         return im
     
     
-    def dynamic_range_comparison(self):
+    def dynamic_range_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], ref_exp="Exp1"):
         """
         A box plot for desired experiments (multi_choice) and all protein clusters is generated displaying the dynamic range
         
@@ -2518,7 +2533,6 @@ class SpatialDataSet:
         Returns:
             fig_dynamic_range: bar plot, dynamic range of each protein cluster for desired experiments is displayed.
         """
-        multi_choice = self.multi_choice
         df_dynamicRange_combined = self.df_dynamicRange_combined.copy()
         df_dynamicRange_combined = df_dynamicRange_combined[df_dynamicRange_combined["Experiment"].isin(multi_choice)]
         df_dynamicRange_combined = df_dynamicRange_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_dynamicRange_combined["Experiment"],
@@ -2531,11 +2545,11 @@ class SpatialDataSet:
         
         df_dynamicRange_combined_ref = df_dynamicRange_combined.drop(["Experiment_lexicographic_sort"], axis=1)
         df_dynamicRange_combined_ref = df_dynamicRange_combined.set_index(["Cluster", "Experiment"], drop=False).unstack("Cluster")["Dynamic Range"]
-        df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.div(df_dynamicRange_combined_ref.xs(self.ref_exp))
+        df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.div(df_dynamicRange_combined_ref.xs(ref_exp))
         df_RelDynamicRange = pd.concat([df_dynamicRange_combined_ref.median(axis=1), df_dynamicRange_combined_ref.sem(axis=1)], axis=1, 
                                        keys=["Dynamic Range (rel, median)", "SEM"]).reset_index()
         
-        if self.collapse_cluster == False:
+        if collapse_cluster == False:
             df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.stack("Cluster")
             df_dynamicRange_combined_ref.name="Normalized Dynamic Range"
             df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.reset_index()
@@ -2543,7 +2557,7 @@ class SpatialDataSet:
             fig_RelDynamicRange = px.bar(df_dynamicRange_combined_ref, 
                                          x="Cluster", 
                                          y="Normalized Dynamic Range", 
-                                         title="Dynamic Range - normalization to reference experiment: {}".format(self.ref_exp),
+                                         title="Dynamic Range - normalization to reference experiment: {}".format(ref_exp),
                                          barmode="group", 
                                          color="Experiment")
             fig_RelDynamicRange.update_xaxes(categoryorder="total ascending")
@@ -2556,7 +2570,7 @@ class SpatialDataSet:
                                          x="Experiment", 
                                          y="Dynamic Range (rel, median)", 
                                          error_x="SEM", error_y="SEM",
-                                         title="Dynamic Range - median of all individual normalized medians - reference experiment: {}".format(self.ref_exp),
+                                         title="Dynamic Range - median of all individual normalized medians - reference experiment: {}".format(ref_exp),
                                          color="Experiment")
             fig_RelDynamicRange.update_layout(autosize=False,
                                                 width=250*len(multi_choice),
