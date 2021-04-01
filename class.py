@@ -1633,7 +1633,7 @@ class SpatialDataSet:
         self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy() 
 #self.analysis_summary_dict.clear()
         
-        #return df_overview
+        return df_overview
 
 
     def reframe_df_01ORlog_for_svm(self, df_01ORlog):
@@ -1668,6 +1668,7 @@ class SpatialDataSet:
         
         df_01ORlog_svm.index = df_01ORlog_svm.index.droplevel(["Map", "Fraction"])
         df_01ORlog_svm = df_01ORlog_svm.unstack("Map_Frac")
+        df_01ORlog_svm = df_01ORlog_svm.dropna(axis=0, subset=df_01ORlog_svm.loc[[], ["normalized profile"]].columns)
         df_01ORlog_svm.columns = ["_".join(col) for col in df_01ORlog_svm.columns.values]
         df_01ORlog_svm.rename(index={"undefined" : np.nan}, level="Compartment", inplace=True)
         
