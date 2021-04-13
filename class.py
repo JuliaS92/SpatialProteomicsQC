@@ -44,49 +44,24 @@ class SpatialDataSet:
             {
                 "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"], 
                         #       "PSMC1", "PSMC2", "PSMC3"],
-                #"CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
-                #"V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
                 "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
                 "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"],
-                #"MCM complex" : ["MCM2", "MCM3", "MCM4", "MCM5", "MCM7"],
-                
-                "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"], 
-                #"Prefoldin complex" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
-                #"AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
-                "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],
-                #"AP3 adaptor / AP3-BLOC1 complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
-                #"AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1",  "AP4S1"],
-                #"Anaphas,e-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
-                #"Rnase/Mrp complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
+                "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"],               
+                "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],              
                 "Class C, Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
-                #"Dynactin complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6", "ACTR1A", "CAPZA1"],
-                #"CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
-                #"Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
                 "Wave-2 complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
-                
                 "TREX complex / THO complex": ["ALYREF", "THOC5", "THOC2", "THOC1", "THOC3", "DDX39B"], #["THOC5", "THOC2", "THOC1"]
                 "Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
-                #"TNF-alpha/NF-kappa B signaling complex 5": ["POLR2H", "POLR1A", "POLR1B", "CUL1", "KPNA2"],
-                #"Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
-                #"Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
-                #"SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
-                #"SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
                 "CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
-                #"Retromer complex": ["VPS29", "VPS35", "VPS26A"],
                 "Respiratory chain complex I": ["NDUFB6", "NDUFB10", "NDUFA10", "NDUFA8", "NDUFA6", "NDUFB11", "NDUFB3", "NDUFB5", "NDUFAB1", "NDUFA4", "NDUFB9",
                                                 "NDUFB7", "NDUFA9", "NDUFA5", "NDUFV3", "NDUFA11", "NDUFV1", "NDUFA12", "NDUFV2", "NDUFA7", "NDUFS6", "NDUFS2",
                                                 "NDUFA2", "NDUFS8", "NDUFS1"],
-                #"RFC complex": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
                 "Nup 107-160 subcomplex": ["NUP85", "NUP37", "NUP160", "NUP98", "NUP107", "NUP133"],
-                "Multisynthetase complex": ["EEF1E1", "IARS", "DARS", "EPRS", "AIMP1", "KARS", "LARS", "RARS", "AIMP2", "MARS"],
-                #"MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
+                "Multisynthetase complex": ["EEF1E1", "IARS", "DARS", "EPRS", "AIMP1", "KARS", "LARS", "RARS", "AIMP2", "MARS"],       
                 "GAA1-GPI8-PIGT-PIG-PIGS complex": ["PIGT", "PIGS", "PIGU", "PIGK", "GPAA1"],
                 "Frataxin complex /f1f0: ATP5L": ["SDHA", "HSPD1", "HSPA9", "AFG3L2"],
                 "F1F0-ATP synthase": ["ATP5O", "ATP5I", "ATPIF1", "ATP5A1", "ATP5F1", "ATP5B", "ATP5H", "ATP5L", "ATP5J"],
                 "Exosome": ["EXOSC1", "EXOSC3", "EXOSC8", "EXOSC4", "EXOSC2", "EXOSC10"],
-                #"Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
-                #"DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
-                #"COP9 signalosome complex / CNS-P53 complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
                 "Arp2/3 protein complex": ["ACTR2", "ARPC1B", "ARPC2", "ARPC3", "ARPC5", "ARPC4", "ACTR3"],
                 "60S ribosomal subunit, cytoplasmic": ["RPL10", "RPL10A", "RPL27", "RPL37A", "RPL7A", "RPL23A", "RPL23", "RPL31", "RPL15", "RPL26", "RPL18A", "RPL11",
                                                     "RPL38", "RPL24","RPL36A", "RPL36", "RPL19", "RPL18", "RPL32", "RPL14", "RPL35A", "RPL29", "RPL34", "RPLP0",
@@ -101,6 +76,30 @@ class SpatialDataSet:
                 "28S ribosomal subunit, mitochondrial": ["MRPS31", "MRPS24", "MRPS30", "MRPS28", "MRPS17", "MRPS7", "MRPS16", "MRPS23", "MRPS18B", "MRPS27", "MRPS9",
                                                         "MRPS34", "DAP3", "MRPS15", "MRPS11", "MRPS36", "MRPS5", "MRPS35", "MRPS10", "MRPS22", "MRPS12", "MRPS6"],
  ###"OLDmitochondrial ribosomal subunits" : ["MRPL1", "MRPL13", "MRPL15", "MRPL16", "MRPL18", "MRPL23", "MRPL30", "MRPL38", "MRPL40",#39S proteins;MRPL12;SLC25A10
+ #CCT and V type were not in set
+                "CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
+                "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
+                "MCM complex" : ["MCM2", "MCM3", "MCM4", "MCM5", "MCM7"],
+                "Prefoldin complex" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
+                "AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
+                "AP3 adaptor / AP3-BLOC1 complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
+                "AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1",  "AP4S1"],
+                "Anaphas,e-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
+                "Rnase/Mrp complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
+                "Dynactin complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6", "ACTR1A", "CAPZA1"],
+                "CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
+                "Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
+                "TNF-alpha/NF-kappa B signaling complex 5": ["POLR2H", "POLR1A", "POLR1B", "CUL1", "KPNA2"],
+                "Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
+                "Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
+                "SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
+                "SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
+                "RFC complex": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
+                "MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
+                "Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
+                "DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
+                "COP9 signalosome complex / CNS-P53 complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
+ 
             }, 
             "Arabidopsis - Araport" :
             {
@@ -375,7 +374,13 @@ class SpatialDataSet:
             
             df_index.columns.names = ["Set"]
             
-            df_index = df_index.unstack(["Map", "Fraction"])
+
+            try:
+                df_index = df_index.unstack(["Map", "Fraction"])
+            except ValueError:
+                df_index = df_index.groupby(by=df_index.index.names).agg(np.nansum, axis=0)
+                df_index = df_index.unstack(["Map", "Fraction"])
+            
             df_index.replace(0, np.nan, inplace=True)
             df_index.rename(columns=self.fraction_dict, inplace=True)
             shape_dict["Original size"]=df_index.shape
@@ -901,7 +906,7 @@ class SpatialDataSet:
         df_quantity_pr_pg = self.df_quantity_pr_pg
         
         layout = go.Layout(barmode="overlay", 
-                           xaxis_tickangle=-30, 
+                           xaxis_tickangle=90, 
                            autosize=False,
                            width=300,
                            height=500,
@@ -911,7 +916,6 @@ class SpatialDataSet:
                                                  mirror=True),
                            yaxis=go.layout.YAxis(linecolor="black",
                                                  linewidth=1,
-                                                 title="#",
                                                  mirror=True),
                            template="simple_white")
         
@@ -922,7 +926,7 @@ class SpatialDataSet:
                 x=plot_df["filtering"],
                 y=plot_df["number of protein groups"],
                 name=t))
-        fig_npg.update_layout(layout, title="Number of Protein Groups")
+        fig_npg.update_layout(layout, title="Number of Protein Groups", yaxis=go.layout.YAxis(title="Protein Groups"))
         
                 
         fig_npr = go.Figure()
@@ -942,7 +946,7 @@ class SpatialDataSet:
                 x=plot_df["type"],
                 y=plot_df["data completeness of profiles"],
                 name=t))
-        fig_npr_dc.update_layout(layout, title="Coverage", yaxis=go.layout.YAxis(title=""))
+        fig_npr_dc.update_layout(layout, title="Coverage", yaxis=go.layout.YAxis(title="Data completness"))
         #fig_npr_dc.update_xaxes(tickangle=30)
         
         fig_npg_F = px.bar(self.df_npg,
@@ -1377,7 +1381,7 @@ class SpatialDataSet:
             df_cluster_xmaps_distance_with_index["Combined Maps"] = "Combined Maps"
             
             #number of proteins within one cluster
-            self.proteins_qunatified_across_all_maps = df_cluster_xmaps_distance_with_index.unstack("Map").shape[0]
+            self.proteins_quantified_across_all_maps = df_cluster_xmaps_distance_with_index.unstack("Map").shape[0]
         
             # index will be reset, required by px.box
             df_cluster_xmaps_distance = df_cluster_xmaps_distance_with_index.reset_index()
@@ -1781,7 +1785,7 @@ class SpatialDataSet:
         avg_F1_all_cluster = statistics.mean(F1_all_cluster)
         
         SVM_dict_total = {}
-        SVM_dict_total["Avg. all clusters"] = {"Recall": total_recall, "F1": avg_F1_all_cluster}
+        SVM_dict_total["Avg. all clusters"] = {"Recall": total_recall, "F1": avg_F1_all_cluster} #total recall = marker prediction accuracy
         SVM_dict_total["Avg. all organelles"] = {"Recall": av_per_organelle_recall, "F1": avg_organelle_f1, "Precision": av_per_organelle_precision}
         SVM_dict_total["Membrane"] = {"Recall": membrane_recall}
         SVM_dict_total["Median. per organelle"] = {"Recall": median_per_organelle_recall}
@@ -1815,8 +1819,8 @@ class SpatialDataSet:
         #                   "Av F1 organelles" : avg_organelle_f1,
         #                   "Av F1 all clusters" :  avg_F1_all_cluster,
         #                  }
-        self.analysed_datasets_dict[self.expname]["Misclassification Analysis"]["Cluster performance"] = SVM_dict.copy()
-        self.analysed_datasets_dict[self.expname]["Misclassification Analysis"]["Total cluster performance"] = SVM_dict_total.copy()
+        self.analysed_datasets_dict[self.expname]["Misclassification Analysis"] = {"Cluster performance" : SVM_dict.copy(), 
+                                                                                   "Total cluster performance":SVM_dict_total.copy()}
         #SVM_dict.clear()
         return fig_clusterPerformance
 
@@ -2066,6 +2070,7 @@ class SpatialDataSetComparison:
         index_dist_ExpMap.name = "Exp_Map"
         df_distance_comp.set_index(index_dist_ExpMap, append=True, inplace=True)
         #new
+        #self.df_distance_comp2 = df_distance_comp.copy()
         df_distance_comp.reset_index(level=['Protein IDs'], inplace=True)
         df_distance_comp["Protein IDs"] = df_distance_comp["Protein IDs"].str.split(";", expand=True)[0]
         df_distance_comp = df_distance_comp.set_index("Protein IDs", append=True).unstack(["Experiment", "Exp_Map", "Map"]).dropna().stack(["Experiment", "Exp_Map", "Map"]).reset_index()
@@ -2346,7 +2351,7 @@ class SpatialDataSetComparison:
                     ))
                     
                 individual_distance_boxplot_figure.update_layout(boxmode="group", 
-                                                                 xaxis_tickangle=0, 
+                                                                 xaxis_tickangle=90, 
                                                                  title="Manhattan distance distribution for <br>the protein cluster: {}".format(cluster_of_interest_comparison),
                                                                  autosize=False,
                                                                  width=350*len(multi_choice),
@@ -2580,7 +2585,7 @@ class SpatialDataSetComparison:
         #multi_choice = i_multi_choice.value
         #clusters_for_ranking =  i_clusters_for_ranking.value
         df_distance_comp = self.df_distance_comp.copy()
-        df_cluster_test['Protein IDs'] = df_cluster_test['Protein IDs'].str.split(';', expand=True)[0]
+        #df_cluster_test['Protein IDs'] = df_cluster_test['Protein IDs'].str.split(';', expand=True)[0]
         df_distance_comp = df_distance_comp[df_distance_comp["Experiment"].isin(multi_choice)]
         df_distance_comp = df_distance_comp[df_distance_comp["Cluster"].isin(clusters_for_ranking)]
         
@@ -2590,28 +2595,37 @@ class SpatialDataSetComparison:
         #self.df_quantified_cluster = df_quantified_cluster.notnull().replace({True: "x", False: "-"})
         
         
+        dict_quantified_cluster = {}
         dict_cluster_normalizedMedian_ref = {}
         dict_median_distance_ranking = {}
         for cluster in clusters_for_ranking:
             try:
                 df_cluster = df_distance_comp[df_distance_comp["Cluster"]==cluster]
-                all_median_one_cluster_several_exp = {}
-                ref = df_cluster["distance"].median()
-                for exp in multi_choice:
-                    median = df_cluster[df_cluster["Experiment"]==exp]["distance"].median()
-                    all_median_one_cluster_several_exp[exp] = float(median)
+                cluster_quantitity = df_cluster["Gene names"].unique().size
+                if  cluster_quantitity>= 5:
+                    dict_quantified_cluster[cluster] = cluster_quantitity
+                    all_median_one_cluster_several_exp = {}
+                    ref = df_cluster["distance"].median()
+                    for exp in multi_choice:
+                        median = df_cluster[df_cluster["Experiment"]==exp]["distance"].median()
+                        all_median_one_cluster_several_exp[exp] = float(median)
+                        #new
+                        #if exp == ref_exp:
+                        #    ref = median
+                    dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
+                    #min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
+                    #median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
+                    #dict_cluster_normalizedMedian[cluster] = median_ranking
                     #new
-                    #if exp == ref_exp:
-                    #    ref = median
-                dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
-                #min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
-                #median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
-                #dict_cluster_normalizedMedian[cluster] = median_ranking
-                #new
-                median_ranking_ref = {exp: median/ref for exp, median in all_median_one_cluster_several_exp.items()}
-                dict_cluster_normalizedMedian_ref[cluster] = median_ranking_ref
+                    median_ranking_ref = {exp: median/ref for exp, median in all_median_one_cluster_several_exp.items()}
+                    dict_cluster_normalizedMedian_ref[cluster] = median_ranking_ref
+                else:
+                    continue
             except:
                 continue
+        
+        
+        self.df_quantified_cluster2 = pd.DataFrame.from_dict({"Number of PG per Cluster":dict_quantified_cluster}).T
         
         df_cluster_normalizedMedian_ref = pd.DataFrame(dict_cluster_normalizedMedian_ref)
         df_cluster_normalizedMedian_ref.index.name="Experiment"
@@ -2721,7 +2735,7 @@ class SpatialDataSetComparison:
         #df_quantity_pr_pg_combined.sort_values("type", ascending=False, inplace=True)
         
         layout = go.Layout(barmode="overlay", 
-          xaxis_tickangle=0, 
+          xaxis_tickangle=90, 
           autosize=False,
           width=350*len(multi_choice),
           height=500,
@@ -2790,7 +2804,7 @@ class SpatialDataSetComparison:
                 name=t))
             
         fig_pr_dc.update_layout(barmode="overlay", 
-                                         xaxis_tickangle=0, 
+                                         xaxis_tickangle=90, 
                                          title="Data Completeness of Profiles",
                                          autosize=False,
                                          width=350*len(multi_choice),
