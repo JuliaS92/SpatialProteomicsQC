@@ -1979,8 +1979,13 @@ class SpatialDataSetComparison:
                 #    continue
                 #
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
-        df_01_filtered_combined = df_01_combined.dropna()
+        df_01_filtered_combined = df_01_combined.copy()
         df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
+        # Replace protein IDs by the unifying protein ID across experiments
+        comparison_IDs = pd.Series([el.split(";")[0] for el in df_01_filtered_combined.index.get_level_values("Protein IDs")],
+                                   name="Protein IDs")
+        df_01_filtered_combined.index = df_01_filtered_combined.index.droplevel("Protein IDs")
+        df_01_filtered_combined.set_index(comparison_IDs, append=True, inplace=True)
         #reframe it to make it ready for PCA | dropna: to make sure, that you do consider only fractions that are in all experiments
         df_01_filtered_combined = df_01_filtered_combined.stack(["Experiment", "Map"]).swaplevel(0,1, axis=0).dropna(axis=1)
         index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_filtered_combined.index.get_level_values("Map")
@@ -2775,8 +2780,77 @@ class SpatialDataSetComparison:
                                                )
             
             
-        return pn.Column(pn.Row(fig_dynamic_range), pn.Row(fig_RelDynamicRange)) 
+        return pn.Column(pn.Row(fig_dynamic_range), pn.Row(fig_RelDynamicRange))
     
+    
+    def calculate_global_scatter(self, multi_choice, metric, consolidation):
+        """
+        A distribution plot of the profile scatter in each experiment is generated, with variable distance metric and consolidation of replicates.
+        
+        Args:
+            self:
+                df_01_filtered_combined: df, indexed
+            multi_choice: list of experiment names
+            metric: distance metric, one of 'euclidean distance', 'manhattan distance', '1 - cosine correlation', '1 - pearson correlation'
+            consolidation: method to consolidate replicate distances, one of 'median', 'average', 'sum'
+        
+        Returns:
+            plot: plotly.figure_factory.displot, shows kernel density estiamtion in the main pane and a rug plot underneath. Traces are sorted by ascending median of the distribution.
+        """
+        
+        # Option dictionaries
+        cons_functions = {
+            "median": np.median,
+            "average": np.mean,
+            "sum": np.sum
+        }
+        metrics = {
+            "euclidean distance": "euclidean",
+            "manhattan distance": "manhattan",
+            "1 - cosine correlation": "cosine",
+            "1 - pearson correlation": lambda x,y: 1-np.corrcoef(x,y)[0][1]
+        }
+        
+        # Option assertion
+        assert consolidation in cons_functions.keys()
+        assert metric in metrics.keys()
+        
+        # Filter experiments and intersection of proteins
+        df = self.df_01_filtered_combined.loc[
+            self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
+        n_expmap = len(set(df.index.get_level_values("Exp_Map")))
+        df_across = df.groupby("Protein IDs").filter(lambda x: len(x)==n_expmap)
+        df_across.index = df_across.index.droplevel("Exp_Map")
+        
+        # Calculate and consolidate distances
+        distances = pd.DataFrame()
+        for exp in set(df.index.get_level_values("Experiment")):
+            df_m = df_across.xs(exp, level="Experiment", axis=0)
+            maps = list(set(df_m.index.get_level_values("Map")))
+            distances_m = pd.DataFrame()
+            for i,mapi in enumerate(maps):
+                for j,mapj in enumerate(maps):
+                    # only look at each comparison once
+                    if j <= i:
+                        continue
+                    dist = pw.paired_distances(df_m.xs(mapi, level="Map", axis=0).values,
+                                               df_m.xs(mapj, level="Map", axis=0).values,
+                                               metric = metrics[metric])
+                    dist = pd.Series(dist, name="_".join([mapi,mapj]))
+                    distances_m = pd.concat([distances_m, dist], axis=1)
+            distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
+            distances = pd.concat([distances, pd.Series(distances_m.apply(cons_functions[consolidation], axis=1), name=exp)], axis=1)
+        distances.index = distances_m.index
+        
+        # Sort by median
+        medians = distances.apply(np.median)
+        distances = distances[medians.rank().sort_values(ascending=False).index]
+        
+        # Create and return plot
+        plot = ff.create_distplot(distances.T.values, distances.columns, show_hist=False)
+        plot.update_layout(title="Distribution of {} {}s".format(metric, consolidation),
+                           width=1500, height=800, template="simple_white")
+        return plot
     
         
     def __repr__(self):
