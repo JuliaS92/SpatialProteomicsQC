@@ -667,11 +667,18 @@ class SpatialDataSet:
             self.df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
             self.df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
             
-            self.analysis_summary_dict["0/1 normalized data - mean"] = self.df_01_stacked["normalized profile"].unstack("Map").dropna().mean(axis=1).to_frame(
-                name="normalized profile - mean").reset_index().to_json()
-
+            df_01_comparison = self.df_01_stacked.copy().reset_index().drop(["C-Score", "Q-value", "MS/MS count"], axis=1)
+            df_01_comparison["Protein IDs"] = pd.Series([el.split(";")[0] for el in df_01_comparison["Protein IDs"]], name="Protein IDs")
+            #df_01_comparison.set_index(["Fraction", "Map", "Gene names", "Protein IDs", "Compartment"], inplace=True)
+            #comparison_IDs = pd.Series([el.split(";")[0] for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
+            #df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
+            #df_01_comparison.set_index(comparison_IDs, append=True, inplace=True)
+            
+            
+            self.analysis_summary_dict["0/1 normalized data - mean"] = df_01_comparison.to_json(double_precision=4) #.reset_index()
+ 
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
+            #self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
@@ -702,11 +709,20 @@ class SpatialDataSet:
             df_stringency_mapfracstacked = stringency_lfq(df_index)
             self.df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
             self.df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
+            df_01_comparison = self.df_01_stacked.copy()
+            comp_ids = pd.Series([el.split(";")[0] for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
+            df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
+            df_01_comparison.set_index(comp_ids, append=True, inplace=True)
+            df_01_comparison.drop("MS/MS count", inplace=True, axis=1)
+            df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
+            df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
+            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors='ignore')
+            self.analysis_summary_dict["0/1 normalized data - mean"] = df_01_comparison.to_json(double_precision=4) #.reset_index()
             
-            self.analysis_summary_dict["0/1 normalized data - mean"] = self.df_01_stacked["normalized profile"].unstack("Map").dropna().mean(axis=1).to_frame(
-                name="normalized profile - mean").reset_index().to_json() 
+            #self.analysis_summary_dict["0/1 normalized data - mean"] = self.df_01_stacked["normalized profile"].unstack("Map").dropna().mean(axis=1).to_frame(
+            #    name="normalized profile - mean").reset_index().to_json() 
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
+            #self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
@@ -1234,7 +1250,7 @@ class SpatialDataSet:
         
         self.df_allclusters_01_test = df_allclusters_01
         #storage of 0/1 normalized data in global dictionary
-        self.analysis_summary_dict["0/1 normalized data"] = df_allclusters_01.reset_index().to_json() 
+        #self.analysis_summary_dict["0/1 normalized data"] = df_allclusters_01.reset_index().to_json() 
         # genes are droped, if they are not present in all maps
         
         self.df_allclusters_onlynorm_fracunstacked_unfiltered = df_allclusters_onlynorm_fracunstacked_unfiltered
@@ -1888,37 +1904,39 @@ class SpatialDataSetComparison:
         #    pass
     
         self.analysis_parameters_total = {}
-        unique_proteins_total = {}
+ #       unique_proteins_total = {}
         
         for exp_name in json_dict.keys():
             for data_type in json_dict[exp_name].keys():
-                if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
-                    #convert into dataframe
-                    df_01_combined = pd.read_json(json_dict[exp_name][data_type])
-                    #get only 01 normalized data 
-                    df_01_combined = df_01_combined.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
-                                                               "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
-                    df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
+                #if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
+                #    #convert into dataframe
+                #    df_01_combined = pd.read_json(json_dict[exp_name][data_type])
+                #    #get only 01 normalized data 
+                #    df_01_combined = df_01_combined.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
+                #                                               "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
+                #    df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
         
-                elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
-                    df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_toadd = df_01_toadd.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
-                                                         "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
-                    df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
-                    #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
-                    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")
+                #if data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
+                #    df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
+                #    df_01_toadd = df_01_toadd.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
+                #                                         "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
+                #    df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
+                #    #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
+                #    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")
                     
-                elif data_type == "0/1 normalized data - mean" and exp_name == list(json_dict.keys())[0]:
+                if data_type == "0/1 normalized data - mean" and exp_name == list(json_dict.keys())[0]:
                     df_01_mean_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_mean_combined = df_01_mean_combined.set_index(["Fraction", "Gene names", "Protein IDs", 
-                                                                         "Compartment"])[["normalized profile - mean"]].unstack(["Fraction"])
-                    df_01_mean_combined.rename(columns = {"normalized profile - mean":exp_name}, inplace=True)
+                    df_01_mean_combined = df_01_mean_combined.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
+                    df_01_mean_combined.drop([col for col in df_01_mean_combined.columns if not col.startswith("normalized profile")])
+                    df_01_mean_combined.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_mean_combined.columns], names=["Set", "Map", "Fraction"])
+                    df_01_mean_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
         
                 elif data_type == "0/1 normalized data - mean" and exp_name != list(json_dict.keys())[0]:
                     df_01_mean_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_mean_toadd = df_01_mean_toadd.set_index(["Fraction", "Gene names", "Protein IDs", 
-                                                                   "Compartment"])[["normalized profile - mean"]].unstack(["Fraction"])
-                    df_01_mean_toadd.rename(columns = {"normalized profile - mean":exp_name}, inplace=True)
+                    df_01_mean_toadd = df_01_mean_toadd.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
+                    df_01_mean_toadd.drop([col for col in df_01_mean_toadd.columns if not col.startswith("normalized profile")])
+                    df_01_mean_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_mean_toadd.columns], names=["Set", "Map", "Fraction"])
+                    df_01_mean_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
                     df_01_mean_combined = pd.concat([df_01_mean_combined, df_01_mean_toadd], axis=1)#, join="inner")  
                     
                 elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
@@ -1964,9 +1982,9 @@ class SpatialDataSetComparison:
  #                   #dataframes will be concatenated, only proteins/Profiles that are in both df will be retained
  #                   df_distanceOverview_combined = pd.concat([df_distanceOverview_combined, df_distanceOverview_toadd])
                 
-                elif data_type == "Unique Proteins":
-                    unique_proteins_total[exp_name] = json_dict[exp_name][data_type]
-                
+                #elif data_type == "Unique Proteins":
+                #    unique_proteins_total[exp_name] = json_dict[exp_name][data_type]
+                #
                 elif data_type == "Analysis parameters":
                     self.analysis_parameters_total[exp_name] = json_dict[exp_name][data_type]
                     
@@ -1979,26 +1997,30 @@ class SpatialDataSetComparison:
                 #    continue
                 #
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
-        df_01_filtered_combined = df_01_combined.copy()
-        df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
+        #df_01_filtered_combined = df_01_combined.copy()
+        #df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
         # Replace protein IDs by the unifying protein ID across experiments
-        comparison_IDs = pd.Series([el.split(";")[0] for el in df_01_filtered_combined.index.get_level_values("Protein IDs")],
-                                   name="Protein IDs")
-        df_01_filtered_combined.index = df_01_filtered_combined.index.droplevel("Protein IDs")
-        df_01_filtered_combined.set_index(comparison_IDs, append=True, inplace=True)
+        #################comparison_IDs = pd.Series([el.split(";")[0] for el in df_01_filtered_combined.index.get_level_values("Protein IDs")],
+        #################                           name="Protein IDs")
+        #################df_01_filtered_combined.index = df_01_filtered_combined.index.droplevel("Protein IDs")
+        #################df_01_filtered_combined.set_index(comparison_IDs, append=True, inplace=True)
         #reframe it to make it ready for PCA | dropna: to make sure, that you do consider only fractions that are in all experiments
-        df_01_filtered_combined = df_01_filtered_combined.stack(["Experiment", "Map"]).swaplevel(0,1, axis=0).dropna(axis=1)
-        index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_filtered_combined.index.get_level_values("Map")
-        index_ExpMap.name = "Exp_Map"
-        df_01_filtered_combined.set_index(index_ExpMap, append=True, inplace=True)
-        df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
+        #df_01_filtered_combined = df_01_filtered_combined.stack(["Experiment", "Map"]).swaplevel(0,1, axis=0).dropna(axis=1)
+        #index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_filtered_combined.index.get_level_values("Map")
+        #index_ExpMap.name = "Exp_Map"
+        #df_01_filtered_combined.set_index(index_ExpMap, append=True, inplace=True)
+        #df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
         
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
         #df_01_mean_filtered_combined = df_01_mean_combined.dropna()    
-        df_01_mean_combined.columns.names = ["Experiment", "Fraction"]
+        df_01_mean_combined.columns.names = ["Experiment", "Map", "Fraction"]
         #reframe it to make it ready for PCA
-        df_01_mean_filtered_combined = df_01_mean_combined.stack(["Experiment"]).dropna(axis=1)
+        df_01_mean_filtered_combined = df_01_mean_combined.stack(["Experiment", "Map"]).dropna(axis=0)
+        #df_01_mean_filtered_combined = df_01_mean_combined.stack(["Experiment"]).dropna(axis=1)
         df_01_mean_filtered_combined = df_01_mean_filtered_combined.div(df_01_mean_filtered_combined.sum(axis=1), axis=0)
+        index_ExpMap2 = df_01_mean_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_mean_filtered_combined.index.get_level_values("Map")
+        index_ExpMap2.name = "Exp_Map"
+        df_01_mean_filtered_combined.set_index(index_ExpMap2, append=True, inplace=True)
         
         df_distances_combined.columns.names = ["Experiment", "Map"]
         series = df_distances_combined.stack(["Experiment", "Map"])
@@ -2011,11 +2033,11 @@ class SpatialDataSetComparison:
         df_distance_comp.set_index(index_dist_ExpMap, append=True, inplace=True)
         df_distance_comp.reset_index(inplace=True)
         
-        self.unique_proteins_total = unique_proteins_total
-        self.exp_names = list(df_01_filtered_combined.index.get_level_values("Experiment").unique())
+        #self.unique_proteins_total = unique_proteins_total
+        self.exp_names = list(df_01_mean_filtered_combined.index.get_level_values("Experiment").unique())
         self.exp_map_names = list(index_dist_ExpMap.unique())
         
-        self.df_01_filtered_combined = df_01_filtered_combined 
+        #self.df_01_filtered_combined = df_01_filtered_combined 
         self.df_01_mean_filtered_combined = df_01_mean_filtered_combined
         
         self.df_quantity_pr_pg_combined = df_quantity_pr_pg_combined
@@ -2024,63 +2046,63 @@ class SpatialDataSetComparison:
         self.df_distance_comp = df_distance_comp
 
     
-    def perform_pca_comparison(self):
-        """
-        PCA will be performed, using logarithmized data.
-
-        Args:
-            self:
-                df_01_filtered_combined: df, which contains 0/1 normalized data across all maps (mean) - for all experiments and for the specified protein clusters
-                    columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
-                    index: "Protein IDs", "Gene names", "Compartment", "Experiment", "Map", "Exp_Map"    
-                df_01_mean_filtered_combined: df, which contains (global) 0/1 normalized data across all maps (mean) - for all experiments and for all protein IDs, 
-                    that are consistent throughout all experiments
-                    columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
-                    index: "Gene names", "Protein IDs", "Compartment", "Experiment"
-                    
-        Returns:
-            self:
-                df_pca_for_plotting: PCA processed dataframe
-                    index: "Experiment", "Gene names", "Map", "Exp_Map"
-                    columns: "PC1", "PC2", "PC3"
-                    contains only marker genes, that are consistent throughout all maps / experiments
-                df_global_pca_for_plotting: PCA processed dataframe
-                    index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
-                    columns: "PC1", "PC2", "PC3"
-                    contains all protein IDs, that are consistent throughout all experiments
-        """
-
-        markerproteins = self.markerproteins.copy()
-        
-        df_01_filtered_combined = self.df_01_filtered_combined
-        df_01_mean_filtered_combined = self.df_01_mean_filtered_combined 
-        
-        pca = PCA(n_components=3)
-
-        df_pca = pd.DataFrame(pca.fit_transform(df_01_filtered_combined))
-        df_pca.columns = ["PC1", "PC2", "PC3"]
-        df_pca.index = df_01_filtered_combined.index
-        
-        df_global_pca = pd.DataFrame(pca.fit_transform(df_01_mean_filtered_combined))
-        df_global_pca.columns = ["PC1", "PC2", "PC3"]
-        df_global_pca.index = df_01_mean_filtered_combined.index
-        
-        try:
-            markerproteins["PSMA subunits"] = [item for sublist in [re.findall("PSMA.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
-            markerproteins["PSMB subunits"] = [item for sublist in [re.findall("PSMB.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
-            del markerproteins["Proteasome"]
-        except:
-            pass 
-        
-        
-        df_cluster = pd.DataFrame([(k, i) for k, l in markerproteins.items() for i in l], columns=["Cluster", "Gene names"])
-        df_global_pca_annotated = df_global_pca.reset_index().merge(df_cluster, how="left", on="Gene names")
-        df_global_pca_annotated.Cluster.replace(np.NaN, "Undefined", inplace=True)
-        
-        self.markerproteins_splitProteasome = markerproteins
-        self.df_pca_for_plotting = df_pca
-        self.df_global_pca_for_plotting = df_global_pca_annotated
-            
+#    def perform_pca_comparison(self):
+#        """
+#        PCA will be performed, using logarithmized data.
+#
+#        Args:
+#            self:
+#                df_01_filtered_combined: df, which contains 0/1 normalized data across all maps (mean) - for all experiments and for the specified protein clusters
+#                    columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
+#                    index: "Protein IDs", "Gene names", "Compartment", "Experiment", "Map", "Exp_Map"    
+#                df_01_mean_filtered_combined: df, which contains (global) 0/1 normalized data across all maps (mean) - for all experiments and for all protein IDs, 
+#                    that are consistent throughout all experiments
+#                    columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
+#                    index: "Gene names", "Protein IDs", "Compartment", "Experiment"
+#                    
+#        Returns:
+#            self:
+#                df_pca_for_plotting: PCA processed dataframe
+#                    index: "Experiment", "Gene names", "Map", "Exp_Map"
+#                    columns: "PC1", "PC2", "PC3"
+#                    contains only marker genes, that are consistent throughout all maps / experiments
+#                df_global_pca_for_plotting: PCA processed dataframe
+#                    index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
+#                    columns: "PC1", "PC2", "PC3"
+#                    contains all protein IDs, that are consistent throughout all experiments
+#        """
+#
+#        markerproteins = self.markerproteins.copy()
+#        
+#        df_01_filtered_combined = self.df_01_filtered_combined
+#        df_01_mean_filtered_combined = self.df_01_mean_filtered_combined 
+#        
+#        pca = PCA(n_components=3)
+#
+#        df_pca = pd.DataFrame(pca.fit_transform(df_01_filtered_combined))
+#        df_pca.columns = ["PC1", "PC2", "PC3"]
+#        df_pca.index = df_01_filtered_combined.index
+#        
+#        df_global_pca = pd.DataFrame(pca.fit_transform(df_01_mean_filtered_combined))
+#        df_global_pca.columns = ["PC1", "PC2", "PC3"]
+#        df_global_pca.index = df_01_mean_filtered_combined.index
+#        
+#        try:
+#            markerproteins["PSMA subunits"] = [item for sublist in [re.findall("PSMA.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
+#            markerproteins["PSMB subunits"] = [item for sublist in [re.findall("PSMB.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
+#            del markerproteins["Proteasome"]
+#        except:
+#            pass 
+#        
+#        
+#        df_cluster = pd.DataFrame([(k, i) for k, l in markerproteins.items() for i in l], columns=["Cluster", "Gene names"])
+#        df_global_pca_annotated = df_global_pca.reset_index().merge(df_cluster, how="left", on="Gene names")
+#        df_global_pca_annotated.Cluster.replace(np.NaN, "Undefined", inplace=True)
+#        
+#        self.markerproteins_splitProteasome = markerproteins
+#        self.df_pca_for_plotting = df_pca
+#        self.df_global_pca_for_plotting = df_global_pca_annotated
+#            
             
     def plot_pca_comparison(self, collapse_maps=False, cluster_of_interest_comparison="Proteasome", multi_choice=["Exp1", "Exp2"]):
         """
@@ -2149,86 +2171,86 @@ class SpatialDataSetComparison:
             return "This protein cluster was not identified in across all experiments"
     
                 
-    def plot_global_pca_comparison(self, cluster_of_interest_comparison="Proteasome", x_PCA="PC1", y_PCA="PC3", 
-    markerset_or_cluster=False, multi_choice=["Exp1", "Exp2"]):
-        """"
-        PCA plot will be generated
-    
-        Args:
-            self:
-                df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
-                multi_choice: list of experiment names
-                css_color: list of colors
-                df_global_pca_for_plotting: PCA processed dataframe
-                    index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
-                    columns: "PC1", "PC2", "PC3"
-                    contains all protein IDs, that are consistent throughout all experiments    
-    
-        Returns:
-            pca_figure: global PCA plot, clusters based on the markerset based (df_organellarMarkerSet) are color coded. 
-        """
-        
-        
-        df_global_pca_exp = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(multi_choice)]
-        df_global_pca_exp.reset_index(inplace=True)
-
-        compartments = list(SpatialDataSet.df_organellarMarkerSet["Compartment"].unique())
-        compartment_color = dict(zip(compartments, self.css_color))
-        compartment_color["Selection"] = "black"
-        compartment_color["undefined"] = "lightgrey"
-        compartments.insert(0, "undefined")
-        compartments.insert(len(compartments), "Selection")
-            
-        cluster = self.markerproteins_splitProteasome.keys()
-        cluster_color = dict(zip(cluster, self.css_color))
-        cluster_color["Undefined"] = "lightgrey"
-                
-        
-        if markerset_or_cluster == True:
-            df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster!="Undefined"].sort_values(by="Cluster")
-            df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster=="Undefined"].append(df_global_pca)
-        else:
-            for i in self.markerproteins[cluster_of_interest_comparison]:
-                df_global_pca_exp.loc[df_global_pca_exp["Gene names"] == i, "Compartment"] = "Selection"
-            df_global_pca = df_global_pca_exp.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca_exp["Compartment"], 
-                                                                                                     categories=[x for x in compartments], 
-                                                                                                     ordered=True))
-            df_global_pca.sort_values(["Compartment_lexicographic_sort", "Experiment"], inplace=True)
-            
-        fig_global_pca = px.scatter(data_frame=df_global_pca,
-                                    x=x_PCA,
-                                    y=y_PCA,
-                                    color="Compartment" if markerset_or_cluster == False else "Cluster",
-                                    color_discrete_map=compartment_color if markerset_or_cluster == False else cluster_color,
-                                    title="Protein subcellular localization by PCA",
-                                    hover_data=["Protein IDs", "Gene names", "Compartment"],
-                                    facet_col="Experiment",
-                                    facet_col_wrap=2,
-                                    opacity=0.9, 
-                                    template="simple_white"
-                                    )
-        
-#            px.scatter(data_frame=df_marker,
-#           x=self.x_PCA_comp,
-#           y=i_class.y_PCA_comp,
-#           color="Cluster",
-#           color_discrete_map=compartment_color,
-#           title="Protein subcellular localization by PCA",
-#           hover_data=["Protein IDs", "Gene names", "Compartment"],
-#           facet_col="Experiment",
-#           facet_col_wrap=2,
-#           opacity=0.9,
-#           height=2000
-#           )
-        
-        
-        fig_global_pca.update_layout(autosize=False, 
-                                     width=1500 if markerset_or_cluster == False else 1600, 
-                                     height=500*(int(len(multi_choice) / 2) + (len(multi_choice) % 2 > 0)),
-                                     template="simple_white"
-                                    )
-        
-        return fig_global_pca 
+#    def plot_global_pca_comparison(self, cluster_of_interest_comparison="Proteasome", x_PCA="PC1", y_PCA="PC3", 
+#    markerset_or_cluster=False, multi_choice=["Exp1", "Exp2"]):
+#        """"
+#        PCA plot will be generated
+#    
+#        Args:
+#            self:
+#                df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
+#                multi_choice: list of experiment names
+#                css_color: list of colors
+#                df_global_pca_for_plotting: PCA processed dataframe
+#                    index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
+#                    columns: "PC1", "PC2", "PC3"
+#                    contains all protein IDs, that are consistent throughout all experiments    
+#    
+#        Returns:
+#            pca_figure: global PCA plot, clusters based on the markerset based (df_organellarMarkerSet) are color coded. 
+#        """
+#        
+#        
+#        df_global_pca_exp = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(multi_choice)]
+#        df_global_pca_exp.reset_index(inplace=True)
+#
+#        compartments = list(SpatialDataSet.df_organellarMarkerSet["Compartment"].unique())
+#        compartment_color = dict(zip(compartments, self.css_color))
+#        compartment_color["Selection"] = "black"
+#        compartment_color["undefined"] = "lightgrey"
+#        compartments.insert(0, "undefined")
+#        compartments.insert(len(compartments), "Selection")
+#            
+#        cluster = self.markerproteins_splitProteasome.keys()
+#        cluster_color = dict(zip(cluster, self.css_color))
+#        cluster_color["Undefined"] = "lightgrey"
+#                
+#        
+#        if markerset_or_cluster == True:
+#            df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster!="Undefined"].sort_values(by="Cluster")
+#            df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster=="Undefined"].append(df_global_pca)
+#        else:
+#            for i in self.markerproteins[cluster_of_interest_comparison]:
+#                df_global_pca_exp.loc[df_global_pca_exp["Gene names"] == i, "Compartment"] = "Selection"
+#            df_global_pca = df_global_pca_exp.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca_exp["Compartment"], 
+#                                                                                                     categories=[x for x in compartments], 
+#                                                                                                     ordered=True))
+#            df_global_pca.sort_values(["Compartment_lexicographic_sort", "Experiment"], inplace=True)
+#            
+#        fig_global_pca = px.scatter(data_frame=df_global_pca,
+#                                    x=x_PCA,
+#                                    y=y_PCA,
+#                                    color="Compartment" if markerset_or_cluster == False else "Cluster",
+#                                    color_discrete_map=compartment_color if markerset_or_cluster == False else cluster_color,
+#                                    title="Protein subcellular localization by PCA",
+#                                    hover_data=["Protein IDs", "Gene names", "Compartment"],
+#                                    facet_col="Experiment",
+#                                    facet_col_wrap=2,
+#                                    opacity=0.9, 
+#                                    template="simple_white"
+#                                    )
+#        
+##            px.scatter(data_frame=df_marker,
+##           x=self.x_PCA_comp,
+##           y=i_class.y_PCA_comp,
+##           color="Cluster",
+##           color_discrete_map=compartment_color,
+##           title="Protein subcellular localization by PCA",
+##           hover_data=["Protein IDs", "Gene names", "Compartment"],
+##           facet_col="Experiment",
+##           facet_col_wrap=2,
+##           opacity=0.9,
+##           height=2000
+##           )
+#        
+#        
+#        fig_global_pca.update_layout(autosize=False, 
+#                                     width=1500 if markerset_or_cluster == False else 1600, 
+#                                     height=500*(int(len(multi_choice) / 2) + (len(multi_choice) % 2 > 0)),
+#                                     template="simple_white"
+#                                    )
+#        
+#        return fig_global_pca 
     
     
     def distance_boxplot_comparison(self, cluster_of_interest_comparison="Proteasome", collapse_maps=False, multi_choice=["Exp1", "Exp2"]):
@@ -2614,104 +2636,104 @@ class SpatialDataSetComparison:
         return fig_pr_dc
     
     
-    def venn_sections(self, multi_choice_venn=["Exp1"]):
-        """
-        UpsetPlot is created based on list of experiments. If 2/3 experiments are given, the Upsetlot displays all possible
-        mutually exclusive overlapping combinations of these experiments. Additionally a Venn Diagram is created using matplotlib. 
-        Latter figure has to be transformed from matplotlib object to jpg, to make it available for the webinterface via panel/holoviz.
-        If more than 3 experiments are given, the UpsetPlot will be calculated only for those combinations of these experiments with at least 300 entries.
-        
-        Another way to think of this is the mutually exclusive sections of a venn diagram of the sets.  If the original list has N sets, 
-        the returned list will have (2**N)-1 sets.
-        
-        Args:
-            multi_choice_venn: list of experiment names 
-            self:
-                unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
-        
-        Returns:
-            im: Venn diagram, made availabe flor plotly/webinterface
-            figure_UpSetPlot: Upsetplot figure
-            
-        combinations : list of tuple
-            tag : str
-                Binary string representing which sets are included / excluded in
-                the combination.
-            set : set
-                The set formed by the overlapping input sets.
-        """       
-        
-        sets_uniqueProteins = [set(self.unique_proteins_total[i]) for i in multi_choice_venn]
-        num_combinations = 2 ** len(sets_uniqueProteins)
-        bit_flags = [2 ** n for n in range(len(sets_uniqueProteins))]
-        flags_zip_sets = [z for z in zip(bit_flags, sets_uniqueProteins)]
-    
-        combo_sets = []
-        overlapping_ids = []
-        experiments = []
-        #dictio = {}
-        for bits in range(num_combinations - 1, 0, -1):
-            include_sets = [s for flag, s in flags_zip_sets if bits & flag]
-            exclude_sets = [s for flag, s in flags_zip_sets if not bits & flag]
-            combo = set.intersection(*include_sets)
-            combo = set.difference(combo, *exclude_sets)
-            tag = "".join([str(int((bits & flag) > 0)) for flag in bit_flags])
-            
-            experiment_decoded = []
-            for digit, exp in zip(list(tag), multi_choice_venn):
-                if digit=="0":
-                    continue
-                else:
-                    experiment_decoded.append(exp)
-            #dictio[len(combo)] = experiment_decoded
-            if len(multi_choice_venn)>3:
-                if len(combo)>300:
-                    overlapping_ids.append(len(combo))
-                    experiments.append(experiment_decoded)
-                else:
-                    continue
-            else:
-                overlapping_ids.append(len(combo))
-                experiments.append(experiment_decoded)
-            #combo_sets.append((tag, len(combo)))
-            
-        figure_UpSetPlot = plt.Figure()
-        series_UpSetPlot = from_memberships(experiments, data=overlapping_ids)
-        plot(series_UpSetPlot, fig=figure_UpSetPlot, show_counts="%d")
-
-
-        
-        if len(multi_choice_venn) == 2:
-            vd = venn2([set(self.unique_proteins_total[i]) for i in multi_choice_venn], 
-                       set_labels=([i for i in multi_choice_venn]),
-                       set_colors=("darksalmon", "darkgrey")
-                      )
-        elif len(multi_choice_venn) == 3:
-            vd = venn3([set(self.unique_proteins_total[i]) for i in multi_choice_venn],
-                       set_labels=([i for i in multi_choice_venn]),
-                       set_colors=("darksalmon", "darkgrey","rosybrown"),
-                       alpha=0.8
-                      )
-        
-        else:
-            im = "Venn diagram can be displayed for 3 Experiments or less"
-            return im, figure_UpSetPlot
-
-        vd = plt.title("Unique Protein Groups - Venn Diagram",
-                       pad=30,
-                       fontsize=20
-                      )
-        
-        #make matplot figure available for plotly
-        vd = vd.figure
-        out_img = io.BytesIO()
-        plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
-        out_img.seek(0)  # rewind file
-        im = Image.open(out_img)
-        plt.clf()
-        
-        return im, figure_UpSetPlot
-    
+    #def venn_sections(self, multi_choice_venn=["Exp1"]):
+    #    """
+    #    UpsetPlot is created based on list of experiments. If 2/3 experiments are given, the Upsetlot displays all possible
+    #    mutually exclusive overlapping combinations of these experiments. Additionally a Venn Diagram is created using matplotlib. 
+    #    Latter figure has to be transformed from matplotlib object to jpg, to make it available for the webinterface via panel/holoviz.
+    #    If more than 3 experiments are given, the UpsetPlot will be calculated only for those combinations of these experiments with at least 300 entries.
+    #    
+    #    Another way to think of this is the mutually exclusive sections of a venn diagram of the sets.  If the original list has N sets, 
+    #    the returned list will have (2**N)-1 sets.
+    #    
+    #    Args:
+    #        multi_choice_venn: list of experiment names 
+    #        self:
+    #            unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
+    #    
+    #    Returns:
+    #        im: Venn diagram, made availabe flor plotly/webinterface
+    #        figure_UpSetPlot: Upsetplot figure
+    #        
+    #    combinations : list of tuple
+    #        tag : str
+    #            Binary string representing which sets are included / excluded in
+    #            the combination.
+    #        set : set
+    #            The set formed by the overlapping input sets.
+    #    """       
+    #    
+    #    sets_uniqueProteins = [set(self.unique_proteins_total[i]) for i in multi_choice_venn]
+    #    num_combinations = 2 ** len(sets_uniqueProteins)
+    #    bit_flags = [2 ** n for n in range(len(sets_uniqueProteins))]
+    #    flags_zip_sets = [z for z in zip(bit_flags, sets_uniqueProteins)]
+    #
+    #    combo_sets = []
+    #    overlapping_ids = []
+    #    experiments = []
+    #    #dictio = {}
+    #    for bits in range(num_combinations - 1, 0, -1):
+    #        include_sets = [s for flag, s in flags_zip_sets if bits & flag]
+    #        exclude_sets = [s for flag, s in flags_zip_sets if not bits & flag]
+    #        combo = set.intersection(*include_sets)
+    #        combo = set.difference(combo, *exclude_sets)
+    #        tag = "".join([str(int((bits & flag) > 0)) for flag in bit_flags])
+    #        
+    #        experiment_decoded = []
+    #        for digit, exp in zip(list(tag), multi_choice_venn):
+    #            if digit=="0":
+    #                continue
+    #            else:
+    #                experiment_decoded.append(exp)
+    #        #dictio[len(combo)] = experiment_decoded
+    #        if len(multi_choice_venn)>3:
+    #            if len(combo)>300:
+    #                overlapping_ids.append(len(combo))
+    #                experiments.append(experiment_decoded)
+    #            else:
+    #                continue
+    #        else:
+    #            overlapping_ids.append(len(combo))
+    #            experiments.append(experiment_decoded)
+    #        #combo_sets.append((tag, len(combo)))
+    #        
+    #    figure_UpSetPlot = plt.Figure()
+    #    series_UpSetPlot = from_memberships(experiments, data=overlapping_ids)
+    #    plot(series_UpSetPlot, fig=figure_UpSetPlot, show_counts="%d")
+    #
+    #
+    #    
+    #    if len(multi_choice_venn) == 2:
+    #        vd = venn2([set(self.unique_proteins_total[i]) for i in multi_choice_venn], 
+    #                   set_labels=([i for i in multi_choice_venn]),
+    #                   set_colors=("darksalmon", "darkgrey")
+    #                  )
+    #    elif len(multi_choice_venn) == 3:
+    #        vd = venn3([set(self.unique_proteins_total[i]) for i in multi_choice_venn],
+    #                   set_labels=([i for i in multi_choice_venn]),
+    #                   set_colors=("darksalmon", "darkgrey","rosybrown"),
+    #                   alpha=0.8
+    #                  )
+    #    
+    #    else:
+    #        im = "Venn diagram can be displayed for 3 Experiments or less"
+    #        return im, figure_UpSetPlot
+    #
+    #    vd = plt.title("Unique Protein Groups - Venn Diagram",
+    #                   pad=30,
+    #                   fontsize=20
+    #                  )
+    #    
+    #    #make matplot figure available for plotly
+    #    vd = vd.figure
+    #    out_img = io.BytesIO()
+    #    plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
+    #    out_img.seek(0)  # rewind file
+    #    im = Image.open(out_img)
+    #    plt.clf()
+    #    
+    #    return im, figure_UpSetPlot
+    #
     
     def dynamic_range_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], ref_exp="Exp1"):
         """
@@ -2816,11 +2838,15 @@ class SpatialDataSetComparison:
         assert metric in metrics.keys()
         
         # Filter experiments and intersection of proteins
-        df = self.df_01_filtered_combined.loc[
-            self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
+        #df = self.df_01_filtered_combined.loc[
+        #    self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
+        df = self.df_01_mean_filtered_combined.loc[
+            self.df_01_mean_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
+            
         n_expmap = len(set(df.index.get_level_values("Exp_Map")))
         df_across = df.groupby("Protein IDs").filter(lambda x: len(x)==n_expmap)
         df_across.index = df_across.index.droplevel("Exp_Map")
+        df_across = df_across.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
         
         # Calculate and consolidate distances
         distances = pd.DataFrame()
