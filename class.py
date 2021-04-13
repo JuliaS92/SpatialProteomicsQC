@@ -373,7 +373,12 @@ class SpatialDataSet:
             
             df_index.columns.names = ["Set"]
             
-            df_index = df_index.unstack(["Map", "Fraction"])
+            try:
+                df_index = df_index.unstack(["Map", "Fraction"])
+            except ValueError:
+                df_index = df_index.groupby(by=df_index.index.names).agg(np.nansum, axis=0)
+                df_index = df_index.unstack(["Map", "Fraction"])
+            
             df_index.replace(0, np.nan, inplace=True)
             df_index.rename(columns=self.fraction_dict, inplace=True)
             shape_dict["Original size"]=df_index.shape
