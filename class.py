@@ -13,6 +13,7 @@ class SpatialDataSet:
     }
     
     fraction_dict = {
+        "mem_frac1": "03K", "mem_frac2": "06K", "mem_frac3": "12K", "mem_frac4": "24K", "mem_frac5": "80K",
         "1K": "01K","3K": "03K", "6K": "06K", "12K": "12K", "24K": "24K", "80K": "80K", "01K": "01K","03K": "03K", "06K": "06K", "012K": "12K", "024K": "24K",
         "080K": "80K", "Cyt": "Cyt", "Mem": "Mem", "Nuc": "Nuc", "Prot": "Prot", "cyt": "Cyt", "mem": "Mem", "nuc": "Nuc", "Prot": "Prot", "prot": "Prot"
     }
@@ -51,8 +52,8 @@ class SpatialDataSet:
                 "Class C, Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
                 "Wave-2 complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
                 "TREX complex / THO complex": ["ALYREF", "THOC5", "THOC2", "THOC1", "THOC3", "DDX39B"], #["THOC5", "THOC2", "THOC1"]
-                "Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
-                "CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
+                #"Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
+                #"CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
                 "Respiratory chain complex I": ["NDUFB6", "NDUFB10", "NDUFA10", "NDUFA8", "NDUFA6", "NDUFB11", "NDUFB3", "NDUFB5", "NDUFAB1", "NDUFA4", "NDUFB9",
                                                 "NDUFB7", "NDUFA9", "NDUFA5", "NDUFV3", "NDUFA11", "NDUFV1", "NDUFA12", "NDUFV2", "NDUFA7", "NDUFS6", "NDUFS2",
                                                 "NDUFA2", "NDUFS8", "NDUFS1"],
@@ -93,12 +94,14 @@ class SpatialDataSet:
                 "Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
                 "Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
                 "SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
-                "SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
+                #"SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
                 "RFC complex": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
                 "MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
-                "Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
+                #"Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
                 "DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
                 "COP9 signalosome complex / CNS-P53 complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
+                #"Autophagy test" : ["ULK1", "ULK2", "ATG13", "FIP200", "ATG101", "VPS34", "VPS15", "BECN1", "ATG14L", "NRBF2", "ATG9", "Rab1", 
+                #"TRAPPC8", "MAP1LC3A", "MAP1LC3C", "MAP1LC3B"]
  
             }, 
             "Arabidopsis - Araport" :
@@ -121,10 +124,25 @@ class SpatialDataSet:
             },
             "Mouse - Swissprot" :
             {
-                "STH" : ["STH"]
+                "20 SProteasome" : ["Psmb1","Psmb5","Psma3","Psma2","Psmb7","Psmb4","Psmb6","Psma6","Psma4","Psmb3","Psmb2","Psma1","Psma7","Psma5"], 
+                "CCT complex": ["Tcp1","Cct8","Cct7","Cct2","Cct4","Cct5","Cct6a","Cct3"],
+                "MCM complex": ["Mcm3","Mcm4","Mcm5","Mcm2","Mcm6","Mcm7"],
+                "COP9 signalosome complex": ["Cops5","Cops3","Cops4","Cops6","Cops2","Cops8","Gps1","Cops7a"],
+                "Anaphase-promoting complex":["Anapc1","Ccdc27","Cdc23","Anapc5","Anapc2","Anapc10","Cdc16","Anapc4","Anapc7"],
+                "Caveolar macromolecular signaling complex": ["Adrb2","Prkar2b","Cav3","Gnas","Adcy8","Cacna1c","Ppp2r1a"],
+                "(ER)-localized multiprotein complex": ["Pdia4","Hsp90b1","P4hb","Hspa5","Ppib","Uggt1","Dnajb11","Sdf2l1","Hyou1","Cabp1"],
+                "Cytochrome bc1-complex, mitochondrial": ["Mt-Cyb,Uqcrh,Uqcr10,Uqcr11,Uqcrq,Uqcrfs1,Uqcrc1,Cyc1,Uqcrb,Uqcrc2"],
+                "PYR complex": ["Smarce1","Actb","Hmgb1","Hdac2","Smarcc1","Ikzf1","Rbbp7","Smarcd1","Smarcc2","Chd4","Smarcb1","Actl6a"],
+                "Ikaros complex": ["Ikzf3","Hdac1","Hdac2","Ikzf2","Smarcc1","Ikzf1","Smarca4","Rbbp4","Smarcd1","Smarcd3","Chd4","Smarcd2"],
+                "Ubiquitin E3 ligase": ["Tceb2","Rbx1","Tceb1","Neurl2","Cul5"],
+                "Gata1-Fog1-MeCP1 complex": ["Hdac1","Zfpm1","Gata1","Hdac2","Rbbp4","Rbbp7","Chd4","Mta1","Gatad2b","Mta3","Mta2","Mbd3","Mbd2"],
+                "BLOC-1 complex": ["Bloc1s1","Bloc1s3","Bloc1s5","Bloc1s4","Dtnbp1","Bloc1s2","Bloc1s6","Snapin"],
+
             },
         }
 
+    analysed_datasets_dict = {}
+    
     df_organellarMarkerSet = pd.read_csv("eLife_markers.txt", sep="\t", comment="#",
                                        usecols=lambda x: bool(re.match("Gene name|Compartment", x)))
     df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
@@ -319,16 +337,23 @@ class SpatialDataSet:
             
             df_index.replace(0, np.nan, inplace=True)
             shape_dict["Shape after categorical filtering"] = df_index.shape
+            
+            df_index.rename(columns={"MS/MS Count":"MS/MS count"}, inplace=True)
 
             fraction_wCyt = list(df_index.columns.get_level_values("Fraction").unique())
             
             ##############Cyt should get only be removed if it is not an NMC split
             if "Cyt" in fraction_wCyt and len(fraction_wCyt) >= 4:
                 df_index.drop("Cyt", axis=1, level="Fraction", inplace=True)
-            if self.acquisition == "LFQ5 - MQ":
-                df_index.drop("01K", axis=1, level="Fraction", inplace=True)
-#            else:
-#                pass
+            try:
+                if self.acquisition == "LFQ5 - MQ":
+                    df_index.drop("01K", axis=1, level="Fraction", inplace=True)
+#                else:
+#                    pass
+            except:
+                pass
+            
+            
             
             self.fractions = list(df_index.columns.get_level_values("Fraction").unique())
             self.df_index = df_index
@@ -373,7 +398,6 @@ class SpatialDataSet:
             df_index = df_renamed.set_index([col for col in df_renamed.columns if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]])==False])
             
             df_index.columns.names = ["Set"]
-            
 
             try:
                 df_index = df_index.unstack(["Map", "Fraction"])
@@ -666,11 +690,20 @@ class SpatialDataSet:
             self.map_names = map_names
             
             df_stringency_mapfracstacked = stringency_silac(df_index)
+            self.df_stringencyFiltered = df_stringency_mapfracstacked
             self.df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
             self.df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
             
-            self.analysis_summary_dict["0/1 normalized data - mean"] = self.df_01_stacked["normalized profile"].unstack("Map").dropna().mean(axis=1).to_frame(
-                name="normalized profile - mean").reset_index().to_json()
+            df_01_comparison = self.df_01_stacked.copy()
+            comp_ids = pd.Series([el.split(";")[0] for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
+            df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
+            df_01_comparison.set_index(comp_ids, append=True, inplace=True)
+            df_01_comparison.drop(["Ratio H/L count", "Ratio H/L variability [%]"], inplace=True, axis=1)
+            df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
+            df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
+            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
+            self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
+ 
 
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
@@ -702,11 +735,20 @@ class SpatialDataSet:
             self.map_names = map_names
             
             df_stringency_mapfracstacked = stringency_lfq(df_index)
+            self.df_stringencyFiltered = df_stringency_mapfracstacked
             self.df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
             self.df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
             
-            self.analysis_summary_dict["0/1 normalized data - mean"] = self.df_01_stacked["normalized profile"].unstack("Map").dropna().mean(axis=1).to_frame(
-                name="normalized profile - mean").reset_index().to_json() 
+            df_01_comparison = self.df_01_stacked.copy()
+            comp_ids = pd.Series([el.split(";")[0] for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
+            df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
+            df_01_comparison.set_index(comp_ids, append=True, inplace=True)
+            df_01_comparison.drop("MS/MS count", inplace=True, axis=1)
+            df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
+            df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
+            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
+            self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
+            
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
@@ -1235,7 +1277,7 @@ class SpatialDataSet:
         
         self.df_allclusters_01_test = df_allclusters_01
         #storage of 0/1 normalized data in global dictionary
-        self.analysis_summary_dict["0/1 normalized data"] = df_allclusters_01.reset_index().to_json() 
+        #self.analysis_summary_dict["0/1 normalized data"] = df_allclusters_01.reset_index().to_json() 
         # genes are droped, if they are not present in all maps
         
         self.df_allclusters_onlynorm_fracunstacked_unfiltered = df_allclusters_onlynorm_fracunstacked_unfiltered
@@ -1674,7 +1716,7 @@ class SpatialDataSet:
         
         df_01ORlog_svm.index = df_01ORlog_svm.index.droplevel(["Map", "Fraction"])
         df_01ORlog_svm = df_01ORlog_svm.unstack("Map_Frac")
-        df_01ORlog_svm = df_01ORlog_svm.dropna(axis=0, subset=df_01ORlog_svm.loc[[], ["normalized profile"]].columns)
+        #df_01ORlog_svm = df_01ORlog_svm.dropna(axis=0, subset=df_01ORlog_svm.loc[[], ["normalized profile"]].columns)
         df_01ORlog_svm.columns = ["_".join(col) for col in df_01ORlog_svm.columns.values]
         df_01ORlog_svm.rename(index={"undefined" : np.nan}, level="Compartment", inplace=True)
         
@@ -1829,7 +1871,7 @@ class SpatialDataSet:
 class SpatialDataSetComparison:
     
         
-    analysed_datasets_dict = {}
+    analysed_datasets_dict = SpatialDataSet.analysed_datasets_dict
     css_color = SpatialDataSet.css_color
     markerproteins_set = SpatialDataSet.markerproteins_set
 
@@ -1854,7 +1896,7 @@ class SpatialDataSetComparison:
         
         self.exp_names, self.exp_map_names = [], []
         
-        self.df_01_filtered_combined, self.df_01_mean_filtered_combined, self.df_distance_comp = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        self.df_01_filtered_combined, self.df_distance_comp = pd.DataFrame(), pd.DataFrame()
         self.df_quantity_pr_pg_combined, self.df_dynamicRange_combined = pd.DataFrame(), pd.DataFrame()
         
 
@@ -1957,34 +1999,37 @@ class SpatialDataSetComparison:
         
         for exp_name in json_dict.keys():
             for data_type in json_dict[exp_name].keys():
+                #if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
+                #    #convert into dataframe
+                #    df_01_combined = pd.read_json(json_dict[exp_name][data_type])
+                #    #get only 01 normalized data 
+                #    df_01_combined = df_01_combined.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
+                #                                               "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
+                #    df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
+                #
+                #elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
+                #    df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
+                #    df_01_toadd = df_01_toadd.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
+                #                                         "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
+                #    df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
+                #    #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
+                #    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")
+                    
                 if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
-                    #convert into dataframe
                     df_01_combined = pd.read_json(json_dict[exp_name][data_type])
-                    #get only 01 normalized data 
-                    df_01_combined = df_01_combined.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
-                                                               "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
+                    df_01_combined = df_01_combined.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
+                    df_01_combined.drop([col for col in df_01_combined.columns if not col.startswith("normalized profile")])
+                    df_01_combined.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_combined.columns], names=["Set", "Map", "Fraction"])
                     df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
         
                 elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
                     df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_toadd = df_01_toadd.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
-                                                         "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
+                    df_01_toadd = df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
+                    df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")])
+                    df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
                     df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
-                    #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
-                    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")
+                    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")  
                     
-                elif data_type == "0/1 normalized data - mean" and exp_name == list(json_dict.keys())[0]:
-                    df_01_mean_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_mean_combined = df_01_mean_combined.set_index(["Fraction", "Gene names", "Protein IDs", 
-                                                                         "Compartment"])[["normalized profile - mean"]].unstack(["Fraction"])
-                    df_01_mean_combined.rename(columns = {"normalized profile - mean":exp_name}, inplace=True)
-        
-                elif data_type == "0/1 normalized data - mean" and exp_name != list(json_dict.keys())[0]:
-                    df_01_mean_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_mean_toadd = df_01_mean_toadd.set_index(["Fraction", "Gene names", "Protein IDs", 
-                                                                   "Compartment"])[["normalized profile - mean"]].unstack(["Fraction"])
-                    df_01_mean_toadd.rename(columns = {"normalized profile - mean":exp_name}, inplace=True)
-                    df_01_mean_combined = pd.concat([df_01_mean_combined, df_01_mean_toadd], axis=1)#, join="inner")  
                     
                 elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
                     df_quantity_pr_pg_combined = pd.read_json(json_dict[exp_name][data_type])
@@ -2043,22 +2088,27 @@ class SpatialDataSetComparison:
                 #except:
                 #    continue
                 #
+        ##filter for consistently quantified proteins (they have to be in all fractions and all maps)
+        #df_01_filtered_combined = df_01_combined.dropna()
+        #df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
+        ##reframe it to make it ready for PCA | dropna: to make sure, that you do consider only fractions that are in all experiments
+        #df_01_filtered_combined = df_01_filtered_combined.stack(["Experiment", "Map"]).swaplevel(0,1, axis=0).dropna(axis=1)
+        #index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_filtered_combined.index.get_level_values("Map")
+        #index_ExpMap.name = "Exp_Map"
+        #df_01_filtered_combined.set_index(index_ExpMap, append=True, inplace=True)
+        #df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
+        
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
-        df_01_filtered_combined = df_01_combined.dropna()
-        df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
-        #reframe it to make it ready for PCA | dropna: to make sure, that you do consider only fractions that are in all experiments
-        df_01_filtered_combined = df_01_filtered_combined.stack(["Experiment", "Map"]).swaplevel(0,1, axis=0).dropna(axis=1)
+        #df_01_filtered_combined = df_01_mean_combined.dropna()    
+        df_01_combined.columns.names = ["Experiment", "Map", "Fraction"]
+        #reframe it to make it ready for PCA
+        df_01_filtered_combined = df_01_combined.stack(["Experiment", "Map"]).dropna(axis=0)
+        #df_01_filtered_combined = df_01_combined.stack(["Experiment"]).dropna(axis=1)
+        df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
         index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_filtered_combined.index.get_level_values("Map")
         index_ExpMap.name = "Exp_Map"
         df_01_filtered_combined.set_index(index_ExpMap, append=True, inplace=True)
-        df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
         
-        #filter for consistently quantified proteins (they have to be in all fractions and all maps)
-        #df_01_mean_filtered_combined = df_01_mean_combined.dropna()    
-        df_01_mean_combined.columns.names = ["Experiment", "Fraction"]
-        #reframe it to make it ready for PCA
-        df_01_mean_filtered_combined = df_01_mean_combined.stack(["Experiment"]).dropna(axis=1)
-        df_01_mean_filtered_combined = df_01_mean_filtered_combined.div(df_01_mean_filtered_combined.sum(axis=1), axis=0)
         
         df_distances_combined.columns.names = ["Experiment", "Map"]
         series = df_distances_combined.stack(["Experiment", "Map"])
@@ -2081,7 +2131,7 @@ class SpatialDataSetComparison:
         self.exp_map_names = list(index_dist_ExpMap.unique())
         
         self.df_01_filtered_combined = df_01_filtered_combined 
-        self.df_01_mean_filtered_combined = df_01_mean_filtered_combined
+        #self.df_01_mean_filtered_combined = df_01_mean_filtered_combined
         
         self.df_quantity_pr_pg_combined = df_quantity_pr_pg_combined
         self.df_dynamicRange_combined = df_dynamicRange_combined
@@ -2118,7 +2168,7 @@ class SpatialDataSetComparison:
         markerproteins = self.markerproteins.copy()
         
         df_01_filtered_combined = self.df_01_filtered_combined
-        df_01_mean_filtered_combined = self.df_01_mean_filtered_combined 
+        df_01_filtered_combined = self.df_01_filtered_combined 
         
         pca = PCA(n_components=3)
 
@@ -2126,9 +2176,9 @@ class SpatialDataSetComparison:
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_01_filtered_combined.index
         
-        df_global_pca = pd.DataFrame(pca.fit_transform(df_01_mean_filtered_combined))
+        df_global_pca = pd.DataFrame(pca.fit_transform(df_01_filtered_combined))
         df_global_pca.columns = ["PC1", "PC2", "PC3"]
-        df_global_pca.index = df_01_mean_filtered_combined.index
+        df_global_pca.index = df_01_filtered_combined.index
         
         try:
             markerproteins["PSMA subunits"] = [item for sublist in [re.findall("PSMA.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
@@ -2211,7 +2261,7 @@ class SpatialDataSetComparison:
     
             return pca_figure
         except:
-            return "This protein cluster was not identified in across all experiments"
+            return "This protein cluster was not identified in all experiments"
     
                 
     def plot_global_pca_comparison(self, cluster_of_interest_comparison="Proteasome", x_PCA="PC1", y_PCA="PC3", 
@@ -2288,8 +2338,8 @@ class SpatialDataSetComparison:
         
         
         fig_global_pca.update_layout(autosize=False, 
-                                     width=1500 if markerset_or_cluster == False else 1600, 
-                                     height=500*(int(len(multi_choice) / 2) + (len(multi_choice) % 2 > 0)),
+                                     width=1800 if markerset_or_cluster == False else 1600, 
+                                     height=400*(int(len(multi_choice) / 2) + (len(multi_choice) % 2 > 0)),
                                      template="simple_white"
                                     )
         
@@ -2342,7 +2392,7 @@ class SpatialDataSetComparison:
                     individual_distance_boxplot_figure.add_trace(go.Box(
                         x=[df_plot["Experiment"], df_plot["Map"]],
                         y=df_plot["distance"],
-                        line=dict(color=pio.templates["simple_white"].layout["colorway"][i]),
+                        #line=dict(color=pio.templates["simple_white"].layout["colorway"][i]),
                         boxpoints="all",
                         whiskerwidth=0.2,
                         marker_size=2,
@@ -2352,7 +2402,7 @@ class SpatialDataSetComparison:
                     
                 individual_distance_boxplot_figure.update_layout(boxmode="group", 
                                                                  xaxis_tickangle=90, 
-                                                                 title="Manhattan distance distribution for <br>the protein cluster: {}".format(cluster_of_interest_comparison),
+                                                                 title="Manhattan distance distribution for the protein cluster: {}".format(cluster_of_interest_comparison),
                                                                  autosize=False,
                                                                  width=350*len(multi_choice),
                                                                  height=500,
@@ -2396,7 +2446,7 @@ class SpatialDataSetComparison:
                                              hover_name="Gene names", 
                                              color=boxplot_color,
                                              template="simple_white",
-                                             title="Global Manhattan distance distribution for <br>the protein cluster: {}".format(cluster_of_interest_comparison)
+                                             title="Global Manhattan distance distribution for the protein cluster: {}".format(cluster_of_interest_comparison)
                                              )
     
             distance_boxplot_figure.update_layout(autosize=False,
@@ -2416,162 +2466,9 @@ class SpatialDataSetComparison:
             return distance_boxplot_figure
         
         
-    def distance_ranking_barplot_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], clusters_for_ranking=None, ref_exp="Exp1", ranking_boxPlot=True, toggle_sumORmedian=False):
-        """
-            For each cluster and for each experiment the median ditance is calculated. The smallest median is set to 1, while the other medians will be 
-            normalized accordingly. For the "collapsed view" - investigating the global ranking of an experiment across the cluster, the sum of the normlaized
-            medians of each clusters for each experimetn will be calculated and displayed. 
-            
-        Args:
-            self:
-                df_distance_comp: no index, column names: "Gene names", "Cluster", "Protein IDs", "Compartment", "Experiment", "Map", "Exp_Map", "distance"
-                                 "distance": Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
-                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
-                clusters_for_ranking: list of clusters, that will be used to calculate the ranking
-                multi_choice: list of experiment names
-                collapse_maps: boolean
-                ref_exp: stirng, reference experiment for normalization
-        
-        Returns:
-            fig_globalRanking: figure, barplot. 
-            self:
-                df_quantified_cluster: df, cluster as column index e.g. "Proteasome", "Lysosome", "Experiment" as row index. dataframe contains x 
-                                       (=quantified in certain experiment) and - (=not quantified in certain experiment)
-                sorting_list: list of experiment names. They are sorted in ascending order - from the lowest to the highest "Normalized Median - Sum". 
-                              It is used to sort the other dataframes, such that the color coding for each experiment is in all plots the same 
-            
-        """
-        
-        
-        if clusters_for_ranking is None:
-            clusters_for_ranking = self.clusters_for_ranking
-        
-        #an error massage, if no Experiments are selected, will be displayed already, that is why: return ""
-        if len(multi_choice)>=1:
-            pass
-        else:
-            return ("")
-        
-        df_distance_comp = self.df_distance_comp.copy()
-        df_distance_comp = df_distance_comp[df_distance_comp["Experiment"].isin(multi_choice)]
-        df_distance_comp = df_distance_comp[df_distance_comp["Cluster"].isin(clusters_for_ranking)]
-
-        df_quantified_cluster = df_distance_comp.reset_index()
-        df_quantified_cluster = df_quantified_cluster.drop_duplicates(subset=["Cluster", "Experiment"]).set_index(["Cluster", 
-                                                                                                                   "Experiment"])["distance"].unstack("Cluster")
-        self.df_quantified_cluster = df_quantified_cluster.notnull().replace({True: "x", False: "-"})
-        
-        #dict_cluster_normalizedMedian = {}
-        dict_cluster_normalizedMedian_ref = {}
-        dict_median_distance_ranking = {}
-        for cluster in self.markerproteins.keys():
-            try:
-                df_cluster = df_distance_comp[df_distance_comp["Cluster"]==cluster]
-                all_median_one_cluster_several_exp = {}
-                for exp in multi_choice:
-                    median = df_cluster[df_cluster["Experiment"]==exp].median()["distance"]
-                    all_median_one_cluster_several_exp[exp] = float(median)
-                    #new
-                    if exp == ref_exp:
-                        ref = median
-                dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
-                #min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
-                #median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
-                #dict_cluster_normalizedMedian[cluster] = median_ranking
-                #new
-                median_ranking_ref = {exp: median/ref for exp, median in all_median_one_cluster_several_exp.items()}
-                dict_cluster_normalizedMedian_ref[cluster] = median_ranking_ref
-            except:
-                continue
-               
-        df_cluster_normalizedMedian_ref = pd.DataFrame(dict_cluster_normalizedMedian_ref)
-        df_cluster_normalizedMedian_ref.index.name="Experiment"
-        df_cluster_normalizedMedian_ref.rename_axis("Cluster", axis=1, inplace=True)
-        
-        #median makes a huge differnece, improves result of DIA, MQ, libary
-        df_RelDistanceRanking = pd.concat([df_cluster_normalizedMedian_ref.median(axis=1), df_cluster_normalizedMedian_ref.sem(axis=1)], axis=1, 
-                                          keys=["Distance Ranking (rel, median)", "SEM"]).reset_index().sort_values("Distance Ranking (rel, median)")
-        self.sorting_list = list(df_RelDistanceRanking["Experiment"])
-        
-        ranking_sum = df_cluster_normalizedMedian_ref.sum(axis=1).round(2)
-        ranking_sum.name = "Normalized Median - Sum"
-        df_ranking_sum = ranking_sum.reset_index()
-        
-        #ranking_product = df_cluster_normalizedMedian.product(axis=1).round(2)
-        #ranking_product.name = "Normalized Median - Product"
-        #df_globalRanking = pd.concat([pd.DataFrame(ranking_sum), pd.DataFrame(ranking_product)], axis=1).reset_index()
-        
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.stack("Cluster")
-        df_cluster_normalizedMedian_ref.name="Normalized Median"
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.reset_index()
-        
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=self.sorting_list, ordered=True))
-        df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
-
-        
-        if collapse_cluster == False:
-            
-            fig_ranking = px.bar(df_cluster_normalizedMedian_ref, 
-                                x="Cluster", 
-                                y="Normalized Median", 
-                                color="Experiment", 
-                                barmode="group", 
-                                title="Ranking - normalization to reference experiment: {}".format(ref_exp),
-                                template="simple_white"
-                                )
-            
-            fig_ranking.update_xaxes(categoryorder="total ascending")
-                   
-            fig_ranking.update_layout(autosize=False,
-                                      width=1200 if len(multi_choice)<=3 else 300*len(multi_choice),
-                                      height=500,
-                                      template="simple_white"
-                                     )
-            return fig_ranking
-        
-        else:
-            if toggle_sumORmedian == False:
-                if ranking_boxPlot ==False:
-                    fig_globalRanking = px.bar(df_RelDistanceRanking.sort_values("Distance Ranking (rel, median)"), 
-                                                x="Experiment",
-                                                y="Distance Ranking (rel, median)", 
-                                                title="Ranking - median of all individual normalized medians - reference experiment: {}".format(ref_exp),
-                                                error_x="SEM", error_y="SEM", 
-                                                color="Experiment", 
-                                                template="simple_white")
-                    
-    
-                                                
-                else: 
-                    fig_globalRanking = px.box(df_cluster_normalizedMedian_ref,
-                                            x="Experiment",
-                                            y="Normalized Median", 
-                                            title="Ranking - median of all individual normalized medians - reference experiment: {}".format(ref_exp),
-                                            color="Experiment",
-                                            points="all",
-                                            template="simple_white",
-                                            hover_name="Cluster")
-                #return pn.Column(pn.Row(fig_globalRanking), pn.Row(fig_globalRanking2))
-            else:
-                fig_globalRanking = px.bar(df_ranking_sum.sort_values("Normalized Median - Sum"), 
-                     x="Experiment",
-                     template="simple_white",
-                     y="Normalized Median - Sum", 
-                     title="Ranking - median of all individual normalized medians - reference experiment: {}".format(ref_exp),
-                     color="Experiment")
-            
-            fig_globalRanking.update_layout(autosize=False,
-                                            width=250*len(multi_choice),
-                                            height=500,
-                                            template="simple_white"
-                                            )
-            
-            return fig_globalRanking
-                 
-    
-    
-    def distance_ranking_barplot_comparison_median_noRef(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], clusters_for_ranking=None, ref_exp="Exp1", ranking_boxPlot=True, toggle_sumORmedian=False):
-    
+  
+    def distance_ranking_barplot_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], clusters_for_ranking=None, ranking_boxPlot="Box plot"):#, toggle_sumORmedian=False):
+    #ref_exp="Exp1", 
         if clusters_for_ranking is None:
                 clusters_for_ranking = self.clusters_for_ranking
             
@@ -2585,14 +2482,13 @@ class SpatialDataSetComparison:
         #multi_choice = i_multi_choice.value
         #clusters_for_ranking =  i_clusters_for_ranking.value
         df_distance_comp = self.df_distance_comp.copy()
-        #df_cluster_test['Protein IDs'] = df_cluster_test['Protein IDs'].str.split(';', expand=True)[0]
         df_distance_comp = df_distance_comp[df_distance_comp["Experiment"].isin(multi_choice)]
         df_distance_comp = df_distance_comp[df_distance_comp["Cluster"].isin(clusters_for_ranking)]
         
-        #df_quantified_cluster = df_distance_comp.reset_index()
-        #df_quantified_cluster = df_distance_comp.drop_duplicates(subset=["Cluster", "Experiment"]).set_index(["Cluster", 
-        #                                                                                                        "Experiment"])["distance"].unstack("Cluster")
-        #self.df_quantified_cluster = df_quantified_cluster.notnull().replace({True: "x", False: "-"})
+        df_quantified_cluster = df_distance_comp.reset_index()
+        df_quantified_cluster = df_distance_comp.drop_duplicates(subset=["Cluster", "Experiment"]).set_index(["Cluster", 
+                                                                                                                "Experiment"])["distance"].unstack("Cluster")
+        self.df_quantified_cluster = df_quantified_cluster.notnull().replace({True: "x", False: "-"})
         
         
         dict_quantified_cluster = {}
@@ -2624,7 +2520,7 @@ class SpatialDataSetComparison:
             except:
                 continue
         
-        
+        self.cluster_above_treshold = dict_quantified_cluster.keys()
         self.df_quantified_cluster2 = pd.DataFrame.from_dict({"Number of PG per Cluster":dict_quantified_cluster}).T
         
         df_cluster_normalizedMedian_ref = pd.DataFrame(dict_cluster_normalizedMedian_ref)
@@ -2634,7 +2530,7 @@ class SpatialDataSetComparison:
         #median makes a huge differnece, improves result of DIA, MQ, libary
         df_RelDistanceRanking = pd.concat([df_cluster_normalizedMedian_ref.median(axis=1), df_cluster_normalizedMedian_ref.sem(axis=1)], axis=1, 
                                         keys=["Distance Ranking (rel, median)", "SEM"]).reset_index().sort_values("Distance Ranking (rel, median)")
-        sorting_list = list(df_RelDistanceRanking["Experiment"])
+        self.sorting_list = list(df_RelDistanceRanking["Experiment"])
         
         ranking_sum = df_cluster_normalizedMedian_ref.sum(axis=1).round(2)
         ranking_sum.name = "Normalized Median - Sum"
@@ -2647,8 +2543,8 @@ class SpatialDataSetComparison:
         df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.stack("Cluster")
         df_cluster_normalizedMedian_ref.name="Normalized Median"
         df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.reset_index()
-        
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=sorting_list, ordered=True))
+        self.df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref
+        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=self.sorting_list, ordered=True))
         df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
         
         
@@ -2659,7 +2555,7 @@ class SpatialDataSetComparison:
                                 y="Normalized Median", 
                                 color="Experiment", 
                                 barmode="group", 
-                                title="Ranking - normalization to reference experimentis the median across all experiments for each cluster",
+                                title="Ranking - normalization to reference experiments the median across all experiments for each cluster",
                                 template="simple_white"
                                 )
             
@@ -2671,29 +2567,28 @@ class SpatialDataSetComparison:
                                     template="simple_white"
                                     )
             return fig_ranking
-        
+ 
         else:
-            if toggle_sumORmedian == False:
-                if ranking_boxPlot ==False:
-                    fig_globalRanking = px.bar(df_RelDistanceRanking.sort_values("Distance Ranking (rel, median)"), 
-                                                x="Experiment",
-                                                y="Distance Ranking (rel, median)", 
-                                                title="Ranking - median of all individual normalized medians - reference experiment is the median across all experiments for each cluster",
-                                                error_x="SEM", error_y="SEM", 
-                                                color="Experiment", 
-                                                template="simple_white")
+            if ranking_boxPlot == "Bar plot - median":
+                fig_globalRanking = px.bar(df_RelDistanceRanking.sort_values("Distance Ranking (rel, median)"), 
+                                            x="Experiment",
+                                            y="Distance Ranking (rel, median)", 
+                                            title="Median manhattan distance distribution for all protein clusters (n>=5 per cluster)",# - median of all individual normalized medians - reference experiment is the median across all experiments for each cluster",
+                                            error_x="SEM", error_y="SEM", 
+                                            color="Experiment", 
+                                            template="simple_white")
                     
         
                                                 
-                else: 
-                    fig_globalRanking = px.box(df_cluster_normalizedMedian_ref,
-                                            x="Experiment",
-                                            y="Normalized Median", 
-                                            title="Ranking - median of all individual normalized medians - reference is the median across all experiments for each cluster",
-                                            color="Experiment",
-                                            points="all",
-                                            template="simple_white",
-                                            hover_name="Cluster")
+            if ranking_boxPlot == "Box plot": 
+                fig_globalRanking = px.box(df_cluster_normalizedMedian_ref,
+                                        x="Experiment",
+                                        y="Normalized Median", 
+                                        title="Median manhattan distance distribution for all protein clusters (n>=5 per cluster)",# "Ranking - median of all individual normalized medians - reference is the median across all experiments for each cluster",
+                                        color="Experiment",
+                                        points="all",
+                                        template="simple_white",
+                                        hover_name="Cluster")
                 #return pn.Column(pn.Row(fig_globalRanking), pn.Row(fig_globalRanking2))
             else:
                 fig_globalRanking = px.bar(df_ranking_sum.sort_values("Normalized Median - Sum"), 
@@ -2735,41 +2630,50 @@ class SpatialDataSetComparison:
         #df_quantity_pr_pg_combined.sort_values("type", ascending=False, inplace=True)
         
         layout = go.Layout(barmode="overlay", 
-          xaxis_tickangle=90, 
+          #xaxis_tickangle=90, 
           autosize=False,
-          width=350*len(multi_choice),
-          height=500,
-          xaxis=go.layout.XAxis(linecolor="black",
-                                linewidth=1,
-                                title="Experiment",
-                                mirror=True),
-          yaxis=go.layout.YAxis(linecolor="black",
-                                linewidth=1,
-                                title="#",
-                                mirror=True),
+          width=300*len(multi_choice),
+          height=400,
+          #xaxis=go.layout.XAxis(linecolor="black",
+          #                      linewidth=1,
+          #                      title="Experiment",
+          #                      mirror=True),
+          #yaxis=go.layout.YAxis(linecolor="black",
+          #                      linewidth=1,
+          #                      title="#",
+          #                      mirror=True),
+          #legend = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
           template="simple_white")
         
-        fig_quantity_pg = go.Figure()
-        for t in df_quantity_pr_pg_combined["type"].unique():
-            plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
-            fig_quantity_pg.add_trace(go.Bar(
-                x=[plot_df["Experiment"], plot_df["filtering"]],
-                y=plot_df["number of protein groups"],
-                name=t))
-        fig_quantity_pg.update_layout(title="Number of Protein Groups")
-        fig_quantity_pg.update_layout(layout)
+        fig_quantity_pg = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of protein groups", color="type", barmode="overlay", labels={"Experiment":"", "filtering":""}, 
+                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        fig_quantity_pg.update_layout(layout, title="Number of Protein Groups")
+
+        #fig_quantity_pg = go.Figure()
+        #for t in df_quantity_pr_pg_combined["type"].unique():
+        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
+        #    fig_quantity_pg.add_trace(go.Bar(
+        #        x=[plot_df["Experiment"], plot_df["filtering"]],
+        #        y=plot_df["number of protein groups"],
+        #        name=t))
+        #fig_quantity_pg.update_layout(title="Number of Protein Groups")
+        #fig_quantity_pg.update_layout(layout)
          
+        fig_quantity_pr = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of profiles", color="type", barmode="overlay", labels={"Experiment":"", "filtering":""}, 
+                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        fig_quantity_pr.update_layout(layout, title="Number of Profiles" )
+
         
-        fig_quantity_pr = go.Figure()
-        for t in df_quantity_pr_pg_combined["type"].unique():
-            plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
-            fig_quantity_pr.add_trace(go.Bar(
-                x=[plot_df["Experiment"], plot_df["filtering"]],
-                y=plot_df["number of profiles"],
-                name=t))
-        fig_quantity_pr.update_layout(title="Number of Profiles")
-        fig_quantity_pr.update_layout(layout) 
-        
+        #fig_quantity_pr = go.Figure()
+        #for t in df_quantity_pr_pg_combined["type"].unique():
+        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
+        #    fig_quantity_pr.add_trace(go.Bar(
+        #        x=[plot_df["Experiment"], plot_df["filtering"]],
+        #        y=plot_df["number of profiles"],
+        #        name=t))
+        #fig_quantity_pr.update_layout(title="Number of Profiles")
+        #fig_quantity_pr.update_layout(layout) 
+        #
         return fig_quantity_pg, fig_quantity_pr
     
     
@@ -2794,29 +2698,32 @@ class SpatialDataSetComparison:
         #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
         df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], inplace=True)
 
-        
-        fig_pr_dc = go.Figure()
-        for t in df_quantity_pr_pg_combined["filtering"].unique():
-            plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["filtering"] == t]
-            fig_pr_dc.add_trace(go.Bar(
-                x=[plot_df["Experiment"], plot_df["type"]],
-                y=plot_df["data completeness of profiles"],
-                name=t))
+        fig_pr_dc = px.bar(df_quantity_pr_pg_combined, x="type", y="data completeness of profiles", color="filtering", barmode="overlay", labels={"Experiment":"", "type":""}, 
+                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        #fig_pr_dc.update_layout(layout)
+        #fig_pr_dc = go.Figure()
+        #for t in df_quantity_pr_pg_combined["filtering"].unique():
+        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["filtering"] == t]
+        #    fig_pr_dc.add_trace(go.Bar(
+        #        x=[plot_df["Experiment"], plot_df["type"]],
+        #        y=plot_df["data completeness of profiles"],
+        #        name=t))
             
-        fig_pr_dc.update_layout(barmode="overlay", 
-                                         xaxis_tickangle=90, 
+        fig_pr_dc.update_layout(#barmode="overlay", 
+                                         #xaxis_tickangle=90, 
                                          title="Data Completeness of Profiles",
                                          autosize=False,
-                                         width=350*len(multi_choice),
-                                         height=500,
-                                         xaxis=go.layout.XAxis(linecolor="black",
-                                                               linewidth=1,
-                                                               title="Experiment",
-                                                               mirror=True),
-                                         yaxis=go.layout.YAxis(linecolor="black",
-                                                               linewidth=1,
-                                                               #title="",
-                                                               mirror=True),
+                                         width=300*len(multi_choice),
+                                         height=400,
+                                         #xaxis=go.layout.XAxis(linecolor="black",
+                                         #                      linewidth=1,
+                                         #                      title="Experiment",
+                                         #                      mirror=True),
+                                         #yaxis=go.layout.YAxis(linecolor="black",
+                                         #                      linewidth=1,
+                                         #                      #title="",
+                                         #                      mirror=True),
+                                         #legend = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                                          template="simple_white")
         
         return fig_pr_dc
@@ -2991,6 +2898,86 @@ class SpatialDataSetComparison:
         return pn.Column(pn.Row(fig_dynamic_range), pn.Row(fig_RelDynamicRange)) 
     
     
+    def calculate_global_scatter(self, multi_choice, metric, consolidation):
+        """
+        A distribution plot of the profile scatter in each experiment is generated, with variable distance metric and consolidation of replicates.
+        
+        Args:
+            self:
+                df_01_filtered_combined: df, indexed
+            multi_choice: list of experiment names
+            metric: distance metric, one of 'euclidean distance', 'manhattan distance', '1 - cosine correlation', '1 - pearson correlation'
+            consolidation: method to consolidate replicate distances, one of 'median', 'average', 'sum'
+        
+        Returns:
+            plot: plotly.figure_factory.displot, shows kernel density estiamtion in the main pane and a rug plot underneath. Traces are sorted by ascending median of the distribution.
+        """
+        
+        # Option dictionaries
+        cons_functions = {
+            "median": np.median,
+            "average": np.mean,
+            "sum": np.sum
+        }
+        metrics = {
+            "euclidean distance": "euclidean",
+            "manhattan distance": "manhattan",
+            "1 - cosine correlation": "cosine",
+            "1 - pearson correlation": lambda x,y: 1-np.corrcoef(x,y)[0][1]
+        }
+        
+        # Option assertion
+        assert consolidation in cons_functions.keys()
+        assert metric in metrics.keys()
+        
+        # Filter experiments and intersection of proteins
+        #df = self.df_01_filtered_combined.loc[
+        #    self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
+        df = self.df_01_filtered_combined.loc[
+            self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
+            
+        n_expmap = len(set(df.index.get_level_values("Exp_Map")))
+        df_across = df.groupby("Protein IDs").filter(lambda x: len(x)==n_expmap)
+        df_across.index = df_across.index.droplevel("Exp_Map")
+        df_across = df_across.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
+        nPG = df_across.unstack(["Experiment", "Map"]).shape[0]
+        
+        # Calculate and consolidate distances
+        distances = pd.DataFrame()
+        for exp in set(df.index.get_level_values("Experiment")):
+            df_m = df_across.xs(exp, level="Experiment", axis=0)
+            maps = list(set(df_m.index.get_level_values("Map")))
+            distances_m = pd.DataFrame()
+            for i,mapi in enumerate(maps):
+                for j,mapj in enumerate(maps):
+                    # only look at each comparison once
+                    if j <= i:
+                        continue
+                    dist = pw.paired_distances(df_m.xs(mapi, level="Map", axis=0).values,
+                                               df_m.xs(mapj, level="Map", axis=0).values,
+                                               metric = metrics[metric])
+                    dist = pd.Series(dist, name="_".join([mapi,mapj]))
+                    distances_m = pd.concat([distances_m, dist], axis=1)
+            distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
+            distances = pd.concat([distances, pd.Series(distances_m.apply(cons_functions[consolidation], axis=1), name=exp)], axis=1)
+        distances.index = distances_m.index
+        
+        self.distances = distances
+        # Sort by median
+        medians = distances.apply(np.median)
+        
+        distances = distances[medians.rank().sort_values(ascending=False).index]
+        #self.sorting_list = list(medians.rank().sort_values(ascending=False).index)
+        
+        #df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=self.sorting_list, ordered=True))
+        #df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
+        
+        # Create and return plot
+        plot = ff.create_distplot(distances.T.values, distances.columns, show_hist=False)
+        plot.update_layout(title="Distribution of {} {}s, n = {}".format(metric, consolidation, nPG),
+                           width=1500, height=600, template="simple_white")
+        return plot
+
         
     def __repr__(self):
         return str(self.__dict__)
