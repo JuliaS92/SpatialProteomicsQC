@@ -1686,7 +1686,7 @@ class SpatialDataSet:
         return df_overview
 
 
-    def reframe_df_01ORlog_for_svm(self, df_01ORlog):
+    def reframe_df_01ORlog_for_Perseus(self, df_01ORlog):
         """"
         To be available for Perseus df_01_stacked needs to be reframed.
 
@@ -1859,23 +1859,7 @@ class SpatialDataSetComparison:
         unique_proteins_total = {}
         
         for exp_name in json_dict.keys():
-            for data_type in json_dict[exp_name].keys():
-                #if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
-                #    #convert into dataframe
-                #    df_01_combined = pd.read_json(json_dict[exp_name][data_type])
-                #    #get only 01 normalized data 
-                #    df_01_combined = df_01_combined.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
-                #                                               "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
-                #    df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
-                #
-                #elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
-                #    df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
-                #    df_01_toadd = df_01_toadd.set_index(["Fraction", "Map", "Gene names", "Protein IDs", 
-                #                                         "Compartment"])[["normalized profile"]].unstack(["Fraction", "Map"])
-                #    df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
-                #    #dataframes will be concatenated, all proteins/Profiles (also one sided) will be retained
-                #    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")
-                    
+            for data_type in json_dict[exp_name].keys():                   
                 if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
                     df_01_combined = pd.read_json(json_dict[exp_name][data_type])
                     df_01_combined = df_01_combined.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
@@ -1890,8 +1874,7 @@ class SpatialDataSetComparison:
                     df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
                     df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
                     df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")  
-                    
-                    
+                        
                 elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
                     df_quantity_pr_pg_combined = pd.read_json(json_dict[exp_name][data_type])
                     df_quantity_pr_pg_combined["Experiment"] = exp_name
@@ -1949,16 +1932,7 @@ class SpatialDataSetComparison:
                 #except:
                 #    continue
                 #
-        ##filter for consistently quantified proteins (they have to be in all fractions and all maps)
-        #df_01_filtered_combined = df_01_combined.dropna()
-        #df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
-        ##reframe it to make it ready for PCA | dropna: to make sure, that you do consider only fractions that are in all experiments
-        #df_01_filtered_combined = df_01_filtered_combined.stack(["Experiment", "Map"]).swaplevel(0,1, axis=0).dropna(axis=1)
-        #index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_filtered_combined.index.get_level_values("Map")
-        #index_ExpMap.name = "Exp_Map"
-        #df_01_filtered_combined.set_index(index_ExpMap, append=True, inplace=True)
-        #df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
-        
+                
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
         #df_01_filtered_combined = df_01_mean_combined.dropna()    
         df_01_combined.columns.names = ["Experiment", "Map", "Fraction"]
@@ -2006,7 +1980,7 @@ class SpatialDataSetComparison:
 
         Args:
             self:
-                df_01_filtered_combined: df, which contains 0/1 normalized data across all maps (mean) - for all experiments and for the specified protein clusters
+                df_01_filtered_combined: df, which contains 0/1 normalized data for each map - for all experiments
                     columns: Fractions, e.g. "03K", "06K", "12K", "24K", "80K"
                     index: "Protein IDs", "Gene names", "Compartment", "Experiment", "Map", "Exp_Map"    
                 df_01_mean_filtered_combined: df, which contains (global) 0/1 normalized data across all maps (mean) - for all experiments and for all protein IDs, 
@@ -3046,3 +3020,46 @@ def svm_heatmap(df_SVM):
                          ))
                
     return fig_SVMheatmap
+    
+    
+def reframe_df_01_fromJson_for_Perseus(json_dict):
+    """
+    Make 0-1 normalized data from all experiments available for Perseus
+    
+    Args:
+        json: dictionary, json file uploaded in manage dataset tab.
+    
+    Return: 
+        df: 0-1 normlaized data (globally normalized), with Gene names, Protein IDs, Comaprtment as columns
+            Pattern for Column data: Exp_Map_Fraction
+    """
+    for exp_name in json_dict.keys():
+        for data_type in json_dict[exp_name].keys():                   
+            if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
+                df_01_combined = pd.read_json(json_dict[exp_name][data_type])
+                df_01_combined = df_01_combined.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
+                df_01_combined.drop([col for col in df_01_combined.columns if not col.startswith("normalized profile")])
+                df_01_combined.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_combined.columns], names=["Set", "Map", "Fraction"])
+                df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
+    
+            elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
+                df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
+                df_01_toadd = df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
+                df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")])
+                df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
+                df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
+                df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)
+                                   
+    df_01_combined.columns.names = ["Experiment", "Map", "Fraction"]
+    df = df_01_combined.stack(["Experiment", "Map"]).dropna(axis=0)
+    df = df.div(df.sum(axis=1), axis=0)
+    index_ExpMap = df.index.get_level_values("Experiment")+"_"+df.index.get_level_values("Map")
+    index_ExpMap.name = "Exp_Map"
+    df.set_index(index_ExpMap, append=True, inplace=True)
+    
+    df.index = df.index.droplevel(["Map", "Experiment"])
+    df = df.stack("Fraction").unstack(["Exp_Map", "Fraction"])
+    df.columns = ["_".join(col) for col in df.columns.values]
+    
+    return df
+    
