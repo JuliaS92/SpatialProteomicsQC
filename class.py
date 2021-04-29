@@ -164,12 +164,12 @@ class SpatialDataSet:
         if acquisition == "SILAC - MQ":
             if "RatioHLcount" not in kwargs.keys():
                 self.RatioHLcount = 2
-            if "RatioHLcount" in kwargs.keys():
+            else:
                 self.RatioHLcount = kwargs["RatioHLcount"]
                 del kwargs["RatioHLcount"]
             if "RatioVariability" not in kwargs.keys():
                 self.RatioVariability = 30
-            if "RatioVariability" in kwargs.keys():
+            else:
                 self.RatioVariability = kwargs["RatioVariability"]
                 del kwargs["RatioVariability"]
                        
@@ -177,12 +177,12 @@ class SpatialDataSet:
         else:
             if "summed_MSMS_counts" not in kwargs.keys():
                 self.summed_MSMS_counts = 2
-            if "summed_MSMS_counts" in kwargs.keys():
+            else:
                 self.summed_MSMS_counts = kwargs["summed_MSMS_counts"]
                 del kwargs["summed_MSMS_counts"]
             if "consecutiveLFQi" not in kwargs.keys():
                 self.consecutiveLFQi = 4
-            if "consecutiveLFQi" in kwargs.keys():
+            else
                 self.consecutiveLFQi = kwargs["consecutiveLFQi"]
                 del kwargs["consecutiveLFQi"]
         
@@ -196,10 +196,8 @@ class SpatialDataSet:
         
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
-        
-        
-
-        
+    
+    
     def data_reading(self, filename=None, content=None):
         """
         Data import. Can read the df_original from a file or buffer. 
@@ -223,9 +221,9 @@ class SpatialDataSet:
         if content is None:
             content = filename
 
-        if filename[-3:] == "xls" or filename[-3:] == "txt":
+        if filename.endswith("xls") or filename.endswith("txt"):
             self.df_original = pd.read_csv(content, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)), low_memory = True)
-        else:
+        else: #assuming csv file
             self.df_original = pd.read_csv(content, sep=",", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)), low_memory = True)
         assert self.df_original.shape[0]>10 and self.df_original.shape[1]>5
         
@@ -238,17 +236,18 @@ class SpatialDataSet:
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
         characterized by a flat column index. These tasks is performed by following functions:
-            def indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
-            def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
-            def stringency_silac(df_index)
-            def normalization_01_silac(df_stringency_mapfracstacked):
-            def logarithmization_silac(df_stringency_mapfracstacked):
-            def stringency_lfq(df_index):
-            def normalization_01_lfq(df_stringency_mapfracstacked):
-            def logarithmization_lfq(df_stringency_mapfracstacked):
+            indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
+            spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
+            stringency_silac(df_index)
+            normalization_01_silac(df_stringency_mapfracstacked):
+            logarithmization_silac(df_stringency_mapfracstacked):
+            stringency_lfq(df_index):
+            normalization_01_lfq(df_stringency_mapfracstacked):
+            logarithmization_lfq(df_stringency_mapfracstacked):
 
         Args:
             self.acquisition: string, "LFQ6 - Spectronaut", "LFQ5 - Spectronaut", "LFQ5 - MQ", "LFQ6 - MQ", "SILAC - MQ"
+            additional arguments can be used to override the value set by the class init function
 
         Returns:
             self:
@@ -291,7 +290,7 @@ class SpatialDataSet:
             """
             For data output from MaxQuant, all columns - except of "MS/MS count" and "LFQ intensity" (LFQ) | "Ratio H/L count", "Ratio H/L variability [%]" 
             (SILAC) - will be set as index. A multiindex will be generated, containing "Set" ("MS/MS count", "LFQ intensity"|  "Ratio H/L count", "Ratio H/L
-            variability [%]"), "Fraction" (= defined via "name_pattern") and "Map" (= defined via "name_pattern") as level labels, allowing the stacking and 
+            variability [%]"), "Fraction" (= defined via "name_pattern") and "Map" (= defined via "name_pattern") as level names, allowing the stacking and 
             unstacking of the dataframe. The dataframe will be filtered by removing matches to the reverse database, matches only identified by site, and 
             potential contaminants.
             
@@ -299,7 +298,7 @@ class SpatialDataSet:
                 self:
                     df_original: dataframe, columns defined through self.regex["imported_columns"]
                     acquisition_set_dict: dictionary, all columns will be set as index, except of those that are listed in acquisition_set_dict
-                    acquisition: string, "LFQ6 - Spectronaut", "LFQ5 - Spectronaut", "LFQ5 - MQ", "LFQ6 - MQ", "SILAC - MQ"
+                    acquisition: string, one of "LFQ6 - Spectronaut", "LFQ5 - Spectronaut", "LFQ5 - MQ", "LFQ6 - MQ", "SILAC - MQ"
                     fraction_dict: "Fraction" is part of the multiindex; fraction_dict allows the renaming of the fractions e.g. 3K -> 03K
                     name_pattern: regular expression, to identify Map-Fraction-(Replicate)
 
@@ -314,10 +313,10 @@ class SpatialDataSet:
             df_original = self.df_original.copy()
             df_original = df_original.set_index([col for col in df_original.columns if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
-            # multindex will be generated, by isolating the information about the Map, Fraction and Type from each individual column name
+            # multindex will be generated, by extracting the information about the Map, Fraction and Type from each individual column name
             multiindex = pd.MultiIndex.from_arrays(
                     arrays=[
-                        [item for sublist in [[re.findall(s, col)[0] for s in self.acquisition_set_dict[self.acquisition] if re.match(s,col)] 
+                        [item for sublist in [[re.findall(s, col)[0] for s in self.acquisition_set_dict[self.acquisition] if re.match(s,col)]
                                               for col in df_original.columns] for item in sublist],
                         [re.match(self.name_pattern, col).group("rep") for col in df_original.columns] if not "<cond>" in self.name_pattern 
                                               else ["_".join(re.match(self.name_pattern, col).group("cond", "rep")) for col in df_original.columns],
