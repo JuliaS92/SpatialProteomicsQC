@@ -182,7 +182,7 @@ class SpatialDataSet:
                 del kwargs["summed_MSMS_counts"]
             if "consecutiveLFQi" not in kwargs.keys():
                 self.consecutiveLFQi = 4
-            else
+            else:
                 self.consecutiveLFQi = kwargs["consecutiveLFQi"]
                 del kwargs["consecutiveLFQi"]
         
@@ -311,18 +311,19 @@ class SpatialDataSet:
             """
             
             df_original = self.df_original.copy()
-            df_original = df_original.set_index([col for col in df_original.columns if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
+            df_original = df_original.set_index([col for col in df_original.columns
+                                                 if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
             # multindex will be generated, by extracting the information about the Map, Fraction and Type from each individual column name
             multiindex = pd.MultiIndex.from_arrays(
-                    arrays=[
-                        [item for sublist in [[re.findall(s, col)[0] for s in self.acquisition_set_dict[self.acquisition] if re.match(s,col)]
-                                              for col in df_original.columns] for item in sublist],
-                        [re.match(self.name_pattern, col).group("rep") for col in df_original.columns] if not "<cond>" in self.name_pattern 
-                                              else ["_".join(re.match(self.name_pattern, col).group("cond", "rep")) for col in df_original.columns],
-                        [self.fraction_dict[re.match(self.name_pattern, col).group("frac")] for col in df_original.columns],
-                    ],
-                    names=["Set", "Map", "Fraction"]
+                arrays=[
+                    [[re.findall(s, col)[0] for s in self.acquisition_set_dict[self.acquisition] if re.match(s,col)][0]
+                    for col in df_original.columns],
+                    [re.match(self.name_pattern, col).group("rep") for col in df_original.columns] if not "<cond>" in self.name_pattern
+                     else ["_".join(re.match(self.name_pattern, col).group("cond", "rep")) for col in df_original.columns],
+                    [self.fraction_dict[re.match(self.name_pattern, col).group("frac")] for col in df_original.columns],
+                ],
+                names=["Set", "Map", "Fraction"]
             )
             
             df_original.columns = multiindex
@@ -331,10 +332,9 @@ class SpatialDataSet:
             shape_dict["Original size"] = df_original.shape
             
             df_index = df_original.xs(
-                    np.nan, 0, "Reverse").xs(
-                    np.nan, 0, "Potential contaminant").xs(
-                    np.nan, 0, "Only identified by site"
-            )
+                np.nan, 0, "Reverse").xs(
+                np.nan, 0, "Potential contaminant").xs(
+                np.nan, 0, "Only identified by site")
             
             df_index.replace(0, np.nan, inplace=True)
             shape_dict["Shape after categorical filtering"] = df_index.shape
@@ -349,19 +349,15 @@ class SpatialDataSet:
             try:
                 if self.acquisition == "LFQ5 - MQ":
                     df_index.drop("01K", axis=1, level="Fraction", inplace=True)
-#                else:
-#                    pass
             except:
                 pass
-            
-            
             
             self.fractions = list(df_index.columns.get_level_values("Fraction").unique())
             self.df_index = df_index
             
             return df_index
-
-
+        
+        
         def spectronaut_LFQ_indexingdf():
             """
             For data generated from the Spectronaut software, columns will be renamed, such it fits in the scheme of MaxQuant output data.  Subsequently, all
