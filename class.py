@@ -574,28 +574,26 @@ class SpatialDataSet:
                     shape_dict["Shape after consecutive value filtering"] of df_stringency_mapfracstacked
                 """
 
-            # retrieve number of fractions that are present in the dataset
-            df_fractionnumber_stacked = df_index.copy().stack("Fraction")
-
             df_index = df_index.stack("Map")
 
             # sorting the level 0, in order to have LFQ intensity -    MS/MS count instead of continuous alternation
             df_index.sort_index(axis=1, level=0, inplace=True)
             
             # "MS/MS count"-column: take the sum over the fractions; if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
-            df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= (len(self.fractions) * self.summed_MSMS_counts)]
+            minms = (len(self.fractions) * self.summed_MSMS_counts)
+            df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= minms]
 
-            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.shape
+            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.unstack("Map").shape
             
             df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
 
             # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[
-                df_stringency_mapfracstacked[("LFQ intensity")].apply(lambda x: any(
-                    np.invert(np.isnan(x)).rolling(window=self.consecutiveLFQi).sum() >=
-                    self.consecutiveLFQi), axis=1)]
+                df_stringency_mapfracstacked[("LFQ intensity")]\
+                .apply(lambda x: np.isfinite(x), axis=0)\
+                .apply(lambda x: sum(x) >= self.consecutiveLFQi and any(x.rolling(window=self.consecutiveLFQi).sum() >= self.consecutiveLFQi), axis=1)]
             
-            shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.shape
+            shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.unstack("Map").shape
 
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.copy().stack("Fraction")
             
@@ -603,10 +601,7 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, 
-                                                                              how="outer", on="Gene names", indicator=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[df_stringency_mapfracstacked["_merge"].isin(["both", 
-                                                                                                                         "left_only"])].drop("_merge", axis=1)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Gene names")
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
                                                     if c!="MS/MS count" and c!="LFQ intensity"], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan : "undefined"}, level="Compartment", inplace=True)
