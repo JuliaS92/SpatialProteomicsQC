@@ -395,7 +395,8 @@ class SpatialDataSet:
             df_index = df_renamed.set_index([col for col in df_renamed.columns if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]])==False])
             
             df_index.columns.names = ["Set"]
-
+            
+            # In case fractionated data was used this needs to be catched and aggregated
             try:
                 df_index = df_index.unstack(["Map", "Fraction"])
             except ValueError:
@@ -410,10 +411,11 @@ class SpatialDataSet:
             #Cyt is removed only if it is not an NMC split
             if "Cyt" in fraction_wCyt and len(fraction_wCyt) >= 4:
                 df_index.drop("Cyt", axis=1, level="Fraction", inplace=True)
-            if self.acquisition == "LFQ5 - Spectronaut":
-                df_index.drop("01K", axis=1, level="Fraction", inplace=True)
-#            else:
-#                pass           
+            try:
+                if self.acquisition == "LFQ5 - Spectronaut":
+                    df_index.drop("01K", axis=1, level="Fraction", inplace=True)
+            except:
+                pass
             
             self.fractions = list(df_index.columns.get_level_values("Fraction").unique())
             
@@ -421,7 +423,7 @@ class SpatialDataSet:
             
             return df_index
         
-            
+        
         def stringency_silac(df_index):
             """
             The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are considered (a set of f.e. 5 SILAC ratios 
@@ -452,15 +454,17 @@ class SpatialDataSet:
             # only if the filtering parameters are fulfilled the data will be introduced into df_countvarfiltered_stacked
             #default setting: RatioHLcount = 2 ; RatioVariability = 30
             
-            df_countvarfiltered_stacked = df_stack.loc[[count>RatioHLcount or (count>=RatioHLcount and var<RatioVariability) 
+            df_countvarfiltered_stacked = df_stack.loc[[count>RatioHLcount or (count==RatioHLcount and var<RatioVariability) 
                                             for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack["Ratio H/L count"])]]
             
-            shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] = df_countvarfiltered_stacked.shape
+            shape_dict["Shape after Ratio H/L count (>=3)/var (count==2, var<30) filtering"] = df_countvarfiltered_stacked.unstack(["Fraction", "Map"]).shape
 
             # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
             # np.median([...]): only entries, that are not NANs are considered
-            df_normsilac_stacked = df_countvarfiltered_stacked["Ratio H/L"].unstack(["Fraction", "Map"]).apply(
-                lambda x: x/np.median([el for el in x if not np.isnan(el)]), axis=0).stack(["Map", "Fraction"])
+            df_normsilac_stacked = df_countvarfiltered_stacked["Ratio H/L"]\
+                .unstack(["Fraction", "Map"])\
+                .apply(lambda x: x/np.nanmedian(x), axis=0)\
+                .stack(["Map", "Fraction"])
 
             df_stringency_mapfracstacked = df_countvarfiltered_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(
                 pd.DataFrame(df_normsilac_stacked, columns=["Ratio H/L"]))
@@ -468,7 +472,7 @@ class SpatialDataSet:
             # dataframe is grouped (Map, id), that allows the filtering for complete profiles
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.groupby(["Map", "id"]).filter(lambda x: len(x)>=len(self.fractions))
             
-            shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.shape
+            shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.unstack(["Fraction", "Map"]).shape
             
             # Ratio H/L is converted into Ratio L/H
             df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1/x)
@@ -477,11 +481,9 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="outer", on="Gene names", indicator=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[df_stringency_mapfracstacked["_merge"].isin(["both", 
-                                                                                                                         "left_only"])].drop("_merge", axis=1)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Gene names")
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
-                                                    if c != "Ratio H/L count" and c != "Ratio H/L variability [%]" and c!="Ratio H/L"], inplace=True)
+                                                    if c not in ["Ratio H/L count","Ratio H/L variability [%]","Ratio H/L"]], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
 
             return df_stringency_mapfracstacked
@@ -703,7 +705,7 @@ class SpatialDataSet:
  
 
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
+            self.analysis_summary_dict["Unique Proteins"] = unique_proteins.sort()
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
@@ -747,7 +749,7 @@ class SpatialDataSet:
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
             
             unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
+            self.analysis_summary_dict["Unique Proteins"] = unique_proteins.sort()
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
