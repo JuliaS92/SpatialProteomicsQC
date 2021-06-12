@@ -670,47 +670,57 @@ class SpatialDataSet:
             df_log_stacked.columns = [col if col!="LFQ intensity" else "log profile" for col in df_log_stacked.columns]
 
             return df_log_stacked
-
-
+        
+        def split_ids_uniprot(el):
+            p1 = el.split(";")[0]
+            if "-" not in p1:
+                return p1
+            else:
+                p = p1.split("-")[0]
+                if p in el.split(";"):
+                    return p
+                else:
+                    return p1
+        
         if self.acquisition == "SILAC - MQ":
-            #if not RatioHLcount:
-            #    RatioHLcount = self.RatioHLcount
-            #if not RatioVariability:
-            #    RatioVariability = self.RatioVariability
-                
-            df_index = indexingdf()
             
+            # Index data
+            df_index = indexingdf()
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
             
+            # Run stringency filtering and normalization
             df_stringency_mapfracstacked = stringency_silac(df_index)
             self.df_stringencyFiltered = df_stringency_mapfracstacked
             self.df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
             self.df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
             
+            # format and reduce 0-1 normalized data for comparison with other experiments
             df_01_comparison = self.df_01_stacked.copy()
-            comp_ids = pd.Series([el.split(";")[0] for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
+            comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
             df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
             df_01_comparison.set_index(comp_ids, append=True, inplace=True)
             df_01_comparison.drop(["Ratio H/L count", "Ratio H/L variability [%]"], inplace=True, axis=1)
             df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
             df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
-            self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
- 
-
-            unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins.sort()
+            
+            # poopulate analysis summary dictionary with (meta)data
+            unique_proteins = [split_ids_uniprot(i) for i in set(self.df_01_stacked.index.get_level_values("Protein IDs"))]
+            unique_proteins.sort()
+            self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()
+            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
                                    "comment" : self.comment,
                                    "Ratio H/L count" : self.RatioHLcount,
-                                   "Ratio variability (<Z, count>=Y)" : self.RatioVariability
+                                   "Ratio variability" : self.RatioVariability
                                   }
-            self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
+            self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
+            
+            # TODO this line needs to be removed.
             self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy()
-            #return self.df_01_stacked
 
 
         elif self.acquisition == "LFQ5 - MQ" or self.acquisition == "LFQ6 - MQ" or self.acquisition == "LFQ5 - Spectronaut" or self.acquisition == "LFQ6 - Spectronaut":
@@ -734,7 +744,7 @@ class SpatialDataSet:
             self.df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
             
             df_01_comparison = self.df_01_stacked.copy()
-            comp_ids = pd.Series([el.split(";")[0] for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
+            comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
             df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
             df_01_comparison.set_index(comp_ids, append=True, inplace=True)
             df_01_comparison.drop("MS/MS count", inplace=True, axis=1)
@@ -743,8 +753,9 @@ class SpatialDataSet:
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
             
-            unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins.sort()
+            unique_proteins = [split_ids_uniprot(i) for i in set(self.df_01_stacked.index.get_level_values("Protein IDs"))]
+            unique_proteins.sort()
+            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
@@ -1935,7 +1946,7 @@ class SpatialDataSetComparison:
         #df_01_filtered_combined = df_01_combined.copy()
         #df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
         ## Replace protein IDs by the unifying protein ID across experiments
-        #comparison_IDs = pd.Series([el.split(";")[0] for el in df_01_filtered_combined.index.get_level_values("Protein IDs")],
+        #comparison_IDs = pd.Series([split_ids_uniprot(el) for el in df_01_filtered_combined.index.get_level_values("Protein IDs")],
         #                           name="Protein IDs")
         #df_01_filtered_combined.index = df_01_filtered_combined.index.droplevel("Protein IDs")
         #df_01_filtered_combined.set_index(comparison_IDs, append=True, inplace=True)
