@@ -1057,7 +1057,7 @@ class SpatialDataSet:
             df_01orlog_fracunstacked = self.df_log_stacked["log profile"].unstack("Fraction").dropna()
             df_01orlog_MapFracUnstacked = self.df_log_stacked["log profile"].unstack(["Fraction", "Map"]).dropna()  
             
-        elif self.acquisition == "LFQ5 - MQ" or self.acquisition == "LFQ6 - MQ" or self.acquisition == "LFQ5 - Spectronaut" or self.acquisition == "LFQ6 - Spectronaut":
+        elif self.acquisition.startswith("LFQ"):
             df_01orlog_fracunstacked = self.df_01_stacked["normalized profile"].unstack("Fraction").dropna()
             df_01orlog_MapFracUnstacked = self.df_01_stacked["normalized profile"].unstack(["Fraction", "Map"]).dropna()  
             
@@ -1067,28 +1067,26 @@ class SpatialDataSet:
         df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_01orlog_fracunstacked.index
-        self.df_pca = df_pca
+        self.df_pca = df_pca.sort_index(level=["Gene names", "Compartment"])
         
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked))
         df_pca_combined.columns = ["PC1", "PC2", "PC3"]
         df_pca_combined.index = df_01orlog_MapFracUnstacked.index
-        self.df_pca_combined = df_pca_combined
+        self.df_pca_combined = df_pca_combined.sort_index(level=["Gene names", "Compartment"])
         
         map_names = self.map_names
-        df_pca_all_marker_cluster_maps_unfiltered = pd.DataFrame()
-        for maps in map_names:
-            for clusters in markerproteins:
-                for marker in markerproteins[clusters]:
-                    if marker not in df_pca.index.get_level_values("Gene names"):
-                        continue
-                    plot_try_pca = df_pca.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
-                    df_pca_all_marker_cluster_maps_unfiltered = df_pca_all_marker_cluster_maps_unfiltered.append(
-                        plot_try_pca)
-    
-        # genes are droped, if they are not present in all maps
-        df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps_unfiltered.groupby(["Gene names"]).filter(lambda x: len(x) >= len(map_names))
-        self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps
+        df_pca_all_marker_cluster_maps = pd.DataFrame()
+        df_pca_filtered = df_pca.unstack("Map").dropna()
+        for clusters in markerproteins:
+            for marker in markerproteins[clusters]:
+                if marker not in df_pca_filtered.index.get_level_values("Gene names"):
+                    continue
+                plot_try_pca = df_pca_filtered.xs(marker, level="Gene names", drop_level=False)
+                df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.append(
+                    plot_try_pca)
+        df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.stack("Map")
+        self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.sort_index(level=["Gene names", "Compartment"])
 
         
     def global_pca_plot(self, map_of_interest="Map1", cluster_of_interest="Proteasome", x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
