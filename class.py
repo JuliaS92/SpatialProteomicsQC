@@ -623,8 +623,6 @@ class SpatialDataSet:
             Returns:
                 df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column "LFQ intensity" is 0-1 normalized and renamed to 
                                "normalized profile"; the columns "normalized profile" and "MS/MS count" are stored as single level indices; plotting is possible now
-                
-                self.df_01_stacked_for_quantity: see df_01_stacked, w/o imputation
 
             """
 
@@ -639,8 +637,6 @@ class SpatialDataSet:
             # rename columns: "LFQ intensity" into "normalized profile"
             df_01_stacked.columns = [col if col!="LFQ intensity" else "normalized profile" for col in
                                      df_01_stacked.columns]
-            
-            self.df_01_stacked_for_quantity = df_01_stacked
             
             #imputation 
             df_01_stacked = df_01_stacked.unstack("Fraction").replace(np.NaN, 0).stack("Fraction")
@@ -672,6 +668,9 @@ class SpatialDataSet:
             return df_log_stacked
         
         def split_ids_uniprot(el):
+            """
+            This finds the primary canoncial protein ID in the protein group. If no canonical ID is present it selects the first isoform ID.
+            """
             p1 = el.split(";")[0]
             if "-" not in p1:
                 return p1
@@ -769,9 +768,8 @@ class SpatialDataSet:
 
         else:
             return "I do not know this"    
-
-            
-            
+    
+    
     def plot_log_data(self):     
         """
         
@@ -786,13 +784,14 @@ class SpatialDataSet:
       
         log_histogram = px.histogram(self.df_log_stacked.reset_index().sort_values(["Map"]), 
                                      x="log profile",
-                                     color="Map",
-                                     facet_col="Map",
+                                     facet_col="Fraction",
+                                     facet_row="Map",
                                      template="simple_white",
                                      labels={"log profile": "log tranformed data ({})".format("LFQ intenisty" if self.acquisition != "SILAC - MQ" else "Ratio H/L")}
                                     )
         return log_histogram
-
+    
+    
     def quantity_profiles_proteinGroups(self):
         """
         Number of profiles, protein groups per experiment, and the data completness of profiles (total quantity, intersection) is calculated.
@@ -835,34 +834,46 @@ class SpatialDataSet:
             df_01_stacked = self.df_01_stacked["normalized profile"]
         elif self.acquisition == "LFQ5 - MQ" or self.acquisition == "LFQ6 - MQ" or self.acquisition == "LFQ5 - Spectronaut" or self.acquisition == "LFQ6 - Spectronaut":
             df_index = self.df_index["LFQ intensity"]
-            df_01_stacked = self.df_01_stacked_for_quantity["normalized profile"]
+            df_01_stacked = self.df_01_stacked["normalized profile"].replace(0, np.nan)
         
         #unfiltered
         npg_t = df_index.shape[0]
         df_index_MapStacked = df_index.stack("Map")
-        npr_t = df_index_MapStacked.shape[0]
-        npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/(df_index_MapStacked.shape[0]*df_index_MapStacked.shape[1])
+        npr_t = df_index_MapStacked.shape[0]/len(self.map_names)
+        npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/np.prod(df_index_MapStacked.shape)
         
         #filtered
         df_01_stacked.unstack(["Map", "Fraction"]).sort_index(axis=1)
         npgf_t = df_01_stacked.unstack(["Map", "Fraction"]).shape[0]
         df_01_MapStacked = df_01_stacked.unstack("Fraction")
-        nprf_t = df_01_MapStacked.shape[0]
-        nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/(df_01_MapStacked.shape[0]*df_01_MapStacked.shape[1])
+        nprf_t = df_01_MapStacked.shape[0]/len(self.map_names)
+        nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/np.prod(df_01_MapStacked.shape)
         
-        #unfiltered
+        #unfiltered intersection
         df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
-        npr_i = df_index_intersection.shape[0]
-        npr_i_dc = 1-df_index_intersection.isna().sum().sum()/(df_index_intersection.shape[0]*df_index_intersection.shape[1])
+        npr_i = df_index_intersection.shape[0]/len(self.map_names)
+        npr_i_dc = 1-df_index_intersection.isna().sum().sum()/np.prod(df_index_intersection.shape)
         npg_i = df_index_intersection.unstack("Map").shape[0]
         
-        #filtered
+        #filtered intersection
         df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
-        nprf_i = df_01_intersection.shape[0]
-        nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/(df_01_intersection.shape[0]*df_01_intersection.shape[1])
+        nprf_i = df_01_intersection.shape[0]/len(self.map_names)
+        nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/np.prod(df_01_intersection.shape)
         npgf_i = df_01_intersection.unstack("Map").shape[0]
         
-                
+        # summarize in dataframe and save to attribute
+        df_quantity_pr_pg = pd.DataFrame(
+            {
+            "filtering": pd.Series(["before filtering", "before filtering", "after filtering", "after filtering"], dtype=np.dtype("O")),
+            "type": pd.Series(["total", "intersection", "total", "intersection"], dtype=np.dtype("O")),
+            "number of protein groups": pd.Series([npg_t, npg_i, npgf_t, npgf_i], dtype=np.dtype("float")),
+            "number of profiles": pd.Series([npr_t, npr_i, nprf_t, nprf_i], dtype=np.dtype("float")),
+            "data completeness of profiles": pd.Series([npr_t_dc, npr_i_dc, nprf_t_dc, nprf_i_dc], dtype=np.dtype("float"))})
+        
+        self.df_quantity_pr_pg = df_quantity_pr_pg.reset_index()
+        self.analysis_summary_dict["quantity: profiles/protein groups"] = self.df_quantity_pr_pg.to_json() 
+        
+        #additional depth assessment per fraction
         dict_npgf = {}
         dict_npg = {}
         list_npg_dc = []
@@ -878,9 +889,8 @@ class SpatialDataSet:
                     list_npg_dc.append(npgF_f_dc)
                 else:
                     dict_npgf[fraction] = npgF_f
-                    list_npgf_dc.append(npgF_f_dc) 
-                    
-                    
+                    list_npgf_dc.append(npgF_f_dc)
+        
         df_npg = pd.DataFrame(dict_npg)
         df_npg.index.name =  "Protein Groups present in:"
         df_npg.rename_axis("Fraction", axis=1, inplace=True)
@@ -894,7 +904,6 @@ class SpatialDataSet:
         df_npgf = df_npgf.stack("Fraction").reset_index()
         df_npgf = df_npgf.rename({0: "Protein Groups"}, axis=1)
         df_npgf.sort_values(["Fraction", "Protein Groups present in:"], inplace=True)
-        
         
         max_df_npg = df_npg["Protein Groups present in:"].max()
         min_df_npg = df_npg["Protein Groups present in:"].min()
@@ -910,35 +919,18 @@ class SpatialDataSet:
             df_npg.loc[df_npg["Protein Groups present in:"] ==keys, "Protein Groups present in:"] = rename_numOFnans[keys]
             df_npgf.loc[df_npgf["Protein Groups present in:"] ==keys, "Protein Groups present in:"] = rename_numOFnans[keys]
         
-        
+        # summarize in dataframe and save to attributes
         self.df_npg_dc = pd.DataFrame(
             {
             "Fraction" : pd.Series(self.fractions),
             "Data completeness before filtering": pd.Series(list_npg_dc),
             "Data completeness after filtering": pd.Series(list_npgf_dc),
             }).sort_values(["Fraction"])
-            
-        df_quantity_pr_pg = pd.DataFrame(
-            {
-            "filtering": pd.Series(["before filtering", "before filtering", "after filtering", "after filtering"], dtype=np.dtype("O")),
-            "type": pd.Series(["total", "intersection", "total", "intersection"], dtype=np.dtype("O")),
-            "number of protein groups": pd.Series([npg_t, npg_i, npgf_t, npgf_i], dtype=np.dtype("float")),
-            "number of profiles": pd.Series([npr_t/len(self.map_names), npr_i/len(self.map_names), 
-                                            nprf_t/len(self.map_names), nprf_i/len(self.map_names)], dtype=np.dtype("float")),
-            "data completeness of profiles": pd.Series([npr_t_dc, npr_i_dc, nprf_t_dc, nprf_i_dc], dtype=np.dtype("float"))})
         
-        #df_quantity_pr_pg = pd.DataFrame(np.array([["before filtering", "total", npg_t, npr_t/len(self.map_names), npr_t_dc],
-        #                                           ["before filtering", "intersection", npg_i, npr_i/len(self.map_names), npr_i_dc],
-        #                                           ["after filtering", "total", npgf_t, nprf_t/len(self.map_names), nprf_t_dc],
-        #                                           ["after filtering", "intersection", npgf_i, nprf_i/len(self.map_names), nprf_i_dc]]), 
-        #                                 columns=["filtering", "type", "number of protein groups", "number of profiles", "data completeness of profiles"])
-        
-        self.df_quantity_pr_pg = df_quantity_pr_pg.reset_index()
-        self.analysis_summary_dict["quantity: profiles/protein groups"] = self.df_quantity_pr_pg.to_json() 
         self.df_npg = df_npg
         self.df_npgf = df_npgf
-            
-            
+    
+    
     def plot_quantity_profiles_proteinGroups(self):
         """
         
