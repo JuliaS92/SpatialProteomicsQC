@@ -1089,7 +1089,7 @@ class SpatialDataSet:
         self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.sort_index(level=["Gene names", "Compartment"])
 
         
-    def global_pca_plot(self, map_of_interest="Map1", cluster_of_interest="Proteasome", x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
+    def plot_global_pca(self, map_of_interest="Map1", cluster_of_interest="Proteasome", x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
         """"
         PCA plot will be generated
 
@@ -1130,7 +1130,7 @@ class SpatialDataSet:
         return fig_global_pca                         
             
             
-    def pca_plot(self, cluster_of_interest="Proteasome"):
+    def plot_cluster_pca(self, cluster_of_interest="Proteasome"):
         """
         PCA plot will be generated
 
