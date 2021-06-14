@@ -2348,18 +2348,16 @@ class SpatialDataSetComparison:
                 if  cluster_quantitity>= 5:
                     dict_quantified_cluster[cluster] = cluster_quantitity
                     all_median_one_cluster_several_exp = {}
-                    ref = df_cluster["distance"].median()
+                    #ref = df_cluster["distance"].median()
                     for exp in multi_choice:
                         median = df_cluster[df_cluster["Experiment"]==exp]["distance"].median()
                         all_median_one_cluster_several_exp[exp] = float(median)
                         #new
                         #if exp == ref_exp:
                         #    ref = median
+                    ref = np.median(list(all_median_one_cluster_several_exp.values()))
                     dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
-                    #min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
-                    #median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
-                    #dict_cluster_normalizedMedian[cluster] = median_ranking
-                    #new
+                    
                     median_ranking_ref = {exp: median/ref for exp, median in all_median_one_cluster_several_exp.items()}
                     dict_cluster_normalizedMedian_ref[cluster] = median_ranking_ref
                 else:
