@@ -1080,9 +1080,10 @@ class SpatialDataSet:
         df_pca_filtered = df_pca.unstack("Map").dropna()
         for clusters in markerproteins:
             for marker in markerproteins[clusters]:
-                if marker not in df_pca_filtered.index.get_level_values("Gene names"):
+                try:
+                    plot_try_pca = df_pca_filtered.xs(marker, level="Gene names", drop_level=False)
+                except KeyError:
                     continue
-                plot_try_pca = df_pca_filtered.xs(marker, level="Gene names", drop_level=False)
                 df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.append(
                     plot_try_pca)
         df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.stack("Map")
@@ -1152,10 +1153,11 @@ class SpatialDataSet:
             for maps in map_names:
                 df_setofproteins_PCA = pd.DataFrame()
                 for marker in markerproteins[cluster_of_interest]:
-                    if marker not in df_pca_all_marker_cluster_maps.index.get_level_values("Gene names"):
+                    try:
+                        plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Gene names", "Map"],
+                                                                         drop_level=False)
+                    except KeyError:
                         continue
-                    plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Gene names", "Map"],
-                                                                     drop_level=False)
                     df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
     
                 df_setofproteins_PCA.reset_index(inplace=True)
@@ -1200,7 +1202,7 @@ class SpatialDataSet:
         """
         
         try:
-            df_setofproteins = self.cluster_isolation_df(map_of_interest, cluster_of_interest)
+            df_setofproteins = self.get_cluster_data(map_of_interest, cluster_of_interest)
             
             df_setofproteins = df_setofproteins.copy()
     
@@ -1262,14 +1264,14 @@ class SpatialDataSet:
         df_allclusters_01 = pd.DataFrame()
         
         # for each individual map, and each individual protein cluster, defined in the dictionary markerproteins,
-        # the functions "cluster_isolation_df" and "distance_to_median_calculation" will be performed
+        # the functions "get_cluster_data" and "calc_distanceprofiles_tomedian" will be performed
         for maps in self.map_names:
             for clusters in self.markerproteins:
                 #if a certain cluster is not available in the dataset at all
                 try:
-                    df_setofproteins = self.cluster_isolation_df(maps, clusters)
+                    df_setofproteins = self.get_cluster_data(maps, clusters)
                     df_allclusters_01 = df_allclusters_01.append(df_setofproteins)
-                    df_distance_to_median_fracunstacked = self.distance_to_median_calculation(df_setofproteins)
+                    df_distance_to_median_fracunstacked = self.calc_distanceprofiles_tomedian(df_setofproteins)
                     # new column is introduced: Column name = "Cluster"; values: clustername, to wich the individual protein belongs to
                     df_distance_to_median_fracunstacked["Cluster"] = clusters
                     df_distance_to_median_fracunstacked.set_index("Cluster", inplace=True, append=True)
@@ -1307,6 +1309,95 @@ class SpatialDataSet:
         genenames_sortedout_list = genenames_sortedout_index.tolist()
 
         self.genenames_sortedout_list = genenames_sortedout_list
+        
+        
+    def get_cluster_data(self, maps, clusters):
+        """
+        The function returns a dataframe for a specified proteincluster and map, that will be hand over to the
+        definition "calc_distanceprofiles_tomedian"
+
+        Args:
+            maps: specified map (e.g. "MAP1")
+            clusters: protein cluster, specified in self.markerproteins (e.g. "Proteasome")
+            self:
+                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
+                
+                requires dataframe (df_01_stacked, single level column), stored as attribute (self.df_01_stacked),
+            in which "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting.
+            Additionally the columns "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are
+            found in LFQ and SILAC data respectively
+                markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
+
+        Returns:
+            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+        """
+
+        df_setofproteins = pd.DataFrame()
+        df_01_stacked = self.df_01_stacked
+
+        # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
+        for marker in self.markerproteins[clusters]:
+            # collect data for marker
+            try:
+                df_marker = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
+            except KeyError:
+                continue
+            df_setofproteins = df_setofproteins.append(df_marker)
+
+        return df_setofproteins
+
+
+    def calc_distanceprofiles_tomedian(self, df_setofproteins):
+        """
+        A dataframe will be generated, in which the distances to the median profile will be stored.
+
+        Args:
+            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+
+        Returns:
+            df_distance_to_median_fracunstacked: multiindex dataframe, for each individual protein and fraction the distances
+            are calculated. The data is stored in single level columns (Column names: e.g. "03K", "06K", "12K", "24K", "80K")
+        """
+        # calculate the median of the "normalized profile" of individual proteins over the fractions
+        df_setofproteins_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+
+        # substract the median individually from each entry (e.g. 03K_protein_xy - 03K_median)
+        df_distance_to_median_fracunstacked = df_setofproteins["normalized profile"].unstack("Fraction")
+        df_distance_to_median_fracunstacked = df_distance_to_median_fracunstacked.apply(lambda x: x - df_setofproteins_median, axis=1)
+
+        return df_distance_to_median_fracunstacked
+
+
+    def distance_calculation(self):
+        """
+        The distances to the median profile of the individual proteins, belonging to specified clusters, across the
+        fractions will be used to calculate the distance profile (e.g. Manhattan distance).
+
+        Args:
+            self:
+                df_allclusters_onlynorm_fracunstacked: single level column, "Fraction" is unstacked. It contains only the normalized data of individual protein
+                                                       clusters substracted by the median of the respective protein cluster for each fraction.
+
+        Returns:
+            df_distance_noindex: dataframe, no index. It contains the column name "distance", in which the e.g. Manhattan distances for each individual
+                                 protein of the specified clusters (see self.markerproteins) are stored
+        """
+        
+        df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked.copy()
+
+        # np.linalg.norm requires array; ord=1: Manhattan distance will be calculated over 5 dimensions (Fractions)
+        distance_array = np.linalg.norm(df_allclusters_onlynorm_fracunstacked.to_numpy(), axis=1, ord=1)
+
+        distance_series = pd.Series(distance_array)
+        distance_series.name = "distance"
+        distance_series.index = df_allclusters_onlynorm_fracunstacked.index
+        df_distance_noindex = distance_series.reset_index()
+
+        self.df_distance_noindex = df_distance_noindex
+        
+        self.analysis_summary_dict["Manhattan distances"] = df_distance_noindex.to_json()
 
 
     def quantification_overview(self, cluster_of_interest="Proteasome"):
@@ -1327,68 +1418,6 @@ class SpatialDataSet:
         df_quantification_overview = df_quantification_overview.notnull().replace({True: "x", False: "-"})
         
         return df_quantification_overview
-        
-        
-    def cluster_isolation_df(self, maps, clusters):
-        """
-        The function returns a dataframe for a specified proteincluster and map, that will be hand over to the
-        definition "distance_to_median_calculation"
-
-        Args:
-            maps: specified map (e.g. "MAP1")
-            clusters: protein cluster, specified in self.markerproteins (e.g. "Proteasome")
-            self:
-                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
-                
-                requires dataframe (df_01_stacked, single level column), stored as attribute (self.df_01_stacked),
-            in which "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting.
-            Additionally the columns "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are
-            found in LFQ and SILAC data respectively
-                markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
-
-        Returns:
-            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
-            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
-        """
-
-        df_setofproteins = pd.DataFrame()
-        df_setofproteins_allMaps = pd.DataFrame()
-        df_01_stacked = self.df_01_stacked
-
-        # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
-        for marker in self.markerproteins[clusters]:
-            if marker not in df_01_stacked.index.get_level_values("Gene names"):
-                continue
-            df_marker = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
-            df_setofproteins = df_setofproteins.append(df_marker)
-            
-            df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
-            df_setofproteins_allMaps = df_setofproteins_allMaps.append(df_marker_allMaps)
-            
-
-        return df_setofproteins
-
-
-    def distance_to_median_calculation(self, df_setofproteins):
-        """
-        A dataframe will be generated, in which the distances to the median profile will be stored.
-
-        Args:
-            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
-            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
-
-        Returns:
-            df_distance_to_median_fracunstacked: multiindex dataframe, for each individual protein and fraction the distances
-            are calculated. The data is stored in single level columns (Column names: e.g. "03K", "06K", "12K", "24K", "80K")
-        """
-        # calculate the median of the "normalized profile" of individual proteins over the fractions
-        df_setofproteins_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
-
-        # substract the median individually from each entry (e.g. 03K_protein_xy - 03K_median)
-        df_distance_to_median_fracunstacked = df_setofproteins["normalized profile"].unstack("Fraction")
-        df_distance_to_median_fracunstacked = df_distance_to_median_fracunstacked.apply(lambda x: x - df_setofproteins_median, axis=1)
-
-        return df_distance_to_median_fracunstacked
 
     
     def distance_boxplot(self, cluster_of_interest="Proteasome"):
@@ -1529,37 +1558,7 @@ class SpatialDataSet:
             return distance_to_median_boxplot_figure
             
         except:
-            return "This protein cluster was not quantified"
-
-
-    def distance_calculation(self):
-        """
-        The distances to the median profile of the individual proteins, belonging to specified clusters, across the
-        fractions will be used to calculate the distance profile (e.g. Manhattan distance).
-
-        Args:
-            self:
-                df_allclusters_onlynorm_fracunstacked: single level column, "Fraction" is unstacked. It contains only the normalized data of individual protein
-                                                       clusters substracted by the median of the respective protein cluster for each fraction.
-
-        Returns:
-            df_distance_noindex: dataframe, no index. It contains the column name "distance", in which the e.g. Manhattan distances for each individual
-                                 protein of the specified clusters (see self.markerproteins) are stored
-        """
-        
-        df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked.copy()
-
-        # np.linalg.norm requires array; ord=1: Manhattan distance will be calculated over 5 dimensions (Fractions)
-        distance_array = np.linalg.norm(df_allclusters_onlynorm_fracunstacked.to_numpy(), axis=1, ord=1)
-
-        distance_series = pd.Series(distance_array)
-        distance_series.name = "distance"
-        distance_series.index = df_allclusters_onlynorm_fracunstacked.index
-        df_distance_noindex = distance_series.reset_index()
-
-        self.df_distance_noindex = df_distance_noindex
-        
-        self.analysis_summary_dict["Manhattan distances"] = df_distance_noindex.to_json() 
+            return "This protein cluster was not quantified" 
 
         
     def dynamic_range(self):
@@ -1585,9 +1584,10 @@ class SpatialDataSet:
             try:
                 df_setofproteins_allMaps = pd.DataFrame()
                 for marker in self.markerproteins[clusters]:
-                    if marker not in df_01_stacked.index.get_level_values("Gene names"):
+                    try:
+                        df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
+                    except KeyError:
                         continue
-                    df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
                     df_setofproteins_allMaps = df_setofproteins_allMaps.append(df_marker_allMaps)
                 df_setofproteins_allMaps_median = df_setofproteins_allMaps["normalized profile"].unstack("Fraction").median()
                 
@@ -2078,9 +2078,10 @@ class SpatialDataSetComparison:
             df_setofproteins_PCA = pd.DataFrame()
             for map_or_exp in map_or_exp_names:
                     for marker in markerproteins[cluster_of_interest_comparison]:
-                        if marker not in df_pca_for_plotting.index.get_level_values("Gene names"):
+                        try:
+                            plot_try_pca = df_pca_for_plotting.xs((marker, map_or_exp), level=["Gene names", level_of_interest], drop_level=False)
+                        except KeyError:
                             continue
-                        plot_try_pca = df_pca_for_plotting.xs((marker, map_or_exp), level=["Gene names", level_of_interest], drop_level=False)
                         df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
             df_setofproteins_PCA.reset_index(inplace=True)
             
