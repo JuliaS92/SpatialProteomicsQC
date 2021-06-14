@@ -164,12 +164,12 @@ class SpatialDataSet:
         if acquisition == "SILAC - MQ":
             if "RatioHLcount" not in kwargs.keys():
                 self.RatioHLcount = 2
-            if "RatioHLcount" in kwargs.keys():
+            else:
                 self.RatioHLcount = kwargs["RatioHLcount"]
                 del kwargs["RatioHLcount"]
             if "RatioVariability" not in kwargs.keys():
                 self.RatioVariability = 30
-            if "RatioVariability" in kwargs.keys():
+            else:
                 self.RatioVariability = kwargs["RatioVariability"]
                 del kwargs["RatioVariability"]
                        
@@ -177,12 +177,12 @@ class SpatialDataSet:
         else:
             if "summed_MSMS_counts" not in kwargs.keys():
                 self.summed_MSMS_counts = 2
-            if "summed_MSMS_counts" in kwargs.keys():
+            else:
                 self.summed_MSMS_counts = kwargs["summed_MSMS_counts"]
                 del kwargs["summed_MSMS_counts"]
             if "consecutiveLFQi" not in kwargs.keys():
                 self.consecutiveLFQi = 4
-            if "consecutiveLFQi" in kwargs.keys():
+            else:
                 self.consecutiveLFQi = kwargs["consecutiveLFQi"]
                 del kwargs["consecutiveLFQi"]
         
@@ -196,10 +196,8 @@ class SpatialDataSet:
         
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
-        
-        
-
-        
+    
+    
     def data_reading(self, filename=None, content=None):
         """
         Data import. Can read the df_original from a file or buffer. 
@@ -223,9 +221,9 @@ class SpatialDataSet:
         if content is None:
             content = filename
 
-        if filename[-3:] == "xls" or filename[-3:] == "txt":
+        if filename.endswith("xls") or filename.endswith("txt"):
             self.df_original = pd.read_csv(content, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)), low_memory = True)
-        else:
+        else: #assuming csv file
             self.df_original = pd.read_csv(content, sep=",", comment="#", usecols=lambda x: bool(re.match(self.regex["imported_columns"], x)), low_memory = True)
         assert self.df_original.shape[0]>10 and self.df_original.shape[1]>5
         
@@ -238,17 +236,18 @@ class SpatialDataSet:
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
         characterized by a flat column index. These tasks is performed by following functions:
-            def indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
-            def spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
-            def stringency_silac(df_index)
-            def normalization_01_silac(df_stringency_mapfracstacked):
-            def logarithmization_silac(df_stringency_mapfracstacked):
-            def stringency_lfq(df_index):
-            def normalization_01_lfq(df_stringency_mapfracstacked):
-            def logarithmization_lfq(df_stringency_mapfracstacked):
+            indexingdf(df_original, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
+            spectronaut_LFQ_indexingdf(df_original, Spectronaut_columnRenaming, acquisition_set_dict, acquisition, fraction_dict, name_pattern)
+            stringency_silac(df_index)
+            normalization_01_silac(df_stringency_mapfracstacked):
+            logarithmization_silac(df_stringency_mapfracstacked):
+            stringency_lfq(df_index):
+            normalization_01_lfq(df_stringency_mapfracstacked):
+            logarithmization_lfq(df_stringency_mapfracstacked):
 
         Args:
             self.acquisition: string, "LFQ6 - Spectronaut", "LFQ5 - Spectronaut", "LFQ5 - MQ", "LFQ6 - MQ", "SILAC - MQ"
+            additional arguments can be used to override the value set by the class init function
 
         Returns:
             self:
@@ -291,7 +290,7 @@ class SpatialDataSet:
             """
             For data output from MaxQuant, all columns - except of "MS/MS count" and "LFQ intensity" (LFQ) | "Ratio H/L count", "Ratio H/L variability [%]" 
             (SILAC) - will be set as index. A multiindex will be generated, containing "Set" ("MS/MS count", "LFQ intensity"|  "Ratio H/L count", "Ratio H/L
-            variability [%]"), "Fraction" (= defined via "name_pattern") and "Map" (= defined via "name_pattern") as level labels, allowing the stacking and 
+            variability [%]"), "Fraction" (= defined via "name_pattern") and "Map" (= defined via "name_pattern") as level names, allowing the stacking and 
             unstacking of the dataframe. The dataframe will be filtered by removing matches to the reverse database, matches only identified by site, and 
             potential contaminants.
             
@@ -299,7 +298,7 @@ class SpatialDataSet:
                 self:
                     df_original: dataframe, columns defined through self.regex["imported_columns"]
                     acquisition_set_dict: dictionary, all columns will be set as index, except of those that are listed in acquisition_set_dict
-                    acquisition: string, "LFQ6 - Spectronaut", "LFQ5 - Spectronaut", "LFQ5 - MQ", "LFQ6 - MQ", "SILAC - MQ"
+                    acquisition: string, one of "LFQ6 - Spectronaut", "LFQ5 - Spectronaut", "LFQ5 - MQ", "LFQ6 - MQ", "SILAC - MQ"
                     fraction_dict: "Fraction" is part of the multiindex; fraction_dict allows the renaming of the fractions e.g. 3K -> 03K
                     name_pattern: regular expression, to identify Map-Fraction-(Replicate)
 
@@ -312,18 +311,19 @@ class SpatialDataSet:
             """
             
             df_original = self.df_original.copy()
-            df_original = df_original.set_index([col for col in df_original.columns if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
+            df_original = df_original.set_index([col for col in df_original.columns
+                                                 if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
-            # multindex will be generated, by isolating the information about the Map, Fraction and Type from each individual column name
+            # multindex will be generated, by extracting the information about the Map, Fraction and Type from each individual column name
             multiindex = pd.MultiIndex.from_arrays(
-                    arrays=[
-                        [item for sublist in [[re.findall(s, col)[0] for s in self.acquisition_set_dict[self.acquisition] if re.match(s,col)] 
-                                              for col in df_original.columns] for item in sublist],
-                        [re.match(self.name_pattern, col).group("rep") for col in df_original.columns] if not "<cond>" in self.name_pattern 
-                                              else ["_".join(re.match(self.name_pattern, col).group("cond", "rep")) for col in df_original.columns],
-                        [self.fraction_dict[re.match(self.name_pattern, col).group("frac")] for col in df_original.columns],
-                    ],
-                    names=["Set", "Map", "Fraction"]
+                arrays=[
+                    [[re.findall(s, col)[0] for s in self.acquisition_set_dict[self.acquisition] if re.match(s,col)][0]
+                    for col in df_original.columns],
+                    [re.match(self.name_pattern, col).group("rep") for col in df_original.columns] if not "<cond>" in self.name_pattern
+                     else ["_".join(re.match(self.name_pattern, col).group("cond", "rep")) for col in df_original.columns],
+                    [self.fraction_dict[re.match(self.name_pattern, col).group("frac")] for col in df_original.columns],
+                ],
+                names=["Set", "Map", "Fraction"]
             )
             
             df_original.columns = multiindex
@@ -332,10 +332,9 @@ class SpatialDataSet:
             shape_dict["Original size"] = df_original.shape
             
             df_index = df_original.xs(
-                    np.nan, 0, "Reverse").xs(
-                    np.nan, 0, "Potential contaminant").xs(
-                    np.nan, 0, "Only identified by site"
-            )
+                np.nan, 0, "Reverse").xs(
+                np.nan, 0, "Potential contaminant").xs(
+                np.nan, 0, "Only identified by site")
             
             df_index.replace(0, np.nan, inplace=True)
             shape_dict["Shape after categorical filtering"] = df_index.shape
@@ -350,19 +349,15 @@ class SpatialDataSet:
             try:
                 if self.acquisition == "LFQ5 - MQ":
                     df_index.drop("01K", axis=1, level="Fraction", inplace=True)
-#                else:
-#                    pass
             except:
                 pass
-            
-            
             
             self.fractions = list(df_index.columns.get_level_values("Fraction").unique())
             self.df_index = df_index
             
             return df_index
-
-
+        
+        
         def spectronaut_LFQ_indexingdf():
             """
             For data generated from the Spectronaut software, columns will be renamed, such it fits in the scheme of MaxQuant output data.  Subsequently, all
@@ -400,7 +395,8 @@ class SpatialDataSet:
             df_index = df_renamed.set_index([col for col in df_renamed.columns if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]])==False])
             
             df_index.columns.names = ["Set"]
-
+            
+            # In case fractionated data was used this needs to be catched and aggregated
             try:
                 df_index = df_index.unstack(["Map", "Fraction"])
             except ValueError:
@@ -415,10 +411,11 @@ class SpatialDataSet:
             #Cyt is removed only if it is not an NMC split
             if "Cyt" in fraction_wCyt and len(fraction_wCyt) >= 4:
                 df_index.drop("Cyt", axis=1, level="Fraction", inplace=True)
-            if self.acquisition == "LFQ5 - Spectronaut":
-                df_index.drop("01K", axis=1, level="Fraction", inplace=True)
-#            else:
-#                pass           
+            try:
+                if self.acquisition == "LFQ5 - Spectronaut":
+                    df_index.drop("01K", axis=1, level="Fraction", inplace=True)
+            except:
+                pass
             
             self.fractions = list(df_index.columns.get_level_values("Fraction").unique())
             
@@ -426,7 +423,7 @@ class SpatialDataSet:
             
             return df_index
         
-            
+        
         def stringency_silac(df_index):
             """
             The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are considered (a set of f.e. 5 SILAC ratios 
@@ -457,15 +454,17 @@ class SpatialDataSet:
             # only if the filtering parameters are fulfilled the data will be introduced into df_countvarfiltered_stacked
             #default setting: RatioHLcount = 2 ; RatioVariability = 30
             
-            df_countvarfiltered_stacked = df_stack.loc[[count>RatioHLcount or (count>=RatioHLcount and var<RatioVariability) 
+            df_countvarfiltered_stacked = df_stack.loc[[count>RatioHLcount or (count==RatioHLcount and var<RatioVariability) 
                                             for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack["Ratio H/L count"])]]
             
-            shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] = df_countvarfiltered_stacked.shape
+            shape_dict["Shape after Ratio H/L count (>=3)/var (count==2, var<30) filtering"] = df_countvarfiltered_stacked.unstack(["Fraction", "Map"]).shape
 
             # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
             # np.median([...]): only entries, that are not NANs are considered
-            df_normsilac_stacked = df_countvarfiltered_stacked["Ratio H/L"].unstack(["Fraction", "Map"]).apply(
-                lambda x: x/np.median([el for el in x if not np.isnan(el)]), axis=0).stack(["Map", "Fraction"])
+            df_normsilac_stacked = df_countvarfiltered_stacked["Ratio H/L"]\
+                .unstack(["Fraction", "Map"])\
+                .apply(lambda x: x/np.nanmedian(x), axis=0)\
+                .stack(["Map", "Fraction"])
 
             df_stringency_mapfracstacked = df_countvarfiltered_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(
                 pd.DataFrame(df_normsilac_stacked, columns=["Ratio H/L"]))
@@ -473,7 +472,7 @@ class SpatialDataSet:
             # dataframe is grouped (Map, id), that allows the filtering for complete profiles
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.groupby(["Map", "id"]).filter(lambda x: len(x)>=len(self.fractions))
             
-            shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.shape
+            shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.unstack(["Fraction", "Map"]).shape
             
             # Ratio H/L is converted into Ratio L/H
             df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1/x)
@@ -482,11 +481,9 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="outer", on="Gene names", indicator=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[df_stringency_mapfracstacked["_merge"].isin(["both", 
-                                                                                                                         "left_only"])].drop("_merge", axis=1)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Gene names")
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
-                                                    if c != "Ratio H/L count" and c != "Ratio H/L variability [%]" and c!="Ratio H/L"], inplace=True)
+                                                    if c not in ["Ratio H/L count","Ratio H/L variability [%]","Ratio H/L"]], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
 
             return df_stringency_mapfracstacked
@@ -577,28 +574,26 @@ class SpatialDataSet:
                     shape_dict["Shape after consecutive value filtering"] of df_stringency_mapfracstacked
                 """
 
-            # retrieve number of fractions that are present in the dataset
-            df_fractionnumber_stacked = df_index.copy().stack("Fraction")
-
             df_index = df_index.stack("Map")
 
             # sorting the level 0, in order to have LFQ intensity -    MS/MS count instead of continuous alternation
             df_index.sort_index(axis=1, level=0, inplace=True)
             
             # "MS/MS count"-column: take the sum over the fractions; if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
-            df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= (len(self.fractions) * self.summed_MSMS_counts)]
+            minms = (len(self.fractions) * self.summed_MSMS_counts)
+            df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= minms]
 
-            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.shape
+            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.unstack("Map").shape
             
             df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
 
             # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[
-                df_stringency_mapfracstacked[("LFQ intensity")].apply(lambda x: any(
-                    np.invert(np.isnan(x)).rolling(window=self.consecutiveLFQi).sum() >=
-                    self.consecutiveLFQi), axis=1)]
+                df_stringency_mapfracstacked[("LFQ intensity")]\
+                .apply(lambda x: np.isfinite(x), axis=0)\
+                .apply(lambda x: sum(x) >= self.consecutiveLFQi and any(x.rolling(window=self.consecutiveLFQi).sum() >= self.consecutiveLFQi), axis=1)]
             
-            shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.shape
+            shape_dict["Shape after consecutive value filtering"]=df_stringency_mapfracstacked.unstack("Map").shape
 
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.copy().stack("Fraction")
             
@@ -606,10 +601,7 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, 
-                                                                              how="outer", on="Gene names", indicator=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[df_stringency_mapfracstacked["_merge"].isin(["both", 
-                                                                                                                         "left_only"])].drop("_merge", axis=1)
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Gene names")
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
                                                     if c!="MS/MS count" and c!="LFQ intensity"], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan : "undefined"}, level="Compartment", inplace=True)
@@ -631,8 +623,6 @@ class SpatialDataSet:
             Returns:
                 df_01_stacked: dataframe, in which "MAP" and "Fraction" are stacked; data in the column "LFQ intensity" is 0-1 normalized and renamed to 
                                "normalized profile"; the columns "normalized profile" and "MS/MS count" are stored as single level indices; plotting is possible now
-                
-                self.df_01_stacked_for_quantity: see df_01_stacked, w/o imputation
 
             """
 
@@ -647,8 +637,6 @@ class SpatialDataSet:
             # rename columns: "LFQ intensity" into "normalized profile"
             df_01_stacked.columns = [col if col!="LFQ intensity" else "normalized profile" for col in
                                      df_01_stacked.columns]
-            
-            self.df_01_stacked_for_quantity = df_01_stacked
             
             #imputation 
             df_01_stacked = df_01_stacked.unstack("Fraction").replace(np.NaN, 0).stack("Fraction")
@@ -678,47 +666,60 @@ class SpatialDataSet:
             df_log_stacked.columns = [col if col!="LFQ intensity" else "log profile" for col in df_log_stacked.columns]
 
             return df_log_stacked
-
-
+        
+        def split_ids_uniprot(el):
+            """
+            This finds the primary canoncial protein ID in the protein group. If no canonical ID is present it selects the first isoform ID.
+            """
+            p1 = el.split(";")[0]
+            if "-" not in p1:
+                return p1
+            else:
+                p = p1.split("-")[0]
+                if p in el.split(";"):
+                    return p
+                else:
+                    return p1
+        
         if self.acquisition == "SILAC - MQ":
-            #if not RatioHLcount:
-            #    RatioHLcount = self.RatioHLcount
-            #if not RatioVariability:
-            #    RatioVariability = self.RatioVariability
-                
-            df_index = indexingdf()
             
+            # Index data
+            df_index = indexingdf()
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
             
+            # Run stringency filtering and normalization
             df_stringency_mapfracstacked = stringency_silac(df_index)
             self.df_stringencyFiltered = df_stringency_mapfracstacked
             self.df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
             self.df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
             
+            # format and reduce 0-1 normalized data for comparison with other experiments
             df_01_comparison = self.df_01_stacked.copy()
-            comp_ids = pd.Series([el.split(";")[0] for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
+            comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
             df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
             df_01_comparison.set_index(comp_ids, append=True, inplace=True)
             df_01_comparison.drop(["Ratio H/L count", "Ratio H/L variability [%]"], inplace=True, axis=1)
             df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
             df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
-            self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
- 
-
-            unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
+            
+            # poopulate analysis summary dictionary with (meta)data
+            unique_proteins = [split_ids_uniprot(i) for i in set(self.df_01_stacked.index.get_level_values("Protein IDs"))]
+            unique_proteins.sort()
+            self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
                                    "comment" : self.comment,
                                    "Ratio H/L count" : self.RatioHLcount,
-                                   "Ratio variability (<Z, count>=Y)" : self.RatioVariability
+                                   "Ratio variability" : self.RatioVariability
                                   }
-            self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
+            self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
+            
+            # TODO this line needs to be removed.
             self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy()
-            #return self.df_01_stacked
 
 
         elif self.acquisition == "LFQ5 - MQ" or self.acquisition == "LFQ6 - MQ" or self.acquisition == "LFQ5 - Spectronaut" or self.acquisition == "LFQ6 - Spectronaut":
@@ -742,7 +743,7 @@ class SpatialDataSet:
             self.df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
             
             df_01_comparison = self.df_01_stacked.copy()
-            comp_ids = pd.Series([el.split(";")[0] for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
+            comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
             df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
             df_01_comparison.set_index(comp_ids, append=True, inplace=True)
             df_01_comparison.drop("MS/MS count", inplace=True, axis=1)
@@ -751,7 +752,8 @@ class SpatialDataSet:
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
             
-            unique_proteins = list(dict.fromkeys([i.split(";")[0] for i in self.df_01_stacked.reset_index()["Protein IDs"]]))
+            unique_proteins = [split_ids_uniprot(i) for i in set(self.df_01_stacked.index.get_level_values("Protein IDs"))]
+            unique_proteins.sort()
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
@@ -766,9 +768,8 @@ class SpatialDataSet:
 
         else:
             return "I do not know this"    
-
-            
-            
+    
+    
     def plot_log_data(self):     
         """
         
@@ -783,13 +784,23 @@ class SpatialDataSet:
       
         log_histogram = px.histogram(self.df_log_stacked.reset_index().sort_values(["Map"]), 
                                      x="log profile",
-                                     color="Map",
-                                     facet_col="Map",
+                                     facet_col="Fraction",
+                                     facet_row="Map",
                                      template="simple_white",
                                      labels={"log profile": "log tranformed data ({})".format("LFQ intenisty" if self.acquisition != "SILAC - MQ" else "Ratio H/L")}
                                     )
+        
+        log_histogram.for_each_xaxis(lambda axis: axis.update(title={"text":""}))
+        log_histogram.for_each_yaxis(lambda axis: axis.update(title={"text":""}))
+        log_histogram.add_annotation(x=0.5, y=0, yshift=-50, xref="paper",showarrow=False, yref="paper",
+                    text="log2(LFQ intensity)")
+        log_histogram.add_annotation(x=0, y=0.5, textangle=270, xref="paper",showarrow=False, yref="paper", xshift=-50,
+                    text="count")
+        log_histogram.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        
         return log_histogram
-
+    
+    
     def quantity_profiles_proteinGroups(self):
         """
         Number of profiles, protein groups per experiment, and the data completness of profiles (total quantity, intersection) is calculated.
@@ -832,34 +843,46 @@ class SpatialDataSet:
             df_01_stacked = self.df_01_stacked["normalized profile"]
         elif self.acquisition == "LFQ5 - MQ" or self.acquisition == "LFQ6 - MQ" or self.acquisition == "LFQ5 - Spectronaut" or self.acquisition == "LFQ6 - Spectronaut":
             df_index = self.df_index["LFQ intensity"]
-            df_01_stacked = self.df_01_stacked_for_quantity["normalized profile"]
+            df_01_stacked = self.df_01_stacked["normalized profile"].replace(0, np.nan)
         
         #unfiltered
         npg_t = df_index.shape[0]
         df_index_MapStacked = df_index.stack("Map")
-        npr_t = df_index_MapStacked.shape[0]
-        npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/(df_index_MapStacked.shape[0]*df_index_MapStacked.shape[1])
+        npr_t = df_index_MapStacked.shape[0]/len(self.map_names)
+        npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/np.prod(df_index_MapStacked.shape)
         
         #filtered
         df_01_stacked.unstack(["Map", "Fraction"]).sort_index(axis=1)
         npgf_t = df_01_stacked.unstack(["Map", "Fraction"]).shape[0]
         df_01_MapStacked = df_01_stacked.unstack("Fraction")
-        nprf_t = df_01_MapStacked.shape[0]
-        nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/(df_01_MapStacked.shape[0]*df_01_MapStacked.shape[1])
+        nprf_t = df_01_MapStacked.shape[0]/len(self.map_names)
+        nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/np.prod(df_01_MapStacked.shape)
         
-        #unfiltered
+        #unfiltered intersection
         df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
-        npr_i = df_index_intersection.shape[0]
-        npr_i_dc = 1-df_index_intersection.isna().sum().sum()/(df_index_intersection.shape[0]*df_index_intersection.shape[1])
+        npr_i = df_index_intersection.shape[0]/len(self.map_names)
+        npr_i_dc = 1-df_index_intersection.isna().sum().sum()/np.prod(df_index_intersection.shape)
         npg_i = df_index_intersection.unstack("Map").shape[0]
         
-        #filtered
+        #filtered intersection
         df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
-        nprf_i = df_01_intersection.shape[0]
-        nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/(df_01_intersection.shape[0]*df_01_intersection.shape[1])
+        nprf_i = df_01_intersection.shape[0]/len(self.map_names)
+        nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/np.prod(df_01_intersection.shape)
         npgf_i = df_01_intersection.unstack("Map").shape[0]
         
-                
+        # summarize in dataframe and save to attribute
+        df_quantity_pr_pg = pd.DataFrame(
+            {
+            "filtering": pd.Series(["before filtering", "before filtering", "after filtering", "after filtering"], dtype=np.dtype("O")),
+            "type": pd.Series(["total", "intersection", "total", "intersection"], dtype=np.dtype("O")),
+            "number of protein groups": pd.Series([npg_t, npg_i, npgf_t, npgf_i], dtype=np.dtype("float")),
+            "number of profiles": pd.Series([npr_t, npr_i, nprf_t, nprf_i], dtype=np.dtype("float")),
+            "data completeness of profiles": pd.Series([npr_t_dc, npr_i_dc, nprf_t_dc, nprf_i_dc], dtype=np.dtype("float"))})
+        
+        self.df_quantity_pr_pg = df_quantity_pr_pg.reset_index()
+        self.analysis_summary_dict["quantity: profiles/protein groups"] = self.df_quantity_pr_pg.to_json() 
+        
+        #additional depth assessment per fraction
         dict_npgf = {}
         dict_npg = {}
         list_npg_dc = []
@@ -875,9 +898,8 @@ class SpatialDataSet:
                     list_npg_dc.append(npgF_f_dc)
                 else:
                     dict_npgf[fraction] = npgF_f
-                    list_npgf_dc.append(npgF_f_dc) 
-                    
-                    
+                    list_npgf_dc.append(npgF_f_dc)
+        
         df_npg = pd.DataFrame(dict_npg)
         df_npg.index.name =  "Protein Groups present in:"
         df_npg.rename_axis("Fraction", axis=1, inplace=True)
@@ -891,7 +913,6 @@ class SpatialDataSet:
         df_npgf = df_npgf.stack("Fraction").reset_index()
         df_npgf = df_npgf.rename({0: "Protein Groups"}, axis=1)
         df_npgf.sort_values(["Fraction", "Protein Groups present in:"], inplace=True)
-        
         
         max_df_npg = df_npg["Protein Groups present in:"].max()
         min_df_npg = df_npg["Protein Groups present in:"].min()
@@ -907,35 +928,18 @@ class SpatialDataSet:
             df_npg.loc[df_npg["Protein Groups present in:"] ==keys, "Protein Groups present in:"] = rename_numOFnans[keys]
             df_npgf.loc[df_npgf["Protein Groups present in:"] ==keys, "Protein Groups present in:"] = rename_numOFnans[keys]
         
-        
+        # summarize in dataframe and save to attributes
         self.df_npg_dc = pd.DataFrame(
             {
             "Fraction" : pd.Series(self.fractions),
             "Data completeness before filtering": pd.Series(list_npg_dc),
             "Data completeness after filtering": pd.Series(list_npgf_dc),
             }).sort_values(["Fraction"])
-            
-        df_quantity_pr_pg = pd.DataFrame(
-            {
-            "filtering": pd.Series(["before filtering", "before filtering", "after filtering", "after filtering"], dtype=np.dtype("O")),
-            "type": pd.Series(["total", "intersection", "total", "intersection"], dtype=np.dtype("O")),
-            "number of protein groups": pd.Series([npg_t, npg_i, npgf_t, npgf_i], dtype=np.dtype("float")),
-            "number of profiles": pd.Series([npr_t/len(self.map_names), npr_i/len(self.map_names), 
-                                            nprf_t/len(self.map_names), nprf_i/len(self.map_names)], dtype=np.dtype("float")),
-            "data completeness of profiles": pd.Series([npr_t_dc, npr_i_dc, nprf_t_dc, nprf_i_dc], dtype=np.dtype("float"))})
         
-        #df_quantity_pr_pg = pd.DataFrame(np.array([["before filtering", "total", npg_t, npr_t/len(self.map_names), npr_t_dc],
-        #                                           ["before filtering", "intersection", npg_i, npr_i/len(self.map_names), npr_i_dc],
-        #                                           ["after filtering", "total", npgf_t, nprf_t/len(self.map_names), nprf_t_dc],
-        #                                           ["after filtering", "intersection", npgf_i, nprf_i/len(self.map_names), nprf_i_dc]]), 
-        #                                 columns=["filtering", "type", "number of protein groups", "number of profiles", "data completeness of profiles"])
-        
-        self.df_quantity_pr_pg = df_quantity_pr_pg.reset_index()
-        self.analysis_summary_dict["quantity: profiles/protein groups"] = self.df_quantity_pr_pg.to_json() 
         self.df_npg = df_npg
         self.df_npgf = df_npgf
-            
-            
+    
+    
     def plot_quantity_profiles_proteinGroups(self):
         """
         
@@ -1053,7 +1057,7 @@ class SpatialDataSet:
             df_01orlog_fracunstacked = self.df_log_stacked["log profile"].unstack("Fraction").dropna()
             df_01orlog_MapFracUnstacked = self.df_log_stacked["log profile"].unstack(["Fraction", "Map"]).dropna()  
             
-        elif self.acquisition == "LFQ5 - MQ" or self.acquisition == "LFQ6 - MQ" or self.acquisition == "LFQ5 - Spectronaut" or self.acquisition == "LFQ6 - Spectronaut":
+        elif self.acquisition.startswith("LFQ"):
             df_01orlog_fracunstacked = self.df_01_stacked["normalized profile"].unstack("Fraction").dropna()
             df_01orlog_MapFracUnstacked = self.df_01_stacked["normalized profile"].unstack(["Fraction", "Map"]).dropna()  
             
@@ -1063,31 +1067,30 @@ class SpatialDataSet:
         df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_01orlog_fracunstacked.index
-        self.df_pca = df_pca
+        self.df_pca = df_pca.sort_index(level=["Gene names", "Compartment"])
         
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked))
         df_pca_combined.columns = ["PC1", "PC2", "PC3"]
         df_pca_combined.index = df_01orlog_MapFracUnstacked.index
-        self.df_pca_combined = df_pca_combined
+        self.df_pca_combined = df_pca_combined.sort_index(level=["Gene names", "Compartment"])
         
         map_names = self.map_names
-        df_pca_all_marker_cluster_maps_unfiltered = pd.DataFrame()
-        for maps in map_names:
-            for clusters in markerproteins:
-                for marker in markerproteins[clusters]:
-                    if marker not in df_pca.index.get_level_values("Gene names"):
-                        continue
-                    plot_try_pca = df_pca.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
-                    df_pca_all_marker_cluster_maps_unfiltered = df_pca_all_marker_cluster_maps_unfiltered.append(
-                        plot_try_pca)
-    
-        # genes are droped, if they are not present in all maps
-        df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps_unfiltered.groupby(["Gene names"]).filter(lambda x: len(x) >= len(map_names))
-        self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps
+        df_pca_all_marker_cluster_maps = pd.DataFrame()
+        df_pca_filtered = df_pca.unstack("Map").dropna()
+        for clusters in markerproteins:
+            for marker in markerproteins[clusters]:
+                try:
+                    plot_try_pca = df_pca_filtered.xs(marker, level="Gene names", drop_level=False)
+                except KeyError:
+                    continue
+                df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.append(
+                    plot_try_pca)
+        df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.stack("Map")
+        self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.sort_index(level=["Gene names", "Compartment"])
 
         
-    def global_pca_plot(self, map_of_interest="Map1", cluster_of_interest="Proteasome", x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
+    def plot_global_pca(self, map_of_interest="Map1", cluster_of_interest="Proteasome", x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
         """"
         PCA plot will be generated
 
@@ -1128,7 +1131,7 @@ class SpatialDataSet:
         return fig_global_pca                         
             
             
-    def pca_plot(self, cluster_of_interest="Proteasome"):
+    def plot_cluster_pca(self, cluster_of_interest="Proteasome"):
         """
         PCA plot will be generated
 
@@ -1150,10 +1153,11 @@ class SpatialDataSet:
             for maps in map_names:
                 df_setofproteins_PCA = pd.DataFrame()
                 for marker in markerproteins[cluster_of_interest]:
-                    if marker not in df_pca_all_marker_cluster_maps.index.get_level_values("Gene names"):
+                    try:
+                        plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Gene names", "Map"],
+                                                                         drop_level=False)
+                    except KeyError:
                         continue
-                    plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Gene names", "Map"],
-                                                                     drop_level=False)
                     df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
     
                 df_setofproteins_PCA.reset_index(inplace=True)
@@ -1198,7 +1202,7 @@ class SpatialDataSet:
         """
         
         try:
-            df_setofproteins = self.cluster_isolation_df(map_of_interest, cluster_of_interest)
+            df_setofproteins = self.get_cluster_data(map_of_interest, cluster_of_interest)
             
             df_setofproteins = df_setofproteins.copy()
     
@@ -1260,14 +1264,14 @@ class SpatialDataSet:
         df_allclusters_01 = pd.DataFrame()
         
         # for each individual map, and each individual protein cluster, defined in the dictionary markerproteins,
-        # the functions "cluster_isolation_df" and "distance_to_median_calculation" will be performed
+        # the functions "get_cluster_data" and "calc_distanceprofiles_tomedian" will be performed
         for maps in self.map_names:
             for clusters in self.markerproteins:
                 #if a certain cluster is not available in the dataset at all
                 try:
-                    df_setofproteins = self.cluster_isolation_df(maps, clusters)
+                    df_setofproteins = self.get_cluster_data(maps, clusters)
                     df_allclusters_01 = df_allclusters_01.append(df_setofproteins)
-                    df_distance_to_median_fracunstacked = self.distance_to_median_calculation(df_setofproteins)
+                    df_distance_to_median_fracunstacked = self.calc_distanceprofiles_tomedian(df_setofproteins)
                     # new column is introduced: Column name = "Cluster"; values: clustername, to wich the individual protein belongs to
                     df_distance_to_median_fracunstacked["Cluster"] = clusters
                     df_distance_to_median_fracunstacked.set_index("Cluster", inplace=True, append=True)
@@ -1305,6 +1309,95 @@ class SpatialDataSet:
         genenames_sortedout_list = genenames_sortedout_index.tolist()
 
         self.genenames_sortedout_list = genenames_sortedout_list
+        
+        
+    def get_cluster_data(self, maps, clusters):
+        """
+        The function returns a dataframe for a specified proteincluster and map, that will be hand over to the
+        definition "calc_distanceprofiles_tomedian"
+
+        Args:
+            maps: specified map (e.g. "MAP1")
+            clusters: protein cluster, specified in self.markerproteins (e.g. "Proteasome")
+            self:
+                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
+                
+                requires dataframe (df_01_stacked, single level column), stored as attribute (self.df_01_stacked),
+            in which "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting.
+            Additionally the columns "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are
+            found in LFQ and SILAC data respectively
+                markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
+
+        Returns:
+            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+        """
+
+        df_setofproteins = pd.DataFrame()
+        df_01_stacked = self.df_01_stacked
+
+        # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
+        for marker in self.markerproteins[clusters]:
+            # collect data for marker
+            try:
+                df_marker = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
+            except KeyError:
+                continue
+            df_setofproteins = df_setofproteins.append(df_marker)
+
+        return df_setofproteins
+
+
+    def calc_distanceprofiles_tomedian(self, df_setofproteins):
+        """
+        A dataframe will be generated, in which the distances to the median profile will be stored.
+
+        Args:
+            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
+            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+
+        Returns:
+            df_distance_to_median_fracunstacked: multiindex dataframe, for each individual protein and fraction the distances
+            are calculated. The data is stored in single level columns (Column names: e.g. "03K", "06K", "12K", "24K", "80K")
+        """
+        # calculate the median of the "normalized profile" of individual proteins over the fractions
+        df_setofproteins_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+
+        # substract the median individually from each entry (e.g. 03K_protein_xy - 03K_median)
+        df_distance_to_median_fracunstacked = df_setofproteins["normalized profile"].unstack("Fraction")
+        df_distance_to_median_fracunstacked = df_distance_to_median_fracunstacked.apply(lambda x: x - df_setofproteins_median, axis=1)
+
+        return df_distance_to_median_fracunstacked
+
+
+    def distance_calculation(self):
+        """
+        The distances to the median profile of the individual proteins, belonging to specified clusters, across the
+        fractions will be used to calculate the distance profile (e.g. Manhattan distance).
+
+        Args:
+            self:
+                df_allclusters_onlynorm_fracunstacked: single level column, "Fraction" is unstacked. It contains only the normalized data of individual protein
+                                                       clusters substracted by the median of the respective protein cluster for each fraction.
+
+        Returns:
+            df_distance_noindex: dataframe, no index. It contains the column name "distance", in which the e.g. Manhattan distances for each individual
+                                 protein of the specified clusters (see self.markerproteins) are stored
+        """
+        
+        df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked.copy()
+
+        # np.linalg.norm requires array; ord=1: Manhattan distance will be calculated over 5 dimensions (Fractions)
+        distance_array = np.linalg.norm(df_allclusters_onlynorm_fracunstacked.to_numpy(), axis=1, ord=1)
+
+        distance_series = pd.Series(distance_array)
+        distance_series.name = "distance"
+        distance_series.index = df_allclusters_onlynorm_fracunstacked.index
+        df_distance_noindex = distance_series.reset_index()
+
+        self.df_distance_noindex = df_distance_noindex
+        
+        self.analysis_summary_dict["Manhattan distances"] = df_distance_noindex.to_json()
 
 
     def quantification_overview(self, cluster_of_interest="Proteasome"):
@@ -1325,68 +1418,6 @@ class SpatialDataSet:
         df_quantification_overview = df_quantification_overview.notnull().replace({True: "x", False: "-"})
         
         return df_quantification_overview
-        
-        
-    def cluster_isolation_df(self, maps, clusters):
-        """
-        The function returns a dataframe for a specified proteincluster and map, that will be hand over to the
-        definition "distance_to_median_calculation"
-
-        Args:
-            maps: specified map (e.g. "MAP1")
-            clusters: protein cluster, specified in self.markerproteins (e.g. "Proteasome")
-            self:
-                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
-                
-                requires dataframe (df_01_stacked, single level column), stored as attribute (self.df_01_stacked),
-            in which "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting.
-            Additionally the columns "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are
-            found in LFQ and SILAC data respectively
-                markerproteins, stored as attribute (self.markerproteins), that will be used for plotting
-
-        Returns:
-            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
-            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
-        """
-
-        df_setofproteins = pd.DataFrame()
-        df_setofproteins_allMaps = pd.DataFrame()
-        df_01_stacked = self.df_01_stacked
-
-        # datapoints of each individual markerprotein is written into plot_try and appended to df_setofproteins
-        for marker in self.markerproteins[clusters]:
-            if marker not in df_01_stacked.index.get_level_values("Gene names"):
-                continue
-            df_marker = df_01_stacked.xs((marker, maps), level=["Gene names", "Map"], drop_level=False)
-            df_setofproteins = df_setofproteins.append(df_marker)
-            
-            df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
-            df_setofproteins_allMaps = df_setofproteins_allMaps.append(df_marker_allMaps)
-            
-
-        return df_setofproteins
-
-
-    def distance_to_median_calculation(self, df_setofproteins):
-        """
-        A dataframe will be generated, in which the distances to the median profile will be stored.
-
-        Args:
-            df_setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
-            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
-
-        Returns:
-            df_distance_to_median_fracunstacked: multiindex dataframe, for each individual protein and fraction the distances
-            are calculated. The data is stored in single level columns (Column names: e.g. "03K", "06K", "12K", "24K", "80K")
-        """
-        # calculate the median of the "normalized profile" of individual proteins over the fractions
-        df_setofproteins_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
-
-        # substract the median individually from each entry (e.g. 03K_protein_xy - 03K_median)
-        df_distance_to_median_fracunstacked = df_setofproteins["normalized profile"].unstack("Fraction")
-        df_distance_to_median_fracunstacked = df_distance_to_median_fracunstacked.apply(lambda x: x - df_setofproteins_median, axis=1)
-
-        return df_distance_to_median_fracunstacked
 
     
     def distance_boxplot(self, cluster_of_interest="Proteasome"):
@@ -1527,37 +1558,7 @@ class SpatialDataSet:
             return distance_to_median_boxplot_figure
             
         except:
-            return "This protein cluster was not quantified"
-
-
-    def distance_calculation(self):
-        """
-        The distances to the median profile of the individual proteins, belonging to specified clusters, across the
-        fractions will be used to calculate the distance profile (e.g. Manhattan distance).
-
-        Args:
-            self:
-                df_allclusters_onlynorm_fracunstacked: single level column, "Fraction" is unstacked. It contains only the normalized data of individual protein
-                                                       clusters substracted by the median of the respective protein cluster for each fraction.
-
-        Returns:
-            df_distance_noindex: dataframe, no index. It contains the column name "distance", in which the e.g. Manhattan distances for each individual
-                                 protein of the specified clusters (see self.markerproteins) are stored
-        """
-        
-        df_allclusters_onlynorm_fracunstacked = self.df_allclusters_onlynorm_fracunstacked.copy()
-
-        # np.linalg.norm requires array; ord=1: Manhattan distance will be calculated over 5 dimensions (Fractions)
-        distance_array = np.linalg.norm(df_allclusters_onlynorm_fracunstacked.to_numpy(), axis=1, ord=1)
-
-        distance_series = pd.Series(distance_array)
-        distance_series.name = "distance"
-        distance_series.index = df_allclusters_onlynorm_fracunstacked.index
-        df_distance_noindex = distance_series.reset_index()
-
-        self.df_distance_noindex = df_distance_noindex
-        
-        self.analysis_summary_dict["Manhattan distances"] = df_distance_noindex.to_json() 
+            return "This protein cluster was not quantified" 
 
         
     def dynamic_range(self):
@@ -1583,9 +1584,10 @@ class SpatialDataSet:
             try:
                 df_setofproteins_allMaps = pd.DataFrame()
                 for marker in self.markerproteins[clusters]:
-                    if marker not in df_01_stacked.index.get_level_values("Gene names"):
+                    try:
+                        df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
+                    except KeyError:
                         continue
-                    df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
                     df_setofproteins_allMaps = df_setofproteins_allMaps.append(df_marker_allMaps)
                 df_setofproteins_allMaps_median = df_setofproteins_allMaps["normalized profile"].unstack("Fraction").median()
                 
@@ -1943,7 +1945,7 @@ class SpatialDataSetComparison:
         #df_01_filtered_combined = df_01_combined.copy()
         #df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
         ## Replace protein IDs by the unifying protein ID across experiments
-        #comparison_IDs = pd.Series([el.split(";")[0] for el in df_01_filtered_combined.index.get_level_values("Protein IDs")],
+        #comparison_IDs = pd.Series([split_ids_uniprot(el) for el in df_01_filtered_combined.index.get_level_values("Protein IDs")],
         #                           name="Protein IDs")
         #df_01_filtered_combined.index = df_01_filtered_combined.index.droplevel("Protein IDs")
         #df_01_filtered_combined.set_index(comparison_IDs, append=True, inplace=True)
@@ -2076,9 +2078,10 @@ class SpatialDataSetComparison:
             df_setofproteins_PCA = pd.DataFrame()
             for map_or_exp in map_or_exp_names:
                     for marker in markerproteins[cluster_of_interest_comparison]:
-                        if marker not in df_pca_for_plotting.index.get_level_values("Gene names"):
+                        try:
+                            plot_try_pca = df_pca_for_plotting.xs((marker, map_or_exp), level=["Gene names", level_of_interest], drop_level=False)
+                        except KeyError:
                             continue
-                        plot_try_pca = df_pca_for_plotting.xs((marker, map_or_exp), level=["Gene names", level_of_interest], drop_level=False)
                         df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
             df_setofproteins_PCA.reset_index(inplace=True)
             
