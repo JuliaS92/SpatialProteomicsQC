@@ -789,6 +789,15 @@ class SpatialDataSet:
                                      template="simple_white",
                                      labels={"log profile": "log tranformed data ({})".format("LFQ intenisty" if self.acquisition != "SILAC - MQ" else "Ratio H/L")}
                                     )
+        
+        log_histogram.for_each_xaxis(lambda axis: axis.update(title={"text":""}))
+        log_histogram.for_each_yaxis(lambda axis: axis.update(title={"text":""}))
+        log_histogram.add_annotation(x=0.5, y=0, yshift=-50, xref="paper",showarrow=False, yref="paper",
+                    text="log2(LFQ intensity)")
+        log_histogram.add_annotation(x=0, y=0.5, textangle=270, xref="paper",showarrow=False, yref="paper", xshift=-50,
+                    text="count")
+        log_histogram.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        
         return log_histogram
     
     
