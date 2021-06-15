@@ -2243,14 +2243,20 @@ class SpatialDataSetComparison:
         return df_distances
     
     
-    def calc_biological_precision(self, experiments, clusters):
+    def calc_biological_precision(self, experiments=None, clusters=None):
         """
         Method to calculate the distance table for assessing biological precision
         """
         df_distances = pd.DataFrame()
+        if experiments is None:
+            experiments = self.exp_names
+        if clusters is None:
+            clusters = self.markerproteins.keys()
         
         for cluster in clusters:
             df_cluster = self.get_marker_proteins(experiments, cluster)
+            if len(df_cluster) == 0:
+                continue
             dists_cluster = self.calc_cluster_distances(df_cluster)
             df_distances = df_distances.append(dists_cluster)
         df_distances = df_distances.stack(["Experiment", "Map"]).reset_index()\
