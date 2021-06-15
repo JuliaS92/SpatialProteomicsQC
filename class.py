@@ -2190,7 +2190,85 @@ class SpatialDataSetComparison:
                                      template="simple_white"
                                     )
         
-        return fig_global_pca 
+        return fig_global_pca
+    
+    
+    def get_marker_proteins(self, experiments, cluster):
+        df_in = self.df_01_filtered_combined.copy()
+        markers = self.markerproteins[cluster]
+        
+        # retrieve marker proteins
+        df_cluster = pd.DataFrame()
+        for marker in markers:
+            try:
+                df_p = df_in.xs(marker, level="Gene names", axis=0, drop_level=False)
+            except:
+                continue
+            df_cluster = df_cluster.append(df_p)
+        if len(df_cluster) == 0:
+            return df_cluster
+        
+        # filter for all selected experiments
+        df_cluster = df_cluster.droplevel("Exp_Map", axis=0)
+        df_cluster = df_cluster.unstack(["Experiment", "Map"])
+        drop_experiments = [el for el in df_cluster.columns.get_level_values("Experiment") if el not in experiments]
+        if len(drop_experiments) > 0:
+            df_cluster.drop([el for el in df_cluster.columns.get_level_values("Experiment") if el not in experiments],
+                            level="Experiment", axis=1, inplace=True)
+        df_cluster.dropna(inplace=True)
+        if len(df_cluster) == 0:
+            return df_cluster
+        df_cluster.set_index(pd.Index(np.repeat(cluster, len(df_cluster)), name="Cluster"), append=True, inplace=True)
+        
+        return df_cluster
+    
+    def calc_cluster_distances(self, df_cluster, complex_profile=np.median, distance_measure="manhattan"):
+        df_distances = pd.DataFrame()
+        
+        experiments = set(df_cluster.columns.get_level_values("Experiment"))
+        for exp in experiments:
+            df_exp = df_cluster.xs(exp, level="Experiment", axis=1)
+            ref_profile = pd.DataFrame(df_exp.apply(complex_profile, axis=0, result_type="expand")).T
+            
+            maps = set(df_exp.columns.get_level_values("Map"))
+            for m in maps:
+                if distance_measure == "manhattan":
+                    d_m = pw.manhattan_distances(df_exp.xs(m, level="Map", axis=1), ref_profile.xs(m, level="Map", axis=1))
+                else:
+                    raise ValueError(distance_measure)
+                d_m = pd.DataFrame(d_m, columns=[(exp, m)], index=df_exp.index)
+                df_distances = pd.concat([df_distances, d_m], axis=1)
+        
+        df_distances.columns = pd.MultiIndex.from_tuples(df_distances.columns, names=["Experiment", "Map"])
+        return df_distances
+    
+    
+    def calc_biological_precision(self, experiments=None, clusters=None):
+        """
+        Method to calculate the distance table for assessing biological precision
+        """
+        df_distances = pd.DataFrame()
+        if experiments is None:
+            experiments = self.exp_names
+        if clusters is None:
+            clusters = self.markerproteins.keys()
+        
+        for cluster in clusters:
+            df_cluster = self.get_marker_proteins(experiments, cluster)
+            if len(df_cluster) == 0:
+                continue
+            dists_cluster = self.calc_cluster_distances(df_cluster)
+            df_distances = df_distances.append(dists_cluster)
+        df_distances = df_distances.stack(["Experiment", "Map"]).reset_index()\
+            .sort_values(["Experiment","Gene names"]).rename({0: "distance"}, axis=1)
+        df_distances.insert(0, "Exp_Map", ["_".join([e,m]) for e,m in zip(df_distances["Experiment"], df_distances["Map"])])
+        
+        try:
+            self.df_distance_comp = df_distances
+        except:
+            pass
+        
+        return df_distances
     
     
     def distance_boxplot_comparison(self, cluster_of_interest_comparison="Proteasome", collapse_maps=False, multi_choice=["Exp1", "Exp2"]):
@@ -2348,18 +2426,16 @@ class SpatialDataSetComparison:
                 if  cluster_quantitity>= 5:
                     dict_quantified_cluster[cluster] = cluster_quantitity
                     all_median_one_cluster_several_exp = {}
-                    ref = df_cluster["distance"].median()
+                    #ref = df_cluster["distance"].median()
                     for exp in multi_choice:
                         median = df_cluster[df_cluster["Experiment"]==exp]["distance"].median()
                         all_median_one_cluster_several_exp[exp] = float(median)
                         #new
                         #if exp == ref_exp:
                         #    ref = median
+                    ref = np.median(list(all_median_one_cluster_several_exp.values()))
                     dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
-                    #min_median = min(all_median_one_cluster_several_exp.items(), key=lambda x: x[1])[1]
-                    #median_ranking = {exp: median/min_median for exp, median in all_median_one_cluster_several_exp.items()}
-                    #dict_cluster_normalizedMedian[cluster] = median_ranking
-                    #new
+                    
                     median_ranking_ref = {exp: median/ref for exp, median in all_median_one_cluster_several_exp.items()}
                     dict_cluster_normalizedMedian_ref[cluster] = median_ranking_ref
                 else:
