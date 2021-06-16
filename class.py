@@ -1363,7 +1363,7 @@ class SpatialDataSet:
             df_alldistances_individual_mapfracunstacked = df_alldistances_individual_mapfracunstacked.append(df_distances_individual)
             df_alldistances_aggregated_mapunstacked = df_alldistances_aggregated_mapunstacked.append(df_distances_aggregated)
         
-        ## Get comparitbility with old functions:
+        ## Get compatibility with plotting functions, by mimicking assignment of old functions:
         # old output of distance_calculation
         self.df_distance_noindex = df_alldistances_aggregated_mapunstacked.stack("Map").reset_index().rename({0: "distance"}, axis=1) 
         self.analysis_summary_dict["Manhattan distances"] = self.df_distance_noindex.to_json()
@@ -1438,17 +1438,16 @@ class SpatialDataSet:
         """
         
         try:
-            df_setofproteins = self.get_cluster_data(map_of_interest, cluster_of_interest)
-            
-            df_setofproteins = df_setofproteins.copy()
+            df_setofproteins = self.df_allclusters_01_unfiltered_mapfracunstacked.xs(cluster_of_interest, level="Cluster", axis=0)
+            df_setofproteins_median = df_setofproteins.dropna().xs(map_of_interest, level="Map", axis=1).median(axis=0)
     
             # fractions get sorted
+            df_setofproteins = df_setofproteins.xs(map_of_interest, level="Map", axis=1).stack("Fraction")
             df_setofproteins = df_setofproteins.reindex(index=natsort.natsorted(df_setofproteins.index))
-    
-            df_setofproteins_median = df_setofproteins["normalized profile"].unstack("Fraction").median()
+            df_setofproteins.name = "normalized profile"
     
             # make it available for plotting
-            df_setofproteins.reset_index(inplace=True)
+            df_setofproteins = df_setofproteins.reset_index()
             abundance_profiles_figure = px.line(df_setofproteins, 
                                                 x="Fraction", 
                                                 y="normalized profile",
