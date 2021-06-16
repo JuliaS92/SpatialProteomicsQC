@@ -1469,6 +1469,9 @@ class SpatialDataSet:
                                                                                          y=df_setofproteins_median["normalized profile"],
                                                                                          name="Median profile"
                                                                                         )
+            # dash lines for proteins that have insufficient coverage across maps
+            abundance_profiles_and_median_figure.for_each_trace(lambda x: x.update(line={"dash":"dash"}),
+                                                                selector=lambda x: x.name in self.genenames_sortedout_list)
     
             return abundance_profiles_and_median_figure
         
