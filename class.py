@@ -1405,6 +1405,20 @@ class SpatialDataSet:
     
     
     def calc_cluster_distances(self, df_cluster, complex_profile=np.median, distance_measure="manhattan"):
+        """
+        Calculates the absolute differences in each fraction and the profile distances relative to the center of a cluster.
+        Per default this is the manhattan distance to the median profile.
+        
+        Args:
+            df_cluster: df, 0-1 normalized profiles of cluster members, should already be filtered for full coverage and be in full wide format.
+            complex_profile: fun, function provided to apply for calculating the reference profile, default: np.median.
+            distance_measure: str, selected distance measure to calculate. Currently only 'manhattan' is supported, everything else raises a ValueError.
+            self attributes:
+                None
+        Returns:
+            df_distances_aggregated: df, proteins x maps, if stacked distance column is currently named 0 but contains manhattan distances.
+            df_distances_individual: df, same shape as df_cluster, but now with absolute differences to the reference.
+        """
         df_distances_aggregated = pd.DataFrame()
         
         ref_profile = pd.DataFrame(df_cluster.apply(complex_profile, axis=0, result_type="expand")).T
@@ -1427,14 +1441,16 @@ class SpatialDataSet:
     def profiles_plot(self, map_of_interest="Map1", cluster_of_interest="Proteasome"):
         """
         The function allows the plotting of filtered and normalized spatial proteomic data using plotly.express.
-        The median profile is also calculated and displayed
+        The median profile is also calculated based on the overlapping proteins. Profiles of proteins that are not quantified in all maps are dashed.
 
         Args:
-            df_ setofproteins: multiindex dataframe, that contains data about the desired protein cluster,
-            stored in the columns "Ratio H/L count", "Ratio H/L variability [%]" and "normalized profile"
+            map_of_interest: str, must be in self.map_names
+            cluster_of_interest: str, must be in self.markerproteins.keys()
+            self attribtues:
+                df_allclusters_01_unfiltered_mapfracunstacked: df, contains 0-1 normalized profiles for all markerproteins detected in any map
 
         Returns:
-            abundance_profiles_and_median_figure: Line plot, displaying the relative abundance profiles.
+            abundance_profiles_and_median_figure: plotly line plot, displaying the relative abundance profiles.
         """
         
         try:
