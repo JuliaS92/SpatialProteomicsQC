@@ -1985,7 +1985,7 @@ class SpatialDataSetComparison:
                     index: "Experiment", "Gene names", "Map", "Exp_Map"
                     columns: "PC1", "PC2", "PC3"
                     contains only marker genes, that are consistent throughout all maps / experiments
-                df_global_pca_for_plotting: PCA processed dataframe
+                df_global_pca: PCA processed dataframe
                     index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
                     columns: "PC1", "PC2", "PC3"
                     contains all protein IDs, that are consistent throughout all experiments
@@ -1993,18 +1993,23 @@ class SpatialDataSetComparison:
 
         markerproteins = self.markerproteins.copy()
         
-        df_01_filtered_combined = self.df_01_filtered_combined
-        df_01_filtered_combined = self.df_01_filtered_combined 
+        #df_01_filtered_combined = self.df_01_filtered_combined
+        #df_01_filtered_combined = self.df_01_filtered_combined 
         
+        
+        df_mean = pd.DataFrame()
+        for exp in self.exp_names:
+            df_exp = self.df_01_filtered_combined.stack("Fraction").unstack(["Experiment", "Map","Exp_Map"])[exp].mean(axis=1).to_frame(name=exp)
+            df_mean = pd.concat([df_mean, df_exp], axis=1)
+        df_mean = df_mean.rename_axis("Experiment", axis="columns").stack("Experiment").unstack("Fraction")
+        
+        markerproteins = i_class_comp.markerproteins.copy()
         pca = PCA(n_components=3)
-
-        df_pca = pd.DataFrame(pca.fit_transform(df_01_filtered_combined))
-        df_pca.columns = ["PC1", "PC2", "PC3"]
-        df_pca.index = df_01_filtered_combined.index
         
-        df_global_pca = pd.DataFrame(pca.fit_transform(df_01_filtered_combined))
-        df_global_pca.columns = ["PC1", "PC2", "PC3"]
-        df_global_pca.index = df_01_filtered_combined.index
+        df_pca = pd.DataFrame(pca.fit_transform(df_mean))
+        df_pca.columns = ["PC1", "PC2", "PC3"]
+        df_pca.index = df_mean.index
+        
         
         try:
             markerproteins["PSMA subunits"] = [item for sublist in [re.findall("PSMA.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
@@ -2013,17 +2018,17 @@ class SpatialDataSetComparison:
         except:
             pass 
         
-        
+        ###only one df, make annotation at that time
         df_cluster = pd.DataFrame([(k, i) for k, l in markerproteins.items() for i in l], columns=["Cluster", "Gene names"])
-        df_global_pca_annotated = df_global_pca.reset_index().merge(df_cluster, how="left", on="Gene names")
-        df_global_pca_annotated.Cluster.replace(np.NaN, "Undefined", inplace=True)
+        df_global_pca = df_pca.reset_index().merge(df_cluster, how="left", on="Gene names")
+        df_global_pca.Cluster.replace(np.NaN, "Undefined", inplace=True)
         
         self.markerproteins_splitProteasome = markerproteins
-        self.df_pca_for_plotting = df_pca
-        self.df_global_pca_for_plotting = df_global_pca_annotated
+        self.df_pca = df_pca 
+        self.df_global_pca = df_global_pca
             
             
-    def plot_pca_comparison(self, collapse_maps=False, cluster_of_interest_comparison="Proteasome", multi_choice=["Exp1", "Exp2"]):
+    def plot_pca_comparison(self, cluster_of_interest_comparison="Proteasome", multi_choice=["Exp1", "Exp2"]):
         """
         A PCA plot for desired experiments (multi_choice) and 1 desired cluster is generated.
         Either the maps for every single experiment are displayed individually or in a combined manner
@@ -2032,9 +2037,8 @@ class SpatialDataSetComparison:
             self:
                 markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
                 multi_choice: list of experiment names
-                collapse_maps: boolean
                 cluster_of_interest_comparison: string, protein cluster (key in markerproteins, e.g. "Proteasome")
-                df_pca_for_plotting: PCA processed dataframe
+                df_pca: PCA processed dataframe
                     index: "Experiment", "Gene names", "Map", "Exp_Map"
                     columns: "PC1", "PC2", "PC3"
                     contains only marker genes, that are consistent throughout all maps / experiments
@@ -2043,23 +2047,19 @@ class SpatialDataSetComparison:
             pca_figure: PCA plot for a specified protein cluster.
         """
     
-        df_pca_for_plotting = self.df_pca_for_plotting.copy()
+    
+    
+    
+    
+        df_pca = self.df_pca.copy()
         markerproteins = self.markerproteins
-
-        if collapse_maps == False:
-            map_or_exp_names= df_pca_for_plotting[df_pca_for_plotting.index.get_level_values("Experiment").isin(multi_choice)].index.get_level_values("Exp_Map").unique()
-            level_of_interest = "Exp_Map"
-            symbol_pca = "Experiment"     
-        else:
-            map_or_exp_names = multi_choice
-            level_of_interest = "Experiment"
-            symbol_pca = None
+ 
         try:
             df_setofproteins_PCA = pd.DataFrame()
-            for map_or_exp in map_or_exp_names:
+            for map_or_exp in multi_choice:
                     for marker in markerproteins[cluster_of_interest_comparison]:
                         try:
-                            plot_try_pca = df_pca_for_plotting.xs((marker, map_or_exp), level=["Gene names", level_of_interest], drop_level=False)
+                            plot_try_pca = df_pca.xs((marker, map_or_exp), level=["Gene names", "Experiment"], drop_level=False)
                         except KeyError:
                             continue
                         df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
@@ -2073,8 +2073,7 @@ class SpatialDataSetComparison:
                                        x="PC1", 
                                        y="PC2", 
                                        z="PC3", 
-                                       color=level_of_interest, 
-                                       symbol=symbol_pca, 
+                                       color="Experiment",
                                        template="simple_white",
                                        hover_data=["Gene names"]
                                       )
@@ -2082,14 +2081,14 @@ class SpatialDataSetComparison:
             pca_figure.update_layout(autosize=False, 
                                      width=1400, 
                                      height=500,
-                                     title="PCA plot for <br>the protein cluster: {}".format(self.cluster_of_interest_comparison),
+                                     title="PCA plot for <br>the protein cluster: {}".format(cluster_of_interest_comparison),
                                      template="simple_white"
                                     )
     
             return pca_figure
         except:
             return "This protein cluster was not identified in all experiments"
-    
+            
                 
     def plot_global_pca_comparison(self, cluster_of_interest_comparison="Proteasome", x_PCA="PC1", y_PCA="PC3", 
         markerset_or_cluster=False, multi_choice=["Exp1", "Exp2"]):
@@ -2101,7 +2100,7 @@ class SpatialDataSetComparison:
                 df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
                 multi_choice: list of experiment names
                 css_color: list of colors
-                df_global_pca_for_plotting: PCA processed dataframe
+                df_global_pca: PCA processed dataframe
                     index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
                     columns: "PC1", "PC2", "PC3"
                     contains all protein IDs, that are consistent throughout all experiments    
@@ -2111,7 +2110,7 @@ class SpatialDataSetComparison:
         """
         
         
-        df_global_pca_exp = self.df_global_pca_for_plotting.loc[self.df_global_pca_for_plotting["Experiment"].isin(multi_choice)]
+        df_global_pca_exp = self.df_global_pca.loc[self.df_global_pca["Experiment"].isin(multi_choice)]
         df_global_pca_exp.reset_index(inplace=True)
 
         compartments = list(SpatialDataSet.df_organellarMarkerSet["Compartment"].unique())
@@ -2308,7 +2307,7 @@ class SpatialDataSetComparison:
                     
                 individual_distance_boxplot_figure.update_layout(boxmode="group", 
                                                                  xaxis_tickangle=90, 
-                                                                 title="Manhattan distance distribution for the protein cluster: {}".format(cluster_of_interest_comparison),
+                                                                 title="Manhattan distance distribution for <br>the protein cluster: {}".format(cluster_of_interest_comparison),
                                                                  autosize=False,
                                                                  width=350*len(multi_choice),
                                                                  height=500,
