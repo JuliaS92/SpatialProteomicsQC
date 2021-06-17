@@ -1,7 +1,7 @@
 class SpatialDataSet:
     
     regex = {
-        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity"
+        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
     }
     
     acquisition_set_dict = {
@@ -311,6 +311,7 @@ class SpatialDataSet:
             """
             
             df_original = self.df_original.copy()
+            df_original.rename({"Proteins": "Protein IDs"}, axis=1, inplace=True)
             df_original = df_original.set_index([col for col in df_original.columns
                                                  if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
@@ -331,10 +332,23 @@ class SpatialDataSet:
             
             shape_dict["Original size"] = df_original.shape
             
-            df_index = df_original.xs(
-                np.nan, 0, "Reverse").xs(
-                np.nan, 0, "Potential contaminant").xs(
+            try:
+                df_index = df_original.xs(
+                    np.nan, 0, "Reverse")
+            except:
+                pass
+            
+            try:
+                df_index = df_index.xs(
+                np.nan, 0, "Potential contaminant")
+            except:
+                pass
+            
+            try:
+                df_index = df_index.xs(
                 np.nan, 0, "Only identified by site")
+            except:
+                pass
             
             df_index.replace(0, np.nan, inplace=True)
             shape_dict["Shape after categorical filtering"] = df_index.shape
@@ -581,11 +595,14 @@ class SpatialDataSet:
             
             # "MS/MS count"-column: take the sum over the fractions; if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
             minms = (len(self.fractions) * self.summed_MSMS_counts)
-            df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= minms]
-
-            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.unstack("Map").shape
             
-            df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
+            if minms > 0:
+                df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= minms]
+    
+                shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.unstack("Map").shape
+                df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
+            else:
+                df_stringency_mapfracstacked = df_index.copy()
 
             # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[
@@ -625,15 +642,15 @@ class SpatialDataSet:
                                "normalized profile"; the columns "normalized profile" and "MS/MS count" are stored as single level indices; plotting is possible now
 
             """
-
             df_01norm_mapstacked = df_stringency_mapfracstacked["LFQ intensity"].unstack("Fraction")
-
+            
             # 0:1 normalization of Ratio L/H
             df_01norm_unstacked = df_01norm_mapstacked.div(df_01norm_mapstacked.sum(axis=1), axis=0)
-
-            df_01_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame(df_01norm_unstacked.stack(
+            
+            df_rest = df_stringency_mapfracstacked.drop("LFQ intensity", axis=1)
+            df_01_stacked = df_rest.join(pd.DataFrame(df_01norm_unstacked.stack(
                    "Fraction"),columns=["LFQ intensity"]))
-
+            
             # rename columns: "LFQ intensity" into "normalized profile"
             df_01_stacked.columns = [col if col!="LFQ intensity" else "normalized profile" for col in
                                      df_01_stacked.columns]
@@ -659,8 +676,9 @@ class SpatialDataSet:
             """
 
             df_lognorm_ratio_stacked = df_stringency_mapfracstacked["LFQ intensity"].transform(np.log2)
-
-            df_log_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame(df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
+            
+            df_rest = df_stringency_mapfracstacked.drop("LFQ intensity", axis=1)
+            df_log_stacked = df_rest.join(pd.DataFrame(df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
             
             # "LFQ intensity" will be renamed to "log profile"
             df_log_stacked.columns = [col if col!="LFQ intensity" else "log profile" for col in df_log_stacked.columns]
@@ -746,7 +764,7 @@ class SpatialDataSet:
             comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
             df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
             df_01_comparison.set_index(comp_ids, append=True, inplace=True)
-            df_01_comparison.drop("MS/MS count", inplace=True, axis=1)
+            df_01_comparison.drop("MS/MS count", inplace=True, axis=1, errors="ignore")
             df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
             df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
@@ -852,20 +870,25 @@ class SpatialDataSet:
         npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/np.prod(df_index_MapStacked.shape)
         
         #filtered
-        df_01_stacked.unstack(["Map", "Fraction"]).sort_index(axis=1)
         npgf_t = df_01_stacked.unstack(["Map", "Fraction"]).shape[0]
         df_01_MapStacked = df_01_stacked.unstack("Fraction")
         nprf_t = df_01_MapStacked.shape[0]/len(self.map_names)
         nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/np.prod(df_01_MapStacked.shape)
         
         #unfiltered intersection
-        df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        try:
+            df_index_intersection = df_index_MapStacked.groupby(level="Sequence").filter(lambda x : len(x)==len(self.map_names))
+        except:
+            df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
         npr_i = df_index_intersection.shape[0]/len(self.map_names)
         npr_i_dc = 1-df_index_intersection.isna().sum().sum()/np.prod(df_index_intersection.shape)
         npg_i = df_index_intersection.unstack("Map").shape[0]
         
         #filtered intersection
-        df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        try:
+            df_01_intersection = df_01_MapStacked.groupby(level = "Sequence").filter(lambda x : len(x)==len(self.map_names))
+        except:
+            df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
         nprf_i = df_01_intersection.shape[0]/len(self.map_names)
         nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/np.prod(df_01_intersection.shape)
         npgf_i = df_01_intersection.unstack("Map").shape[0]
@@ -1353,6 +1376,7 @@ class SpatialDataSet:
                                                 x="Fraction", 
                                                 y="normalized profile",
                                                 color="Gene names",
+                                                line_group="Sequence" if "Sequence" in df_setofproteins.columns else "Gene names",
                                                 template="simple_white",
                                                 title="Relative abundance profile for {} of <br>the protein cluster: {}".format(map_of_interest, cluster_of_interest)
                                                )
@@ -1394,7 +1418,10 @@ class SpatialDataSet:
         
         df_quantification_overview = self.df_allclusters_clusterdist_fracunstacked_unfiltered.xs(cluster_of_interest, level="Cluster", axis=0)\
                                                                                              [self.fractions[0]].unstack("Map")
-        df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i=="Gene names"])
+        if "Sequence" in df_quantification_overview.index.names:
+            df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i in ["Sequence","Gene names"]])
+        else:
+            df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i=="Gene names"])
         df_quantification_overview = df_quantification_overview.notnull().replace({True: "x", False: "-"})
         
         return df_quantification_overview
@@ -1422,6 +1449,8 @@ class SpatialDataSet:
 
         # "Gene names", "Map", "Cluster" and transferred into the index
         df_distance_map_cluster_gene_in_index = df_distance_noindex.set_index(["Gene names", "Map", "Cluster"])
+        if "Sequence" in df_distance_map_cluster_gene_in_index.columns:
+            df_distance_map_cluster_gene_in_index.set_index("Sequence", append=True, inplace=True)
 
         df_cluster_xmaps_distance_with_index = pd.DataFrame()
         
