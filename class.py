@@ -2873,21 +2873,17 @@ class SpatialDataSetComparison:
         assert metric in metrics.keys()
         
         # Filter experiments and intersection of proteins
-        #df = self.df_01_filtered_combined.loc[
-        #    self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
         df = self.df_01_filtered_combined.loc[
             self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
-            
-        n_expmap = len(set(df.index.get_level_values("Exp_Map")))
-        df_across = df.groupby("Protein IDs").filter(lambda x: len(x)==n_expmap)
-        df_across.index = df_across.index.droplevel("Exp_Map")
-        df_across = df_across.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
+        
+        df.index = df.index.droplevel("Exp_Map")
+        df_across = df.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
         nPG = df_across.unstack(["Experiment", "Map"]).shape[0]
 
         
         # Calculate and consolidate distances
         distances = pd.DataFrame()
-        for exp in set(df.index.get_level_values("Experiment")):
+        for exp in set(df_across.index.get_level_values("Experiment")):
             df_m = df_across.xs(exp, level="Experiment", axis=0)
             maps = list(set(df_m.index.get_level_values("Map")))
             distances_m = pd.DataFrame()
