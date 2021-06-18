@@ -2657,78 +2657,88 @@ class SpatialDataSetComparison:
                 the combination.
             set : set
                 The set formed by the overlapping input sets.
-        """       
+        """
         
-        sets_uniqueProteins = [set(self.unique_proteins_total[i]) for i in multi_choice_venn]
-        num_combinations = 2 ** len(sets_uniqueProteins)
-        bit_flags = [2 ** n for n in range(len(sets_uniqueProteins))]
-        flags_zip_sets = [z for z in zip(bit_flags, sets_uniqueProteins)]
-    
-        combo_sets = []
-        overlapping_ids = []
-        experiments = []
-        #dictio = {}
-        for bits in range(num_combinations - 1, 0, -1):
-            include_sets = [s for flag, s in flags_zip_sets if bits & flag]
-            exclude_sets = [s for flag, s in flags_zip_sets if not bits & flag]
-            combo = set.intersection(*include_sets)
-            combo = set.difference(combo, *exclude_sets)
-            tag = "".join([str(int((bits & flag) > 0)) for flag in bit_flags])
-            
-            experiment_decoded = []
-            for digit, exp in zip(list(tag), multi_choice_venn):
-                if digit=="0":
-                    continue
+        def create_upsetplot(sets, multi_choice):
+            num_combinations = 2 ** len(sets)
+            bit_flags = [2 ** n for n in range(len(sets))]
+            flags_zip_sets = [z for z in zip(bit_flags, sets)]
+            combo_sets = []
+            overlapping_ids = []
+            experiments = []
+            #dictio = {}
+            for bits in range(num_combinations - 1, 0, -1):
+                include_sets = [s for flag, s in flags_zip_sets if bits & flag]
+                exclude_sets = [s for flag, s in flags_zip_sets if not bits & flag]
+                combo = set.intersection(*include_sets)
+                combo = set.difference(combo, *exclude_sets)
+                tag = "".join([str(int((bits & flag) > 0)) for flag in bit_flags])
+                
+                experiment_decoded = []
+                for digit, exp in zip(list(tag), multi_choice):
+                    if digit=="0":
+                        continue
+                    else:
+                        experiment_decoded.append(exp)
+                #dictio[len(combo)] = experiment_decoded
+                if len(multi_choice)>3:
+                    if len(combo)>300:
+                        overlapping_ids.append(len(combo))
+                        experiments.append(experiment_decoded)
                 else:
-                    experiment_decoded.append(exp)
-            #dictio[len(combo)] = experiment_decoded
-            if len(multi_choice_venn)>3:
-                if len(combo)>300:
-                    overlapping_ids.append(len(combo))
-                    experiments.append(experiment_decoded)
-                else:
-                    continue
-            else:
-                overlapping_ids.append(len(combo))
-                experiments.append(experiment_decoded)
-            #combo_sets.append((tag, len(combo)))
+                    if len(combo)>0:
+                        overlapping_ids.append(len(combo))
+                        experiments.append(experiment_decoded)
+                #combo_sets.append((tag, len(combo)))
+                
+            fig_UpSetPlot = plt.Figure()
+            series_UpSetPlot = from_memberships(experiments, data=overlapping_ids)
+            upplot(series_UpSetPlot, fig=fig_UpSetPlot, show_counts="%d")
+            return fig_UpSetPlot
             
-        figure_UpSetPlot = plt.Figure()
-        series_UpSetPlot = from_memberships(experiments, data=overlapping_ids)
-        plot(series_UpSetPlot, fig=figure_UpSetPlot, show_counts="%d")
-
-
+        
+        sets_proteins_total = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Protein IDs"))
+                               for i in multi_choice_venn]
+        sets_proteins_intersection = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").unstack(["Map", "Exp_Map"]).dropna()\
+                                      .index.get_level_values("Protein IDs")) for i in multi_choice_venn]
+        
+        figure_UpSetPlot_total = create_upsetplot(sets_proteins_total, multi_choice_venn)
+        figure_UpSetPlot_int = create_upsetplot(sets_proteins_intersection, multi_choice_venn)
+        
+        #make matplot figure available for plotly
+        def convert_venn_jpg(vd):
+            vd = vd.figure
+            out_img = io.BytesIO()
+            plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
+            out_img.seek(0)  # rewind file
+            im = Image.open(out_img)
+            plt.clf()
+            return im
         
         if len(multi_choice_venn) == 2:
-            vd = venn2([set(self.unique_proteins_total[i]) for i in multi_choice_venn], 
-                       set_labels=([i for i in multi_choice_venn]),
-                       set_colors=("darksalmon", "darkgrey")
-                      )
+            vd_t = venn2(sets_proteins_total, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:2], alpha=0.8)
+            vd_t = plt.title("in at least one map")
+            im_t = convert_venn_jpg(vd_t)
+            vd_i = venn2(sets_proteins_intersection, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:2], alpha=0.8)
+            vd_i = plt.title("in all maps")
+            im_i = convert_venn_jpg(vd_i)
         elif len(multi_choice_venn) == 3:
-            vd = venn3([set(self.unique_proteins_total[i]) for i in multi_choice_venn],
-                       set_labels=([i for i in multi_choice_venn]),
-                       set_colors=("darksalmon", "darkgrey","rosybrown"),
-                       alpha=0.8
-                      )
+            vd_t = venn3(sets_proteins_total, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:3], alpha=0.8)
+            vd_t = plt.title("in at least one map")
+            im_t = convert_venn_jpg(vd_t)
+            vd_i = venn3(sets_proteins_intersection, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:3], alpha=0.8)
+            vd_i = plt.title("in all maps")
+            im_i = convert_venn_jpg(vd_i)
         
         else:
             im = "Venn diagram can be displayed for 3 Experiments or less"
-            return im, figure_UpSetPlot
-
-        vd = plt.title("Unique Protein Groups - Venn Diagram",
-                       pad=30,
-                       fontsize=20
-                      )
+            return im,im, figure_UpSetPlot_total, figure_UpSetPlot_int
         
-        #make matplot figure available for plotly
-        vd = vd.figure
-        out_img = io.BytesIO()
-        plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
-        out_img.seek(0)  # rewind file
-        im = Image.open(out_img)
-        plt.clf()
-        
-        return im, figure_UpSetPlot
+        return im_t, im_i, figure_UpSetPlot_total, figure_UpSetPlot_int
     
     
     def dynamic_range_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], ref_exp="Exp1"):
