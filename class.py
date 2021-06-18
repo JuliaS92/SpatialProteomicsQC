@@ -1881,7 +1881,6 @@ class SpatialDataSetComparison:
                     df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
                     df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
                     df_01_toadd.set_index(pd.Series(["?".join([str(i) for i in el]) for el in df_01_toadd.index.values], name="join"), append=True, inplace=True)
-                    print(df_01_toadd.xs("EAFSLFDK", level="Sequence", axis=0))
                     if len(df_01_combined) == 0:
                         df_01_combined = df_01_toadd.copy()
                     else:
