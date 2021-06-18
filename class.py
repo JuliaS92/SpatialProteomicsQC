@@ -1,7 +1,7 @@
 class SpatialDataSet:
     
     regex = {
-        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity"
+        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR]otein.[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
     }
     
     acquisition_set_dict = {
@@ -311,6 +311,7 @@ class SpatialDataSet:
             """
             
             df_original = self.df_original.copy()
+            df_original.rename({"Proteins": "Protein IDs"}, axis=1, inplace=True)
             df_original = df_original.set_index([col for col in df_original.columns
                                                  if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
@@ -331,10 +332,23 @@ class SpatialDataSet:
             
             shape_dict["Original size"] = df_original.shape
             
-            df_index = df_original.xs(
-                np.nan, 0, "Reverse").xs(
-                np.nan, 0, "Potential contaminant").xs(
+            try:
+                df_index = df_original.xs(
+                    np.nan, 0, "Reverse")
+            except:
+                pass
+            
+            try:
+                df_index = df_index.xs(
+                np.nan, 0, "Potential contaminant")
+            except:
+                pass
+            
+            try:
+                df_index = df_index.xs(
                 np.nan, 0, "Only identified by site")
+            except:
+                pass
             
             df_index.replace(0, np.nan, inplace=True)
             shape_dict["Shape after categorical filtering"] = df_index.shape
@@ -581,11 +595,14 @@ class SpatialDataSet:
             
             # "MS/MS count"-column: take the sum over the fractions; if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
             minms = (len(self.fractions) * self.summed_MSMS_counts)
-            df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= minms]
-
-            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.unstack("Map").shape
             
-            df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
+            if minms > 0:
+                df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= minms]
+    
+                shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.unstack("Map").shape
+                df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
+            else:
+                df_stringency_mapfracstacked = df_index.copy()
 
             # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[
@@ -625,15 +642,15 @@ class SpatialDataSet:
                                "normalized profile"; the columns "normalized profile" and "MS/MS count" are stored as single level indices; plotting is possible now
 
             """
-
             df_01norm_mapstacked = df_stringency_mapfracstacked["LFQ intensity"].unstack("Fraction")
-
+            
             # 0:1 normalization of Ratio L/H
             df_01norm_unstacked = df_01norm_mapstacked.div(df_01norm_mapstacked.sum(axis=1), axis=0)
-
-            df_01_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame(df_01norm_unstacked.stack(
+            
+            df_rest = df_stringency_mapfracstacked.drop("LFQ intensity", axis=1)
+            df_01_stacked = df_rest.join(pd.DataFrame(df_01norm_unstacked.stack(
                    "Fraction"),columns=["LFQ intensity"]))
-
+            
             # rename columns: "LFQ intensity" into "normalized profile"
             df_01_stacked.columns = [col if col!="LFQ intensity" else "normalized profile" for col in
                                      df_01_stacked.columns]
@@ -659,8 +676,9 @@ class SpatialDataSet:
             """
 
             df_lognorm_ratio_stacked = df_stringency_mapfracstacked["LFQ intensity"].transform(np.log2)
-
-            df_log_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame(df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
+            
+            df_rest = df_stringency_mapfracstacked.drop("LFQ intensity", axis=1)
+            df_log_stacked = df_rest.join(pd.DataFrame(df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
             
             # "LFQ intensity" will be renamed to "log profile"
             df_log_stacked.columns = [col if col!="LFQ intensity" else "log profile" for col in df_log_stacked.columns]
@@ -746,7 +764,7 @@ class SpatialDataSet:
             comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
             df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
             df_01_comparison.set_index(comp_ids, append=True, inplace=True)
-            df_01_comparison.drop("MS/MS count", inplace=True, axis=1)
+            df_01_comparison.drop("MS/MS count", inplace=True, axis=1, errors="ignore")
             df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
             df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
@@ -852,20 +870,25 @@ class SpatialDataSet:
         npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/np.prod(df_index_MapStacked.shape)
         
         #filtered
-        df_01_stacked.unstack(["Map", "Fraction"]).sort_index(axis=1)
         npgf_t = df_01_stacked.unstack(["Map", "Fraction"]).shape[0]
         df_01_MapStacked = df_01_stacked.unstack("Fraction")
         nprf_t = df_01_MapStacked.shape[0]/len(self.map_names)
         nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/np.prod(df_01_MapStacked.shape)
         
         #unfiltered intersection
-        df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        try:
+            df_index_intersection = df_index_MapStacked.groupby(level="Sequence").filter(lambda x : len(x)==len(self.map_names))
+        except:
+            df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
         npr_i = df_index_intersection.shape[0]/len(self.map_names)
         npr_i_dc = 1-df_index_intersection.isna().sum().sum()/np.prod(df_index_intersection.shape)
         npg_i = df_index_intersection.unstack("Map").shape[0]
         
         #filtered intersection
-        df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        try:
+            df_01_intersection = df_01_MapStacked.groupby(level = "Sequence").filter(lambda x : len(x)==len(self.map_names))
+        except:
+            df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
         nprf_i = df_01_intersection.shape[0]/len(self.map_names)
         nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/np.prod(df_01_intersection.shape)
         npgf_i = df_01_intersection.unstack("Map").shape[0]
@@ -1353,6 +1376,7 @@ class SpatialDataSet:
                                                 x="Fraction", 
                                                 y="normalized profile",
                                                 color="Gene names",
+                                                line_group="Sequence" if "Sequence" in df_setofproteins.columns else "Gene names",
                                                 template="simple_white",
                                                 title="Relative abundance profile for {} of <br>the protein cluster: {}".format(map_of_interest, cluster_of_interest)
                                                )
@@ -1394,7 +1418,10 @@ class SpatialDataSet:
         
         df_quantification_overview = self.df_allclusters_clusterdist_fracunstacked_unfiltered.xs(cluster_of_interest, level="Cluster", axis=0)\
                                                                                              [self.fractions[0]].unstack("Map")
-        df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i=="Gene names"])
+        if "Sequence" in df_quantification_overview.index.names:
+            df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i in ["Sequence","Gene names"]])
+        else:
+            df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i=="Gene names"])
         df_quantification_overview = df_quantification_overview.notnull().replace({True: "x", False: "-"})
         
         return df_quantification_overview
@@ -1422,6 +1449,8 @@ class SpatialDataSet:
 
         # "Gene names", "Map", "Cluster" and transferred into the index
         df_distance_map_cluster_gene_in_index = df_distance_noindex.set_index(["Gene names", "Map", "Cluster"])
+        if "Sequence" in df_distance_map_cluster_gene_in_index.columns:
+            df_distance_map_cluster_gene_in_index.set_index("Sequence", append=True, inplace=True)
 
         df_cluster_xmaps_distance_with_index = pd.DataFrame()
         
@@ -1840,22 +1869,22 @@ class SpatialDataSetComparison:
         self.analysis_parameters_total = {}
         unique_proteins_total = {}
         
+        df_01_combined = pd.DataFrame()
         for exp_name in json_dict.keys():
-            for data_type in json_dict[exp_name].keys():                   
-                if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
-                    df_01_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_combined = df_01_combined.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
-                    df_01_combined.drop([col for col in df_01_combined.columns if not col.startswith("normalized profile")])
-                    df_01_combined.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_combined.columns], names=["Set", "Map", "Fraction"])
-                    df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
-        
-                elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
+            for data_type in json_dict[exp_name].keys():
+                if data_type == "0/1 normalized data":
                     df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_toadd = df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
-                    df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")])
+                    df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"], inplace=True)
+                    if "Sequence" in df_01_toadd.columns:
+                        df_01_toadd.set_index(["Sequence"], inplace=True, append=True)
+                    df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")], inplace=True)
                     df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
                     df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
-                    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")  
+                    df_01_toadd.set_index(pd.Series(["?".join([str(i) for i in el]) for el in df_01_toadd.index.values], name="join"), append=True, inplace=True)
+                    if len(df_01_combined) == 0:
+                        df_01_combined = df_01_toadd.copy()
+                    else:
+                        df_01_combined = pd.concat([df_01_combined,df_01_toadd], sort=False, axis=1)
                         
                 elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
                     df_quantity_pr_pg_combined = pd.read_json(json_dict[exp_name][data_type])
@@ -1868,13 +1897,18 @@ class SpatialDataSetComparison:
                     
                 elif data_type == "Manhattan distances" and exp_name == list(json_dict.keys())[0]:
                     df_distances_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_distances_combined = df_distances_combined.set_index(["Map", "Gene names", "Cluster", "Protein IDs", 
-                                                                             "Compartment"])[["distance"]].unstack(["Map"])
+                    df_distances_combined = df_distances_combined.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"]).copy()
+                    if "Sequence" in df_distances_combined.columns:
+                        df_distances_combined.set_index(["Sequence"], inplace=True, append=True)
+                    df_distances_combined = df_distances_combined[["distance"]].unstack(["Map"])
                     df_distances_combined.rename(columns = {"distance":exp_name}, inplace=True)
         
                 elif data_type == "Manhattan distances" and exp_name != list(json_dict.keys())[0]:
                     df_distances_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_distances_toadd = df_distances_toadd.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"])[["distance"]].unstack(["Map"])
+                    df_distances_toadd = df_distances_toadd.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"]).copy()
+                    if "Sequence" in df_distances_toadd.columns:
+                        df_distances_toadd.set_index(["Sequence"], inplace=True, append=True)
+                    df_distances_toadd = df_distances_toadd[["distance"]].unstack(["Map"])
                     df_distances_toadd.rename(columns = {"distance":exp_name}, inplace=True)
                     df_distances_combined = pd.concat([df_distances_combined, df_distances_toadd], axis=1)#, join="inner")
                 
@@ -1914,7 +1948,7 @@ class SpatialDataSetComparison:
                 #except:
                 #    continue
                 #
-                
+        df_01_combined = df_01_combined.droplevel("join", axis=0)
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
         #df_01_filtered_combined = df_01_mean_combined.dropna()    
         df_01_combined.columns.names = ["Experiment", "Map", "Fraction"]
@@ -2657,78 +2691,93 @@ class SpatialDataSetComparison:
                 the combination.
             set : set
                 The set formed by the overlapping input sets.
-        """       
+        """
         
-        sets_uniqueProteins = [set(self.unique_proteins_total[i]) for i in multi_choice_venn]
-        num_combinations = 2 ** len(sets_uniqueProteins)
-        bit_flags = [2 ** n for n in range(len(sets_uniqueProteins))]
-        flags_zip_sets = [z for z in zip(bit_flags, sets_uniqueProteins)]
-    
-        combo_sets = []
-        overlapping_ids = []
-        experiments = []
-        #dictio = {}
-        for bits in range(num_combinations - 1, 0, -1):
-            include_sets = [s for flag, s in flags_zip_sets if bits & flag]
-            exclude_sets = [s for flag, s in flags_zip_sets if not bits & flag]
-            combo = set.intersection(*include_sets)
-            combo = set.difference(combo, *exclude_sets)
-            tag = "".join([str(int((bits & flag) > 0)) for flag in bit_flags])
-            
-            experiment_decoded = []
-            for digit, exp in zip(list(tag), multi_choice_venn):
-                if digit=="0":
-                    continue
+        def create_upsetplot(sets, multi_choice):
+            num_combinations = 2 ** len(sets)
+            bit_flags = [2 ** n for n in range(len(sets))]
+            flags_zip_sets = [z for z in zip(bit_flags, sets)]
+            combo_sets = []
+            overlapping_ids = []
+            experiments = []
+            #dictio = {}
+            for bits in range(num_combinations - 1, 0, -1):
+                include_sets = [s for flag, s in flags_zip_sets if bits & flag]
+                exclude_sets = [s for flag, s in flags_zip_sets if not bits & flag]
+                combo = set.intersection(*include_sets)
+                combo = set.difference(combo, *exclude_sets)
+                tag = "".join([str(int((bits & flag) > 0)) for flag in bit_flags])
+                
+                experiment_decoded = []
+                for digit, exp in zip(list(tag), multi_choice):
+                    if digit=="0":
+                        continue
+                    else:
+                        experiment_decoded.append(exp)
+                #dictio[len(combo)] = experiment_decoded
+                if len(multi_choice)>3:
+                    if len(combo)>300:
+                        overlapping_ids.append(len(combo))
+                        experiments.append(experiment_decoded)
                 else:
-                    experiment_decoded.append(exp)
-            #dictio[len(combo)] = experiment_decoded
-            if len(multi_choice_venn)>3:
-                if len(combo)>300:
-                    overlapping_ids.append(len(combo))
-                    experiments.append(experiment_decoded)
-                else:
-                    continue
-            else:
-                overlapping_ids.append(len(combo))
-                experiments.append(experiment_decoded)
-            #combo_sets.append((tag, len(combo)))
+                    if len(combo)>0:
+                        overlapping_ids.append(len(combo))
+                        experiments.append(experiment_decoded)
+                #combo_sets.append((tag, len(combo)))
+                
+            fig_UpSetPlot = plt.Figure()
+            series_UpSetPlot = from_memberships(experiments, data=overlapping_ids)
+            upplot(series_UpSetPlot, fig=fig_UpSetPlot, show_counts="%d")
+            return fig_UpSetPlot
             
-        figure_UpSetPlot = plt.Figure()
-        series_UpSetPlot = from_memberships(experiments, data=overlapping_ids)
-        plot(series_UpSetPlot, fig=figure_UpSetPlot, show_counts="%d")
-
-
+        
+        if "Sequence" not in self.df_01_filtered_combined.index.names:
+            sets_proteins_total = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Protein IDs"))
+                                for i in multi_choice_venn]
+            sets_proteins_intersection = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").unstack(["Map", "Exp_Map"]).dropna()\
+                                        .index.get_level_values("Protein IDs")) for i in multi_choice_venn]
+        else:
+            sets_proteins_total = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Sequence"))
+                                for i in multi_choice_venn]
+            sets_proteins_intersection = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").unstack(["Map", "Exp_Map"]).dropna()\
+                                        .index.get_level_values("Sequence")) for i in multi_choice_venn]
+        figure_UpSetPlot_total = create_upsetplot(sets_proteins_total, multi_choice_venn)
+        figure_UpSetPlot_int = create_upsetplot(sets_proteins_intersection, multi_choice_venn)
+        
+        #make matplot figure available for plotly
+        def convert_venn_jpg(vd):
+            vd = vd.figure
+            out_img = io.BytesIO()
+            plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
+            out_img.seek(0)  # rewind file
+            im = Image.open(out_img)
+            plt.clf()
+            return im
         
         if len(multi_choice_venn) == 2:
-            vd = venn2([set(self.unique_proteins_total[i]) for i in multi_choice_venn], 
-                       set_labels=([i for i in multi_choice_venn]),
-                       set_colors=("darksalmon", "darkgrey")
-                      )
+            vd_t = venn2(sets_proteins_total, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:2], alpha=0.8)
+            vd_t = plt.title("in at least one map")
+            im_t = convert_venn_jpg(vd_t)
+            vd_i = venn2(sets_proteins_intersection, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:2], alpha=0.8)
+            vd_i = plt.title("in all maps")
+            im_i = convert_venn_jpg(vd_i)
         elif len(multi_choice_venn) == 3:
-            vd = venn3([set(self.unique_proteins_total[i]) for i in multi_choice_venn],
-                       set_labels=([i for i in multi_choice_venn]),
-                       set_colors=("darksalmon", "darkgrey","rosybrown"),
-                       alpha=0.8
-                      )
+            vd_t = venn3(sets_proteins_total, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:3], alpha=0.8)
+            vd_t = plt.title("in at least one map")
+            im_t = convert_venn_jpg(vd_t)
+            vd_i = venn3(sets_proteins_intersection, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:3], alpha=0.8)
+            vd_i = plt.title("in all maps")
+            im_i = convert_venn_jpg(vd_i)
         
         else:
             im = "Venn diagram can be displayed for 3 Experiments or less"
-            return im, figure_UpSetPlot
-
-        vd = plt.title("Unique Protein Groups - Venn Diagram",
-                       pad=30,
-                       fontsize=20
-                      )
+            return im,im, figure_UpSetPlot_total, figure_UpSetPlot_int
         
-        #make matplot figure available for plotly
-        vd = vd.figure
-        out_img = io.BytesIO()
-        plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
-        out_img.seek(0)  # rewind file
-        im = Image.open(out_img)
-        plt.clf()
-        
-        return im, figure_UpSetPlot
+        return im_t, im_i, figure_UpSetPlot_total, figure_UpSetPlot_int
     
     
     def dynamic_range_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], ref_exp="Exp1"):
@@ -2834,21 +2883,19 @@ class SpatialDataSetComparison:
         assert metric in metrics.keys()
         
         # Filter experiments and intersection of proteins
-        #df = self.df_01_filtered_combined.loc[
-        #    self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
         df = self.df_01_filtered_combined.loc[
             self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
-            
-        n_expmap = len(set(df.index.get_level_values("Exp_Map")))
-        df_across = df.groupby("Protein IDs").filter(lambda x: len(x)==n_expmap)
-        df_across.index = df_across.index.droplevel("Exp_Map")
-        df_across = df_across.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
+        
+        df.index = df.index.droplevel(["Exp_Map", "Gene names", "Compartment"])
+        if "Sequence" in df.index.names:
+            df.index = df.index.droplevel(["Protein IDs"])
+        df_across = df.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
         nPG = df_across.unstack(["Experiment", "Map"]).shape[0]
 
         
         # Calculate and consolidate distances
         distances = pd.DataFrame()
-        for exp in set(df.index.get_level_values("Experiment")):
+        for exp in set(df_across.index.get_level_values("Experiment")):
             df_m = df_across.xs(exp, level="Experiment", axis=0)
             maps = list(set(df_m.index.get_level_values("Map")))
             distances_m = pd.DataFrame()
