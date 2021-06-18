@@ -1,7 +1,7 @@
 class SpatialDataSet:
     
     regex = {
-        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
+        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR]otein.[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
     }
     
     acquisition_set_dict = {
@@ -1874,6 +1874,8 @@ class SpatialDataSetComparison:
                 if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
                     df_01_combined = pd.read_json(json_dict[exp_name][data_type])
                     df_01_combined = df_01_combined.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
+                    if "Sequence" in df_01_combined.columns:
+                        df_01_combined.set_index(["Sequence"], inplace=True, append=True)
                     df_01_combined.drop([col for col in df_01_combined.columns if not col.startswith("normalized profile")])
                     df_01_combined.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_combined.columns], names=["Set", "Map", "Fraction"])
                     df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
@@ -1881,6 +1883,8 @@ class SpatialDataSetComparison:
                 elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
                     df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
                     df_01_toadd = df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
+                    if "Sequence" in df_01_toadd.columns:
+                        df_01_toadd.set_index(["Sequence"], inplace=True, append=True)
                     df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")])
                     df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
                     df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
@@ -1897,13 +1901,18 @@ class SpatialDataSetComparison:
                     
                 elif data_type == "Manhattan distances" and exp_name == list(json_dict.keys())[0]:
                     df_distances_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_distances_combined = df_distances_combined.set_index(["Map", "Gene names", "Cluster", "Protein IDs", 
-                                                                             "Compartment"])[["distance"]].unstack(["Map"])
+                    df_distances_combined = df_distances_combined.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"]).copy()
+                    if "Sequence" in df_distances_combined.columns:
+                        df_distances_combined.set_index(["Sequence"], inplace=True, append=True)
+                    df_distances_combined = df_distances_combined[["distance"]].unstack(["Map"])
                     df_distances_combined.rename(columns = {"distance":exp_name}, inplace=True)
         
                 elif data_type == "Manhattan distances" and exp_name != list(json_dict.keys())[0]:
                     df_distances_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_distances_toadd = df_distances_toadd.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"])[["distance"]].unstack(["Map"])
+                    df_distances_toadd = df_distances_toadd.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"]).copy()
+                    if "Sequence" in df_distances_toadd.columns:
+                        df_distances_toadd.set_index(["Sequence"], inplace=True, append=True)
+                    df_distances_toadd = df_distances_toadd[["distance"]].unstack(["Map"])
                     df_distances_toadd.rename(columns = {"distance":exp_name}, inplace=True)
                     df_distances_combined = pd.concat([df_distances_combined, df_distances_toadd], axis=1)#, join="inner")
                 
