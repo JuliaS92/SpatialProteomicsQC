@@ -192,6 +192,7 @@ class SpatialDataSet:
         else:
             assert kwargs["organism"] in self.markerproteins_set.keys()
             self.markerproteins = self.markerproteins_set[kwargs["organism"]]
+            self.organism = kwargs["organism"]
             del kwargs["organism"]
         
         self.analysed_datasets_dict = {}
@@ -714,7 +715,8 @@ class SpatialDataSet:
                                    "filename" : self.filename,
                                    "comment" : self.comment,
                                    "Ratio H/L count" : self.RatioHLcount,
-                                   "Ratio variability" : self.RatioVariability
+                                   "Ratio variability" : self.RatioVariability,
+                                   "organism" : self.organism,
                                   }
             self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
             
@@ -760,14 +762,17 @@ class SpatialDataSet:
                                    "filename" : self.filename,
                                    "comment" : self.comment,
                                    "consecutive data points" : self.consecutiveLFQi,
-                                   "summed MS/MS counts" : self.summed_MSMS_counts
+                                   "summed MS/MS counts" : self.summed_MSMS_counts,
+                                   "organism" : self.organism,
                                   }
             self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
             self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy()
             #return self.df_01_stacked
 
         else:
-            return "I do not know this"    
+            return "I do not know this"  
+
+       
     
     
     def plot_log_data(self):     
@@ -1739,21 +1744,21 @@ class SpatialDataSetComparison:
     cache_stored_SVM = True
 
 
-    def __init__(self, clusters_for_ranking=["Proteasome", "Lysosome"], ref_exp="Exp2", **kwargs):
+    def __init__(self, ref_exp="Exp2", **kwargs): #clusters_for_ranking=["Proteasome", "Lysosome"]
         
-        self.clusters_for_ranking = clusters_for_ranking
+        #self.clusters_for_ranking = clusters_for_ranking
         self.ref_exp = ref_exp
         self.json_dict = {}
         #self.fractions, self.map_names = [], []  #self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
         #collapse_maps,collapse_cluster,  cluster_of_interest_comparison, multi_choice, multi_choice_venn, x_PCA_comp, y_PCA_comp
         
         
-        if "organism" not in kwargs.keys():
-            self.markerproteins = self.markerproteins_set["Human - Swissprot"]
-        else:
-            assert kwargs["organism"] in self.markerproteins_set.keys()
-            self.markerproteins = self.markerproteins_set[kwargs["organism"]]
-            del kwargs["organism"]
+        #if "organism" not in kwargs.keys():
+        #    self.markerproteins = self.markerproteins_set["Human - Swissprot"]
+        #else:
+        #    assert kwargs["organism"] in self.markerproteins_set.keys()
+        #    self.markerproteins = self.markerproteins_set[kwargs["organism"]]
+        #    del kwargs["organism"]
         
         #self.unique_proteins_total = unique_proteins_total
         
@@ -1983,6 +1988,15 @@ class SpatialDataSetComparison:
         self.df_dynamicRange_combined = df_dynamicRange_combined
         
         self.df_distance_comp = df_distance_comp
+        
+        try:
+            organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"]['organism']
+        except:
+            organism = "Human - Swissprot"
+        self.markerproteins = self.markerproteins_set[organism]  
+        
+        self.clusters_for_ranking = markerproteins.keys()        
+           
 
     
     def perform_pca_comparison(self):
