@@ -2735,11 +2735,16 @@ class SpatialDataSetComparison:
             return fig_UpSetPlot
             
         
-        sets_proteins_total = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Protein IDs"))
-                               for i in multi_choice_venn]
-        sets_proteins_intersection = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").unstack(["Map", "Exp_Map"]).dropna()\
-                                      .index.get_level_values("Protein IDs")) for i in multi_choice_venn]
-        
+        if "Sequence" not in self.df_01_filtered_combined.index.names:
+            sets_proteins_total = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Protein IDs"))
+                                for i in multi_choice_venn]
+            sets_proteins_intersection = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").unstack(["Map", "Exp_Map"]).dropna()\
+                                        .index.get_level_values("Protein IDs")) for i in multi_choice_venn]
+        else:
+            sets_proteins_total = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Sequence"))
+                                for i in multi_choice_venn]
+            sets_proteins_intersection = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").unstack(["Map", "Exp_Map"]).dropna()\
+                                        .index.get_level_values("Sequence")) for i in multi_choice_venn]
         figure_UpSetPlot_total = create_upsetplot(sets_proteins_total, multi_choice_venn)
         figure_UpSetPlot_int = create_upsetplot(sets_proteins_intersection, multi_choice_venn)
         
