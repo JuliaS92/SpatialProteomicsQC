@@ -2084,11 +2084,7 @@ class SpatialDataSetComparison:
         Returns:
             pca_figure: PCA plot for a specified protein cluster.
         """
-    
-    
-    
-    
-    
+        
         df_pca = self.df_pca.copy()
         markerproteins = self.markerproteins
  
@@ -2698,6 +2694,11 @@ class SpatialDataSetComparison:
         """       
         
         sets_uniqueProteins = [set(self.unique_proteins_total[i]) for i in multi_choice_venn]
+        if "Sequence" in self.df_01_filtered_combined.index.names:
+            sets_uniqueProteins = []
+            for i in multi_choice_venn:
+                sets_uniqueProteins.append(set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Sequence")))
+        
         num_combinations = 2 ** len(sets_uniqueProteins)
         bit_flags = [2 ** n for n in range(len(sets_uniqueProteins))]
         flags_zip_sets = [z for z in zip(bit_flags, sets_uniqueProteins)]
@@ -2738,12 +2739,12 @@ class SpatialDataSetComparison:
 
         
         if len(multi_choice_venn) == 2:
-            vd = venn2([set(self.unique_proteins_total[i]) for i in multi_choice_venn], 
+            vd = venn2(sets_uniqueProteins, 
                        set_labels=([i for i in multi_choice_venn]),
                        set_colors=("darksalmon", "darkgrey")
                       )
         elif len(multi_choice_venn) == 3:
-            vd = venn3([set(self.unique_proteins_total[i]) for i in multi_choice_venn],
+            vd = venn3(sets_uniqueProteins,
                        set_labels=([i for i in multi_choice_venn]),
                        set_colors=("darksalmon", "darkgrey","rosybrown"),
                        alpha=0.8
