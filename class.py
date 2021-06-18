@@ -2890,7 +2890,7 @@ class SpatialDataSetComparison:
         df = self.df_01_filtered_combined.loc[
             self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
         
-        df.index = df.index = df.index.droplevel(["Exp_Map", "Gene names", "Compartment"])
+        df.index = df.index.droplevel(["Exp_Map", "Gene names", "Compartment"])
         df_across = df.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
         nPG = df_across.unstack(["Experiment", "Map"]).shape[0]
 
