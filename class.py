@@ -45,13 +45,13 @@ class SpatialDataSet:
             {
                 "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"], 
                         #       "PSMC1", "PSMC2", "PSMC3"],
-                "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9"],
+                "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9", "EMC5"],
                 "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"],
                 "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"],               
                 "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],              
-                "Class C, Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
-                "Wave-2 complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
-                "TREX complex / THO complex": ["ALYREF", "THOC5", "THOC2", "THOC1", "THOC3", "DDX39B"], #["THOC5", "THOC2", "THOC1"]
+                "Class C Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
+                "Wave Regulatory complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
+                "THO complex": [ "THOC5", "THOC2", "THOC1", "THOC3", "THOC6", "THOC7"], #["THOC5", "THOC2", "THOC1"], ["ALYREF","DDX39B"]
                 #"Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
                 #"CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
                 "Respiratory chain complex I": ["NDUFB6", "NDUFB10", "NDUFA10", "NDUFA8", "NDUFA6", "NDUFB11", "NDUFB3", "NDUFB5", "NDUFAB1", "NDUFA4", "NDUFB9",
@@ -63,7 +63,6 @@ class SpatialDataSet:
                 "Frataxin complex /f1f0: ATP5L": ["SDHA", "HSPD1", "HSPA9", "AFG3L2"],
                 "F1F0-ATP synthase": ["ATP5O", "ATP5I", "ATPIF1", "ATP5A1", "ATP5F1", "ATP5B", "ATP5H", "ATP5L", "ATP5J"],
                 "Exosome": ["EXOSC1", "EXOSC3", "EXOSC8", "EXOSC4", "EXOSC2", "EXOSC10"],
-                "Arp2/3 protein complex": ["ACTR2", "ARPC1B", "ARPC2", "ARPC3", "ARPC5", "ARPC4", "ACTR3"],
                 "60S ribosomal subunit, cytoplasmic": ["RPL10", "RPL10A", "RPL27", "RPL37A", "RPL7A", "RPL23A", "RPL23", "RPL31", "RPL15", "RPL26", "RPL18A", "RPL11",
                                                     "RPL38", "RPL24","RPL36A", "RPL36", "RPL19", "RPL18", "RPL32", "RPL14", "RPL35A", "RPL29", "RPL34", "RPLP0",
                                                     "RPL7", "RPL17", "RPL13", "RPL12", "RPL9", "RPL22", "RPLP1", "RPLP2", "RPL3", "RPL13A", "RPL35", "RPL27A",
