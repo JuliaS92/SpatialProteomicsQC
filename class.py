@@ -1840,22 +1840,20 @@ class SpatialDataSetComparison:
         self.analysis_parameters_total = {}
         unique_proteins_total = {}
         
+        df_01_combined = pd.DataFrame()
         for exp_name in json_dict.keys():
-            for data_type in json_dict[exp_name].keys():                   
-                if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
-                    df_01_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_combined = df_01_combined.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
-                    df_01_combined.drop([col for col in df_01_combined.columns if not col.startswith("normalized profile")])
-                    df_01_combined.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_combined.columns], names=["Set", "Map", "Fraction"])
-                    df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
-        
-                elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
+            for data_type in json_dict[exp_name].keys():
+                if data_type == "0/1 normalized data":
                     df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_toadd = df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
-                    df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")])
+                    df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"], inplace=True)
+                    df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")], inplace=True)
                     df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
                     df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
-                    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")  
+                    df_01_toadd.set_index(pd.Series(["?".join([str(i) for i in el]) for el in df_01_toadd.index.values], name="join"), append=True, inplace=True)
+                    if len(df_01_combined) == 0:
+                        df_01_combined = df_01_toadd.copy()
+                    else:
+                        df_01_combined = pd.concat([df_01_combined,df_01_toadd], sort=False, axis=1)
                         
                 elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
                     df_quantity_pr_pg_combined = pd.read_json(json_dict[exp_name][data_type])
@@ -1914,7 +1912,7 @@ class SpatialDataSetComparison:
                 #except:
                 #    continue
                 #
-                
+        df_01_combined = df_01_combined.droplevel("join", axis=0)
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
         #df_01_filtered_combined = df_01_mean_combined.dropna()    
         df_01_combined.columns.names = ["Experiment", "Map", "Fraction"]
