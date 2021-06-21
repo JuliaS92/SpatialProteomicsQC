@@ -2008,7 +2008,7 @@ class SpatialDataSetComparison:
             organism = "Human - Swissprot"
         self.markerproteins = self.markerproteins_set[organism]  
         
-        self.clusters_for_ranking = markerproteins.keys()        
+        self.clusters_for_ranking = self.markerproteins.keys()        
            
 
     
@@ -2904,7 +2904,6 @@ class SpatialDataSetComparison:
             df.index = df.index.droplevel(["Protein IDs"])
         df_across = df.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
         nPG = df_across.unstack(["Experiment", "Map"]).shape[0]
-
         
         # Calculate and consolidate distances
         distances = pd.DataFrame()
