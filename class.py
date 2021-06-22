@@ -2637,7 +2637,7 @@ class SpatialDataSetComparison:
         
         fig_pr_dc.update_layout(#barmode="overlay", 
                                          #xaxis_tickangle=90, 
-                                         title="Profile completeness of all identified protein groups",
+                                         title="Profile completeness of all<br>identified protein groups",
                                          autosize=False,
                                          width=100*len(multi_choice)+150,
                                          height=400,
