@@ -2882,7 +2882,8 @@ class SpatialDataSetComparison:
                 df_m = df_m.unstack("Map")
                 
                 # calculate reference profiles
-                df_profiles = df_m.apply(lambda x: x.unstack("Fraction").apply(metrics[metric][0], axis=0), axis=1)
+                #df_profiles = df_m.apply(lambda x: x.unstack("Fraction").apply(metrics[metric][0], axis=0), axis=1)
+                df_profiles = df_m.stack("Fraction").apply(metrics[metric][0], axis=1).unstack("Fraction")
                 
                 # calculate the distance for every map
                 distances_m = pd.DataFrame()
@@ -2925,7 +2926,7 @@ class SpatialDataSetComparison:
         # Create and return plot
         plot = ff.create_distplot(distances.T.values, distances.columns, show_hist=False)
         plot.update_layout(title="Distribution of {} {}s, n = {}".format(metric, consolidation, nPG),
-                           width=1500, height=600, template="simple_white")
+                           width=1500, height=600, template="simple_white", xaxis={"rangemode": "nonnegative"})
         return plot
 
         
