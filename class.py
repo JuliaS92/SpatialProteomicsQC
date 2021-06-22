@@ -2571,59 +2571,39 @@ class SpatialDataSetComparison:
             fig_quantity_pr_pg: barplot, number of protein groups/profiles before/after filtering of the intersection/total quantity
         """
         
-        df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()        
+        df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)]
-        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
-                                                                                                                        categories=multi_choice, ordered=True))
-        #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
+        
+        df_quantity_pr_pg_combined.insert(0,"Expxfiltering",[" ".join([e,f]) for e,f in zip(
+            df_quantity_pr_pg_combined.Experiment, df_quantity_pr_pg_combined.filtering)])
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(
+            Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"], categories=multi_choice, ordered=True))
+
         df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "type"], ascending=[True, False], inplace=True)
-        #df_quantity_pr_pg_combined.sort_values("type", ascending=False, inplace=True)
         
         layout = go.Layout(barmode="overlay", 
           #xaxis_tickangle=90, 
           autosize=False,
-          width=300*len(multi_choice),
+          width=100*len(multi_choice)+150,
           height=400,
-          #xaxis=go.layout.XAxis(linecolor="black",
-          #                      linewidth=1,
-          #                      title="Experiment",
-          #                      mirror=True),
-          #yaxis=go.layout.YAxis(linecolor="black",
-          #                      linewidth=1,
-          #                      title="#",
-          #                      mirror=True),
-          #legend = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
           template="simple_white")
+        filtered = list(np.tile(["id","profile"],len(multi_choice)))
         
-        fig_quantity_pg = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of protein groups", color="type", barmode="overlay", labels={"Experiment":"", "filtering":""}, 
-                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-        fig_quantity_pg.update_layout(layout, title="Number of Protein Groups")
-
-        #fig_quantity_pg = go.Figure()
-        #for t in df_quantity_pr_pg_combined["type"].unique():
-        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
-        #    fig_quantity_pg.add_trace(go.Bar(
-        #        x=[plot_df["Experiment"], plot_df["filtering"]],
-        #        y=plot_df["number of protein groups"],
-        #        name=t))
-        #fig_quantity_pg.update_layout(title="Number of Protein Groups")
-        #fig_quantity_pg.update_layout(layout)
+        fig_quantity_pg = px.bar(df_quantity_pr_pg_combined, x="Expxfiltering", y="number of protein groups",
+                                 color="Experiment", barmode="overlay", hover_data=["type"],
+                                 opacity=0.8, color_discrete_sequence=px.colors.qualitative.D3)
+        fig_quantity_pg.update_layout(layout, title="Number of Protein Groups",
+                                      xaxis={"tickmode":"array", "tickvals":[el for el in range(len(multi_choice)*2)],
+                                             "ticktext":filtered, "title": {"text": None}})
+        
          
-        fig_quantity_pr = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of profiles", color="type", barmode="overlay", labels={"Experiment":"", "filtering":""}, 
-                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+         
+        fig_quantity_pr = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of profiles",
+                                 color="type", barmode="overlay", labels={"Experiment":"", "filtering":""}, 
+                                 facet_col="Experiment",template="simple_white", opacity=1)\
+                                .for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
         fig_quantity_pr.update_layout(layout, title="Number of Profiles" )
-
         
-        #fig_quantity_pr = go.Figure()
-        #for t in df_quantity_pr_pg_combined["type"].unique():
-        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
-        #    fig_quantity_pr.add_trace(go.Bar(
-        #        x=[plot_df["Experiment"], plot_df["filtering"]],
-        #        y=plot_df["number of profiles"],
-        #        name=t))
-        #fig_quantity_pr.update_layout(title="Number of Profiles")
-        #fig_quantity_pr.update_layout(layout) 
-        #
         return fig_quantity_pg, fig_quantity_pr
     
     
@@ -2643,37 +2623,24 @@ class SpatialDataSetComparison:
         
         df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)].sort_values("filtering")
-        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
-                                                                                                                        categories=multi_choice, ordered=True))
+
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(
+            Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
+                categories=multi_choice, ordered=True))
+
         #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
         df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], inplace=True)
 
-        fig_pr_dc = px.bar(df_quantity_pr_pg_combined, x="type", y="data completeness of profiles", color="filtering", barmode="overlay", labels={"Experiment":"", "type":""}, 
-                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-        #fig_pr_dc.update_layout(layout)
-        #fig_pr_dc = go.Figure()
-        #for t in df_quantity_pr_pg_combined["filtering"].unique():
-        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["filtering"] == t]
-        #    fig_pr_dc.add_trace(go.Bar(
-        #        x=[plot_df["Experiment"], plot_df["type"]],
-        #        y=plot_df["data completeness of profiles"],
-        #        name=t))
-            
+        fig_pr_dc = px.bar(df_quantity_pr_pg_combined.loc[df_quantity_pr_pg_combined.type=="total"], x="Experiment", y="data completeness of profiles",
+                           color="Experiment", barmode="overlay", hover_data=["filtering"],
+                           template="simple_white", opacity=0.8)
+        
         fig_pr_dc.update_layout(#barmode="overlay", 
                                          #xaxis_tickangle=90, 
-                                         title="Data Completeness of Profiles",
+                                         title="Profile completeness of all identified protein groups",
                                          autosize=False,
-                                         width=300*len(multi_choice),
+                                         width=100*len(multi_choice)+150,
                                          height=400,
-                                         #xaxis=go.layout.XAxis(linecolor="black",
-                                         #                      linewidth=1,
-                                         #                      title="Experiment",
-                                         #                      mirror=True),
-                                         #yaxis=go.layout.YAxis(linecolor="black",
-                                         #                      linewidth=1,
-                                         #                      #title="",
-                                         #                      mirror=True),
-                                         #legend = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                                          template="simple_white")
         
         return fig_pr_dc
@@ -2888,7 +2855,9 @@ class SpatialDataSetComparison:
             "euclidean distance": "euclidean",
             "manhattan distance": "manhattan",
             "1 - cosine correlation": "cosine",
-            "1 - pearson correlation": lambda x,y: 1-np.corrcoef(x,y)[0][1]
+            "1 - pearson correlation": lambda x,y: 1-np.corrcoef(x,y)[0][1],
+            "manhattan distance to average profile": [np.mean, pw.paired_manhattan_distances],
+            "manhattan distance to median profile": [np.median, pw.paired_manhattan_distances]
         }
         
         # Option assertion
@@ -2910,18 +2879,39 @@ class SpatialDataSetComparison:
         for exp in set(df_across.index.get_level_values("Experiment")):
             df_m = df_across.xs(exp, level="Experiment", axis=0)
             maps = list(set(df_m.index.get_level_values("Map")))
-            distances_m = pd.DataFrame()
-            for i,mapi in enumerate(maps):
-                for j,mapj in enumerate(maps):
-                    # only look at each comparison once
-                    if j <= i:
-                        continue
-                    dist = pw.paired_distances(df_m.xs(mapi, level="Map", axis=0).values,
-                                               df_m.xs(mapj, level="Map", axis=0).values,
-                                               metric = metrics[metric])
-                    dist = pd.Series(dist, name="_".join([mapi,mapj]))
-                    distances_m = pd.concat([distances_m, dist], axis=1)
-            distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
+            
+            # this if clause switches between pairwise comparisons of profiles (else) and comparisons to an average/median profile
+            if " to " in metric:
+                df_m = df_m.unstack("Map")
+                
+                # calculate reference profiles
+                #df_profiles = df_m.apply(lambda x: x.unstack("Fraction").apply(metrics[metric][0], axis=0), axis=1)
+                df_profiles = df_m.stack("Fraction").apply(metrics[metric][0], axis=1).unstack("Fraction")
+                
+                # calculate the distance for every map
+                distances_m = pd.DataFrame()
+                for m in maps:
+                    dist_m = pd.DataFrame(metrics[metric][1](df_m.xs(m, level="Map", axis=1), df_profiles), columns = [m])
+                    distances_m = pd.concat([distances_m, dist_m], axis=1)
+                
+                distances_m.index = df_m.index
+                
+            else:
+                distances_m = pd.DataFrame()
+                
+                # loop over pairs of maps
+                for i,mapi in enumerate(maps):
+                    for j,mapj in enumerate(maps):
+                        # only look at each comparison once
+                        if j <= i:
+                            continue
+                        dist = pw.paired_distances(df_m.xs(mapi, level="Map", axis=0).values,
+                                                df_m.xs(mapj, level="Map", axis=0).values,
+                                                metric = metrics[metric])
+                        dist = pd.Series(dist, name="_".join([mapi,mapj]))
+                        distances_m = pd.concat([distances_m, dist], axis=1)
+                distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
+            
             distances = pd.concat([distances, pd.Series(distances_m.apply(cons_functions[consolidation], axis=1), name=exp)], axis=1)
         distances.index = distances_m.index
         
@@ -2939,7 +2929,7 @@ class SpatialDataSetComparison:
         # Create and return plot
         plot = ff.create_distplot(distances.T.values, distances.columns, show_hist=False)
         plot.update_layout(title="Distribution of {} {}s, n = {}".format(metric, consolidation, nPG),
-                           width=1500, height=600, template="simple_white")
+                           width=1500, height=600, template="simple_white", xaxis={"rangemode": "nonnegative"})
         return plot
 
         
