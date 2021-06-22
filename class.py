@@ -2008,7 +2008,7 @@ class SpatialDataSetComparison:
             organism = "Human - Swissprot"
         self.markerproteins = self.markerproteins_set[organism]  
         
-        self.clusters_for_ranking = markerproteins.keys()        
+        self.clusters_for_ranking = self.markerproteins.keys()        
            
 
     
