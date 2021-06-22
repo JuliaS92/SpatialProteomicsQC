@@ -2523,7 +2523,7 @@ class SpatialDataSetComparison:
                 fig_globalRanking = px.bar(df_RelDistanceRanking.sort_values("Distance Ranking (rel, median)"), 
                                             x="Experiment",
                                             y="Distance Ranking (rel, median)", 
-                                            title="Median manhattan distance distribution for all protein clusters (n>=5 per cluster)",# - median of all individual normalized medians - reference experiment is the median across all experiments for each cluster",
+                                            title="Median manhattan distance distribution for <br>all protein clusters (n>=5 per cluster)",# - median of all individual normalized medians - reference experiment is the median across all experiments for each cluster",
                                             error_x="SEM", error_y="SEM", 
                                             color="Experiment", 
                                             template="simple_white")
@@ -2534,7 +2534,7 @@ class SpatialDataSetComparison:
                 fig_globalRanking = px.box(df_cluster_normalizedMedian_ref,
                                         x="Experiment",
                                         y="Normalized Median", 
-                                        title="Median manhattan distance distribution for all protein clusters (n>=5 per cluster)",# "Ranking - median of all individual normalized medians - reference is the median across all experiments for each cluster",
+                                        title="Median manhattan distance distribution for <br>all protein clusters (n>=5 per cluster)",# "Ranking - median of all individual normalized medians - reference is the median across all experiments for each cluster",
                                         color="Experiment",
                                         points="all",
                                         template="simple_white",
@@ -2578,6 +2578,7 @@ class SpatialDataSetComparison:
             df_quantity_pr_pg_combined.Experiment, df_quantity_pr_pg_combined.filtering)])
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(
             Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"], categories=multi_choice, ordered=True))
+
         df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "type"], ascending=[True, False], inplace=True)
         
         layout = go.Layout(barmode="overlay", 
@@ -2622,9 +2623,11 @@ class SpatialDataSetComparison:
         
         df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)].sort_values("filtering")
+
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(
             Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
                 categories=multi_choice, ordered=True))
+
         #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
         df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], inplace=True)
 
@@ -3057,13 +3060,13 @@ class SpatialDataSetComparison:
         for exp in multi_choice:
             fig_markerPredictionAccuracy.add_trace(go.Bar(x=[exp], y=[df_AvgAllCluster[exp].loc["Recall"]], name=exp))
         fig_markerPredictionAccuracy.update_layout(template="simple_white", #showlegend=False, 
-                    title="Cluster Performance",
+                    title="Marker prediction accuracy - Overall recall",
                     xaxis=go.layout.XAxis(linecolor="black",
                                         linewidth=1,
                                         mirror=True),
                     yaxis=go.layout.YAxis(linecolor="black",
                                         linewidth=1,
-                                        title="F1 score - harmonic mean of recall and precision",
+                                        title="Marker prediction accuracy [%]",
                                         mirror=True),
                     )
         
@@ -3081,13 +3084,13 @@ class SpatialDataSetComparison:
                             marker=dict(color=pio.templates["simple_white"].layout["colorway"][i])
                                 ))
             fig_clusterPerformance.update_layout(template="simple_white", #showlegend=False, 
-                            title="Cluster Performance",
+                            title="Cluster wise SVM analysis",
                             xaxis=go.layout.XAxis(linecolor="black",
                                                 linewidth=1,
                                                 mirror=True),
                             yaxis=go.layout.YAxis(linecolor="black",
                                                 linewidth=1,
-                                                title="F1 score - harmonic mean of recall and precision",
+                                                title="F1 score", #- harmonic mean of recall and precision
                                                 mirror=True),
                             )
         
