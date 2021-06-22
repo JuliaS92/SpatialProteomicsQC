@@ -3071,7 +3071,7 @@ class SpatialDataSetComparison:
         for exp in multi_choice:
             fig_markerPredictionAccuracy.add_trace(go.Bar(x=[exp], y=[df_AvgAllCluster[exp].loc["Recall"]], name=exp))
         fig_markerPredictionAccuracy.update_layout(template="simple_white", #showlegend=False, 
-                    title="Marker prediction accuracy – Overall recall",
+                    title="Marker prediction accuracy - Overall recall",
                     xaxis=go.layout.XAxis(linecolor="black",
                                         linewidth=1,
                                         mirror=True),
