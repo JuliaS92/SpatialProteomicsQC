@@ -1,3 +1,28 @@
+import natsort
+import numpy as np
+import pandas as pd
+import plotly.io as pio
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.figure_factory as ff
+import re
+import traceback
+import io
+from io import BytesIO
+from io import StringIO
+from bokeh.models.widgets.tables import NumberFormatter
+from sklearn.decomposition import PCA
+from sklearn.metrics import pairwise as pw
+import json
+import statistics 
+import matplotlib.pyplot as plt
+import matplotlib_venn as venn
+from matplotlib_venn import venn2, venn3, venn3_circles
+from PIL import Image
+from upsetplot import from_memberships
+from upsetplot import plot as upplot
+
+
 class SpatialDataSet:
     
     regex = {
