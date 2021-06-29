@@ -66,7 +66,7 @@ class SpatialDataSet:
 
     analysed_datasets_dict = {}
     
-    df_organellarMarkerSet = pd.read_csv("eLife_markers.txt", sep="\t", comment="#",
+    df_organellarMarkerSet = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")), sep="\t", comment="#",
                                        usecols=lambda x: bool(re.match("Gene name|Compartment", x)))
     df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
     df_organellarMarkerSet = df_organellarMarkerSet.astype({"Gene names": "str"})
