@@ -7,10 +7,7 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 import re
 import traceback
-import io
 from io import BytesIO
-from io import StringIO
-from bokeh.models.widgets.tables import NumberFormatter
 from sklearn.decomposition import PCA
 from sklearn.metrics import pairwise as pw
 import json
@@ -21,6 +18,7 @@ from matplotlib_venn import venn2, venn3, venn3_circles
 from PIL import Image
 from upsetplot import from_memberships
 from upsetplot import plot as upplot
+import pkg_resources
 
 
 class SpatialDataSet:
@@ -65,105 +63,6 @@ class SpatialDataSet:
                       "skyblue", "slateblue", "steelblue", "teal", "thistle", "tomato", "violet", "wheat", "white", "whitesmoke", "slategray", "slategrey",
                       "aquamarine", "azure","crimson", "cyan", "darkslategray", "grey","mediumorchid","navajowhite", "navy"]
     
-    markerproteins_set = {
-            "Human - Swissprot" :
-            {
-                "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"], 
-                        #       "PSMC1", "PSMC2", "PSMC3"],
-                "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9", "EMC5"],
-                "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"],
-                "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"],               
-                "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],              
-                #"Class C Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
-                "Wave Regulatory complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
-                "THO complex": [ "THOC5", "THOC2", "THOC1", "THOC3", "THOC6", "THOC7"], #["THOC5", "THOC2", "THOC1"], ["ALYREF","DDX39B"]
-                #"Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
-                #"CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
-                "Respiratory chain complex I complete": ["NDUFB6", "NDUFB10", "NDUFA10", "NDUFA8", "NDUFA6", "NDUFB11", "NDUFB3", "NDUFB5", "NDUFAB1", "NDUFA4", "NDUFB9",
-                                                "NDUFB7", "NDUFA9", "NDUFA5", "NDUFV3", "NDUFA11", "NDUFV1", "NDUFA12", "NDUFV2", "NDUFA7", "NDUFS6", "NDUFS2",
-                                                "NDUFA2", "NDUFS8", "NDUFS1", "NDUFS3", "NDUFS7"],
-                "Respiratory chain complex I core": ["NDUFV1", "NDUFV2","NDUFS1", "NDUFS2", "NDUFS3", "NDUFS7", "NDUFS8"],
-                "Nup107-160 subcomplex": ["NUP85", "NUP37", "NUP160", "NUP98", "NUP107", "NUP133", "NUP43"],
-                "Multisynthetase complex": ["EEF1E1", "IARS", "DARS", "EPRS", "AIMP1", "KARS", "LARS", "RARS", "AIMP2", "MARS"],       
-                "Glycosylphosphatidylinositol transamidase complex": ["PIGT", "PIGS", "PIGU", "PIGK", "GPAA1"],
-                #"Frataxin complex /f1f0: ATP5L": ["SDHA", "HSPD1", "HSPA9", "AFG3L2"],
-                "F1F0 ATP synthase": ["ATP5O", "ATP5I", "ATPIF1", "ATP5A1", "ATP5F1", "ATP5B", "ATP5H", "ATP5L", "ATP5J"],
-                "RNA exosome complex": ["EXOSC1", "EXOSC3", "EXOSC8", "EXOSC4", "EXOSC2", "EXOSC10"],
-                "60S ribosomal subunit, cytoplasmic": ["RPL10", "RPL10A", "RPL27", "RPL37A", "RPL7A", "RPL23A", "RPL23", "RPL31", "RPL15", "RPL26", "RPL18A", "RPL11",
-                                                    "RPL38", "RPL24","RPL36A", "RPL36", "RPL19", "RPL18", "RPL32", "RPL14", "RPL35A", "RPL29", "RPL34", "RPLP0",
-                                                    "RPL7", "RPL17", "RPL13", "RPL12", "RPL9", "RPL22", "RPLP1", "RPLP2", "RPL3", "RPL13A", "RPL35", "RPL27A",
-                                                    "RPL5", "RPL21", "RPL28", "RPL30", "RPL8", "RPL6", "RPL4"],
-                "40S ribosomal subunit, cytoplasmic": ["RPS9", "RPS18", "RPS29", "RPS4X", "RPS6", "RPS15", "FAU", "RPS26", "RPS28", "RPS21", "RPS23", "RPS25", "RPS14",
-                                                    "RPS16", "RPS3","RPSA", "RPS2", "RPS12", "RPS19", "RPS27", "RPS17", "RPS5", "RPS20", "RPS3A", "RPS7", "RPS8",
-                                                    "RPS10", "RPS15A", "RPS11", "RPS13"],#RPS24 ###RPS17;RPS17L; RPS26;RPS26P11
-                "39S ribosomal subunit, mitochondrial": ["MRPL37", "MRPL20", "MRPL9", "MRPL46", "MRPL4", "MRPL44", "MRPL17", "MRPL22", "MRPL39", "MRPL11", "MRPL47",
-                                                        "MRPL32", "MRPL48", "MRPL45", "MRPL3", "MRPL19", "MRPL28", "MRPL49", "MRPL2", "MRPL14", "MRPL12", "MRPL55",
-                                                        "MRPL10", "MRPL50", "MRPL43", "MRPL24", "MRPL53"],
-                "28S ribosomal subunit, mitochondrial": ["MRPS31", "MRPS24", "MRPS30", "MRPS28", "MRPS17", "MRPS7", "MRPS16", "MRPS23", "MRPS18B", "MRPS27", "MRPS9",
-                                                        "MRPS34", "DAP3", "MRPS15", "MRPS11", "MRPS36", "MRPS5", "MRPS35", "MRPS10", "MRPS22", "MRPS12", "MRPS6"],
- ###"OLDmitochondrial ribosomal subunits" : ["MRPL1", "MRPL13", "MRPL15", "MRPL16", "MRPL18", "MRPL23", "MRPL30", "MRPL38", "MRPL40",#39S proteins;MRPL12;SLC25A10
- #CCT and V type were not in set
-                "CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
-                "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
-                "Prefoldin complex" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
-                "AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
-                "AP3 adaptor complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
-                "AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1", "AP4S1"],
-                "Anaphase-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
-                "RNase MRP complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
-                "Dynactin complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6", "ACTR1A", "CAPZA1"],
-                #"CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
-                "Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
-                #"TNF-alpha/NF-kappa B signaling complex 5": ["POLR2H", "POLR1A", "POLR1B", "CUL1", "KPNA2"],
-                #"Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
-                "Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
-                #"SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
-                #"SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
-                "Replication factor C": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
-                "MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
-                #"Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
-                #"DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
-                "COP9 signalosome complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
-                #"Autophagy test" : ["ULK1", "ULK2", "ATG13", "FIP200", "ATG101", "VPS34", "VPS15", "BECN1", "ATG14L", "NRBF2", "ATG9", "Rab1", 
-                #"TRAPPC8", "MAP1LC3A", "MAP1LC3C", "MAP1LC3B"]
- 
-            }, 
-            "Arabidopsis - Araport" :
-            {
-                "CCT complex": ["AT3G11830", "AT5G16070", "AT5G20890", "AT5G26360", "AT1G24510", "AT3G18190", "AT3G20050", "AT3G03960"],
-                "Coatomer": ["AT1G62020", "AT4G34450", "AT4G31490", "AT1G79990", "AT1G30630", "AT4G08520"],
-                "SAGA complex": ["AT5G25150", "AT3G54610", "AT1G54360", "AT1G54140", "AT4G38130", "AT4G31720"],
-                "AP1/2": ["AT1G60070","AT2G17380", "AT4G23460", "AT5G22780", "AT1G47830", "AT5G46630", "AT1G10730"],
-                "20S proteasome": ["AT1G13060",  "AT1G21720", "AT3G22110", "AT3G22630", "AT5G40580", "AT1G16470", "AT1G47250", "AT1G53850",
-                                  "AT1G56450","AT2G27020", "AT3G60820", "AT4G31300", "AT5G35590", "AT3G51260", "AT3G53230"],
-                "cis Golgi proteins": ["AT1G05720", "AT1G07230", "AT1G10950", "AT1G15020", "AT1G18580", "AT1G20270", "AT1G29060", "AT1G29310",
-                                      "AT1G51590", "AT1G52420", "AT1G53710", "AT1G62330", "AT1G65820", "AT1G76270", "AT1G77370", "AT1G78920",
-                                      "AT2G01070", "AT2G14740", "AT2G17720", "AT2G20130", "AT2G20810", "AT2G40280", "AT2G43080", "AT2G47320",
-                                      "AT3G06300", "AT3G09090", "AT3G21160", "AT3G24160", "AT3G28480", "AT3G48280", "AT4G01210", "AT4G24530",
-                                      "AT5G04480", "AT5G06660", "AT5G14430", "AT5G14950", "AT5G18900", "AT5G27330", "AT5G47780", "AT5G65470",
-                                      "AT5G66060"],
-                "photosystem": ["AT2G33040", "AT5G13450", "ATCG00280", "AT1G31330", "AT1G29920", "ATCG00340", "ATCG00350", "AT1G61520",
-                               "ATCG00580", "ATCG00710", "AT4G12800", "AT4G10340", "AT3G08940", "AT3G54890", "ATCG00270", "ATCG00020",
-                               "AT5G13440", "AT1G55670", "AT4G22890", "AT3G47470", "AT1G45474"]
-            },
-            "Mouse - Swissprot" :
-            {
-                "20 SProteasome" : ["Psmb1","Psmb5","Psma3","Psma2","Psmb7","Psmb4","Psmb6","Psma6","Psma4","Psmb3","Psmb2","Psma1","Psma7","Psma5"], 
-                "CCT complex": ["Tcp1","Cct8","Cct7","Cct2","Cct4","Cct5","Cct6a","Cct3"],
-                "MCM complex": ["Mcm3","Mcm4","Mcm5","Mcm2","Mcm6","Mcm7"],
-                "COP9 signalosome complex": ["Cops5","Cops3","Cops4","Cops6","Cops2","Cops8","Gps1","Cops7a"],
-                "Anaphase-promoting complex":["Anapc1","Ccdc27","Cdc23","Anapc5","Anapc2","Anapc10","Cdc16","Anapc4","Anapc7"],
-                "Caveolar macromolecular signaling complex": ["Adrb2","Prkar2b","Cav3","Gnas","Adcy8","Cacna1c","Ppp2r1a"],
-                "(ER)-localized multiprotein complex": ["Pdia4","Hsp90b1","P4hb","Hspa5","Ppib","Uggt1","Dnajb11","Sdf2l1","Hyou1","Cabp1"],
-                "Cytochrome bc1-complex, mitochondrial": ["Mt-Cyb,Uqcrh,Uqcr10,Uqcr11,Uqcrq,Uqcrfs1,Uqcrc1,Cyc1,Uqcrb,Uqcrc2"],
-                "PYR complex": ["Smarce1","Actb","Hmgb1","Hdac2","Smarcc1","Ikzf1","Rbbp7","Smarcd1","Smarcc2","Chd4","Smarcb1","Actl6a"],
-                "Ikaros complex": ["Ikzf3","Hdac1","Hdac2","Ikzf2","Smarcc1","Ikzf1","Smarca4","Rbbp4","Smarcd1","Smarcd3","Chd4","Smarcd2"],
-                "Ubiquitin E3 ligase": ["Tceb2","Rbx1","Tceb1","Neurl2","Cul5"],
-                "Gata1-Fog1-MeCP1 complex": ["Hdac1","Zfpm1","Gata1","Hdac2","Rbbp4","Rbbp7","Chd4","Mta1","Gatad2b","Mta3","Mta2","Mbd3","Mbd2"],
-                "BLOC-1 complex": ["Bloc1s1","Bloc1s3","Bloc1s5","Bloc1s4","Dtnbp1","Bloc1s2","Bloc1s6","Snapin"],
-
-            },
-        }
 
     analysed_datasets_dict = {}
     
@@ -212,10 +111,12 @@ class SpatialDataSet:
         
         #self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
         if "organism" not in kwargs.keys():
-            self.markerproteins = self.markerproteins_set["Human - Swissprot"]
+            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format("Homo sapiens - Uniprot")))
+            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
         else:
-            assert kwargs["organism"] in self.markerproteins_set.keys()
-            self.markerproteins = self.markerproteins_set[kwargs["organism"]]
+            assert kwargs["organism"]+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes")
+            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(kwargs["organism"])))
+            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
             self.organism = kwargs["organism"]
             del kwargs["organism"]
         
@@ -1773,7 +1674,6 @@ class SpatialDataSetComparison:
         
     analysed_datasets_dict = SpatialDataSet.analysed_datasets_dict
     css_color = SpatialDataSet.css_color
-    markerproteins_set = SpatialDataSet.markerproteins_set
     cache_stored_SVM = True
 
 
@@ -2030,8 +1930,10 @@ class SpatialDataSetComparison:
         try:
             organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"]['organism']
         except:
-            organism = "Human - Swissprot"
-        self.markerproteins = self.markerproteins_set[organism]  
+            organism = "Homo sapiens - Uniprot"
+        
+        marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
+        self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
         
         self.clusters_for_ranking = self.markerproteins.keys()        
            
@@ -2075,7 +1977,6 @@ class SpatialDataSetComparison:
             df_mean = pd.concat([df_mean, df_exp], axis=1)
         df_mean = df_mean.rename_axis("Experiment", axis="columns").stack("Experiment").unstack("Fraction")
         
-        markerproteins = i_class_comp.markerproteins.copy()
         pca = PCA(n_components=3)
         
         df_pca = pd.DataFrame(pca.fit_transform(df_mean))
@@ -2752,7 +2653,7 @@ class SpatialDataSetComparison:
         #make matplot figure available for plotly
         def convert_venn_jpg(vd):
             vd = vd.figure
-            out_img = io.BytesIO()
+            out_img = BytesIO()
             plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
             out_img.seek(0)  # rewind file
             im = Image.open(out_img)
