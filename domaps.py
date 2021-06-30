@@ -2163,6 +2163,8 @@ class SpatialDataSetComparison:
         # filter for all selected experiments
         df_cluster = df_cluster.droplevel("Exp_Map", axis=0)
         df_cluster = df_cluster.unstack(["Experiment", "Map"])
+        if any([el not in df_cluster.columns.get_level_values("Experiment") for el in experiments]):
+            return pd.DataFrame()
         drop_experiments = [el for el in df_cluster.columns.get_level_values("Experiment") if el not in experiments]
         if len(drop_experiments) > 0:
             df_cluster.drop([el for el in df_cluster.columns.get_level_values("Experiment") if el not in experiments],
