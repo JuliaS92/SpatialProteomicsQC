@@ -1,7 +1,30 @@
+import natsort
+import numpy as np
+import pandas as pd
+import plotly.io as pio
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.figure_factory as ff
+import re
+import traceback
+from io import BytesIO
+from sklearn.decomposition import PCA
+from sklearn.metrics import pairwise as pw
+import json
+import statistics 
+import matplotlib.pyplot as plt
+import matplotlib_venn as venn
+from matplotlib_venn import venn2, venn3, venn3_circles
+from PIL import Image
+from upsetplot import from_memberships
+from upsetplot import plot as upplot
+import pkg_resources
+
+
 class SpatialDataSet:
     
     regex = {
-        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*).+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR].*[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity"
+        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*|variability|count)[^ ]+|^Ratio H/L variability.... .+|^Ratio H/L count .+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR]otein.[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
     }
     
     acquisition_set_dict = {
@@ -40,109 +63,10 @@ class SpatialDataSet:
                       "skyblue", "slateblue", "steelblue", "teal", "thistle", "tomato", "violet", "wheat", "white", "whitesmoke", "slategray", "slategrey",
                       "aquamarine", "azure","crimson", "cyan", "darkslategray", "grey","mediumorchid","navajowhite", "navy"]
     
-    markerproteins_set = {
-            "Human - Swissprot" :
-            {
-                "Proteasome" : ["PSMA1", "PSMA2", "PSMA3", "PSMA4", "PSMA5", "PSMA6", "PSMA7", "PSMB1", "PSMB2", "PSMB3", "PSMB4", "PSMB5", "PSMB6", "PSMB7"], 
-                        #       "PSMC1", "PSMC2", "PSMC3"],
-                "EMC" : ["EMC1", "EMC2", "EMC3", "EMC4", "EMC7", "EMC8", "EMC10","EMC6","EMC9", "EMC5"],
-                "Lysosome" : ["LAMTOR1", "LAMTOR2", "LAMTOR3", "LAMTOR4", "LAMTOR5", "LAMP1", "LAMP2", "CTSA", "CTSB", "CTSC", "CTSD", "CTSL", "CTSZ"],
-                "Arp2/3 protein complex" : ["ACTR2", "ACTR3", "ARPC1B", "ARPC2", "ARPC3", "ARPC4", "ARPC5"],               
-                "AP2 adaptor complex" : ["AP2A1", "AP2A2", "AP2B1", "AP2M1",  "AP2S1", ],              
-                #"Class C Vps complex" : ["VPS11","VPS16", "VPS18", "VPS33A"],
-                "Wave Regulatory complex": ["NCKAP1", "CYFIP1", "ABI1", "BRK1", "WASF2"],
-                "THO complex": [ "THOC5", "THOC2", "THOC1", "THOC3", "THOC6", "THOC7"], #["THOC5", "THOC2", "THOC1"], ["ALYREF","DDX39B"]
-                #"Exon junction complex #TREX: ALYREF,DDX39B": ["SRRM1", "RBM8A", "RNPS1", "EIF4A3", "UPF3B", "UPF2"],
-                #"CDC5L complex #SF3b: SF3B4": ["SNRPD1", "SNRPD3", "SNRPD2", "PRPF19", "SRSF1", "SF3B2", "SNRPA1", "SF3B4"],
-                "Respiratory chain complex I complete": ["NDUFB6", "NDUFB10", "NDUFA10", "NDUFA8", "NDUFA6", "NDUFB11", "NDUFB3", "NDUFB5", "NDUFAB1", "NDUFA4", "NDUFB9",
-                                                "NDUFB7", "NDUFA9", "NDUFA5", "NDUFV3", "NDUFA11", "NDUFV1", "NDUFA12", "NDUFV2", "NDUFA7", "NDUFS6", "NDUFS2",
-                                                "NDUFA2", "NDUFS8", "NDUFS1", "NDUFS3", "NDUFS7"],
-                "Respiratory chain complex I core": ["NDUFV1", "NDUFV2","NDUFS1", "NDUFS2", "NDUFS3", "NDUFS7", "NDUFS8"],
-                "Nup107-160 subcomplex": ["NUP85", "NUP37", "NUP160", "NUP98", "NUP107", "NUP133", "NUP43"],
-                "Multisynthetase complex": ["EEF1E1", "IARS", "DARS", "EPRS", "AIMP1", "KARS", "LARS", "RARS", "AIMP2", "MARS"],       
-                "Glycosylphosphatidylinositol transamidase complex": ["PIGT", "PIGS", "PIGU", "PIGK", "GPAA1"],
-                #"Frataxin complex /f1f0: ATP5L": ["SDHA", "HSPD1", "HSPA9", "AFG3L2"],
-                "F1F0 ATP synthase": ["ATP5O", "ATP5I", "ATPIF1", "ATP5A1", "ATP5F1", "ATP5B", "ATP5H", "ATP5L", "ATP5J"],
-                "RNA exosome complex": ["EXOSC1", "EXOSC3", "EXOSC8", "EXOSC4", "EXOSC2", "EXOSC10"],
-                "60S ribosomal subunit, cytoplasmic": ["RPL10", "RPL10A", "RPL27", "RPL37A", "RPL7A", "RPL23A", "RPL23", "RPL31", "RPL15", "RPL26", "RPL18A", "RPL11",
-                                                    "RPL38", "RPL24","RPL36A", "RPL36", "RPL19", "RPL18", "RPL32", "RPL14", "RPL35A", "RPL29", "RPL34", "RPLP0",
-                                                    "RPL7", "RPL17", "RPL13", "RPL12", "RPL9", "RPL22", "RPLP1", "RPLP2", "RPL3", "RPL13A", "RPL35", "RPL27A",
-                                                    "RPL5", "RPL21", "RPL28", "RPL30", "RPL8", "RPL6", "RPL4"],
-                "40S ribosomal subunit, cytoplasmic": ["RPS9", "RPS18", "RPS29", "RPS4X", "RPS6", "RPS15", "FAU", "RPS26", "RPS28", "RPS21", "RPS23", "RPS25", "RPS14",
-                                                    "RPS16", "RPS3","RPSA", "RPS2", "RPS12", "RPS19", "RPS27", "RPS17", "RPS5", "RPS20", "RPS3A", "RPS7", "RPS8",
-                                                    "RPS10", "RPS15A", "RPS11", "RPS13"],#RPS24 ###RPS17;RPS17L; RPS26;RPS26P11
-                "39S ribosomal subunit, mitochondrial": ["MRPL37", "MRPL20", "MRPL9", "MRPL46", "MRPL4", "MRPL44", "MRPL17", "MRPL22", "MRPL39", "MRPL11", "MRPL47",
-                                                        "MRPL32", "MRPL48", "MRPL45", "MRPL3", "MRPL19", "MRPL28", "MRPL49", "MRPL2", "MRPL14", "MRPL12", "MRPL55",
-                                                        "MRPL10", "MRPL50", "MRPL43", "MRPL24", "MRPL53"],
-                "28S ribosomal subunit, mitochondrial": ["MRPS31", "MRPS24", "MRPS30", "MRPS28", "MRPS17", "MRPS7", "MRPS16", "MRPS23", "MRPS18B", "MRPS27", "MRPS9",
-                                                        "MRPS34", "DAP3", "MRPS15", "MRPS11", "MRPS36", "MRPS5", "MRPS35", "MRPS10", "MRPS22", "MRPS12", "MRPS6"],
- ###"OLDmitochondrial ribosomal subunits" : ["MRPL1", "MRPL13", "MRPL15", "MRPL16", "MRPL18", "MRPL23", "MRPL30", "MRPL38", "MRPL40",#39S proteins;MRPL12;SLC25A10
- #CCT and V type were not in set
-                "CCT complex" : ["CCT2", "CCT3", "CCT4", "CCT5", "CCT6A", "CCT7", "CCT8","CCT6B", "TCP1"],
-                "V-type proton ATPase": ["ATP6AP1", "ATP6V0A1", "ATP6V0A2", "ATP6V0A4", "ATP6V0D1", "ATP6V1A", "ATP6V1B2", "ATP6V1E1", "ATP6V1G1", "ATP6V1H"],
-                "Prefoldin complex" : [ "PFDN1", "PFDN2", "PFDN4", "PFDN5", "PFDN6", "VBP1"],
-                "AP1 adaptor complex" : ["AP1B1", "AP1G1", "AP1M1", "AP1S1", "AP1S2", "AP1S3"],
-                "AP3 adaptor complex" : ["AP3B1", "AP3D1", "AP3M1", "AP3M2", "AP3S1", "AP3S2"],
-                "AP4 adaptor complex" : ["AP4B1", "AP4E1","AP4M1", "AP4S1"],
-                "Anaphase-promoting complex" : ["ANAPC1", "ANAPC10", "ANAPC16", "ANAPC2", "ANAPC4","ANAPC5", "ANAPC7", "CDC16", "CDC23","CDC27"] ,
-                "RNase MRP complex" : ["POP1", "POP4", "POP5", "RPP14","RPP25", "RPP30", "RPP38", "RPP40"],
-                "Dynactin complex" : ["DCTN1", "DCTN2", "DCTN3", "DCTN4", "DCTN6", "ACTR1A", "CAPZA1"],
-                #"CTLH complex" : ["ARMC8", "MAEA", "MKLN1", "RANBP9", "RMND5A"],
-                "Coatomer complex" : ["ARCN1", "COPA", "COPB1", "COPB2", "COPE", "COPG1", "COPZ1"],
-                #"TNF-alpha/NF-kappa B signaling complex 5": ["POLR2H", "POLR1A", "POLR1B", "CUL1", "KPNA2"],
-                #"Septin complex": ["SEPT7", "SEPT9", "SEPT11", "SEPT8", "SEPT2"],
-                "Sec6/8 exocyst complex": ["EXOC4", "EXOC2", "EXOC1", "EXOC7", "EXOC5", "EXOC3", "EXOC8", "EXOC6"],
-                #"SNW1 complex": ["EFTUD2", "SNRNP200", "PRPF8", "MSH2", "DDX23", "SNW1", "PFKL"],
-                #"SF3b complex #SF3B4": ["SF3B1", "SF3B3", "SF3B5", "SF3B6", "PHF5A"],
-                "Replication factor C": ["RFC4", "RFC2", "RFC5", "RFC3", "RFC1"],
-                "MCM complex": ["MCM4", "MCM6", "MCM7", "MCM3", "MCM2", "MCM5"],
-                #"Large Drosha complex, DGCR8: FUS,HNRNPH1, DDX17, DDX5": ["HNRNPDL", "RALY", "TARDBP", "HNRNPM", "DDX3X", "EWSR1"],
-                #"DGCR8 multiprotein complex": ["HNRNPR", "HNRNPH1", "DDX17", "DDX5", "DHX9", "FUS", "NCL"],
-                "COP9 signalosome complex": ["COPS2", "COPS3", "COPS4", "COPS5", "COPS6", "COPS8", "GPS1"],
-                #"Autophagy test" : ["ULK1", "ULK2", "ATG13", "FIP200", "ATG101", "VPS34", "VPS15", "BECN1", "ATG14L", "NRBF2", "ATG9", "Rab1", 
-                #"TRAPPC8", "MAP1LC3A", "MAP1LC3C", "MAP1LC3B"]
- 
-            }, 
-            "Arabidopsis - Araport" :
-            {
-                "CCT complex": ["AT3G11830", "AT5G16070", "AT5G20890", "AT5G26360", "AT1G24510", "AT3G18190", "AT3G20050", "AT3G03960"],
-                "Coatomer": ["AT1G62020", "AT4G34450", "AT4G31490", "AT1G79990", "AT1G30630", "AT4G08520"],
-                "SAGA complex": ["AT5G25150", "AT3G54610", "AT1G54360", "AT1G54140", "AT4G38130", "AT4G31720"],
-                "AP1/2": ["AT1G60070","AT2G17380", "AT4G23460", "AT5G22780", "AT1G47830", "AT5G46630", "AT1G10730"],
-                "20S proteasome": ["AT1G13060",  "AT1G21720", "AT3G22110", "AT3G22630", "AT5G40580", "AT1G16470", "AT1G47250", "AT1G53850",
-                                  "AT1G56450","AT2G27020", "AT3G60820", "AT4G31300", "AT5G35590", "AT3G51260", "AT3G53230"],
-                "cis Golgi proteins": ["AT1G05720", "AT1G07230", "AT1G10950", "AT1G15020", "AT1G18580", "AT1G20270", "AT1G29060", "AT1G29310",
-                                      "AT1G51590", "AT1G52420", "AT1G53710", "AT1G62330", "AT1G65820", "AT1G76270", "AT1G77370", "AT1G78920",
-                                      "AT2G01070", "AT2G14740", "AT2G17720", "AT2G20130", "AT2G20810", "AT2G40280", "AT2G43080", "AT2G47320",
-                                      "AT3G06300", "AT3G09090", "AT3G21160", "AT3G24160", "AT3G28480", "AT3G48280", "AT4G01210", "AT4G24530",
-                                      "AT5G04480", "AT5G06660", "AT5G14430", "AT5G14950", "AT5G18900", "AT5G27330", "AT5G47780", "AT5G65470",
-                                      "AT5G66060"],
-                "photosystem": ["AT2G33040", "AT5G13450", "ATCG00280", "AT1G31330", "AT1G29920", "ATCG00340", "ATCG00350", "AT1G61520",
-                               "ATCG00580", "ATCG00710", "AT4G12800", "AT4G10340", "AT3G08940", "AT3G54890", "ATCG00270", "ATCG00020",
-                               "AT5G13440", "AT1G55670", "AT4G22890", "AT3G47470", "AT1G45474"]
-            },
-            "Mouse - Swissprot" :
-            {
-                "20 SProteasome" : ["Psmb1","Psmb5","Psma3","Psma2","Psmb7","Psmb4","Psmb6","Psma6","Psma4","Psmb3","Psmb2","Psma1","Psma7","Psma5"], 
-                "CCT complex": ["Tcp1","Cct8","Cct7","Cct2","Cct4","Cct5","Cct6a","Cct3"],
-                "MCM complex": ["Mcm3","Mcm4","Mcm5","Mcm2","Mcm6","Mcm7"],
-                "COP9 signalosome complex": ["Cops5","Cops3","Cops4","Cops6","Cops2","Cops8","Gps1","Cops7a"],
-                "Anaphase-promoting complex":["Anapc1","Ccdc27","Cdc23","Anapc5","Anapc2","Anapc10","Cdc16","Anapc4","Anapc7"],
-                "Caveolar macromolecular signaling complex": ["Adrb2","Prkar2b","Cav3","Gnas","Adcy8","Cacna1c","Ppp2r1a"],
-                "(ER)-localized multiprotein complex": ["Pdia4","Hsp90b1","P4hb","Hspa5","Ppib","Uggt1","Dnajb11","Sdf2l1","Hyou1","Cabp1"],
-                "Cytochrome bc1-complex, mitochondrial": ["Mt-Cyb,Uqcrh,Uqcr10,Uqcr11,Uqcrq,Uqcrfs1,Uqcrc1,Cyc1,Uqcrb,Uqcrc2"],
-                "PYR complex": ["Smarce1","Actb","Hmgb1","Hdac2","Smarcc1","Ikzf1","Rbbp7","Smarcd1","Smarcc2","Chd4","Smarcb1","Actl6a"],
-                "Ikaros complex": ["Ikzf3","Hdac1","Hdac2","Ikzf2","Smarcc1","Ikzf1","Smarca4","Rbbp4","Smarcd1","Smarcd3","Chd4","Smarcd2"],
-                "Ubiquitin E3 ligase": ["Tceb2","Rbx1","Tceb1","Neurl2","Cul5"],
-                "Gata1-Fog1-MeCP1 complex": ["Hdac1","Zfpm1","Gata1","Hdac2","Rbbp4","Rbbp7","Chd4","Mta1","Gatad2b","Mta3","Mta2","Mbd3","Mbd2"],
-                "BLOC-1 complex": ["Bloc1s1","Bloc1s3","Bloc1s5","Bloc1s4","Dtnbp1","Bloc1s2","Bloc1s6","Snapin"],
-
-            },
-        }
 
     analysed_datasets_dict = {}
     
-    df_organellarMarkerSet = pd.read_csv("eLife_markers.txt", sep="\t", comment="#",
+    df_organellarMarkerSet = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
                                        usecols=lambda x: bool(re.match("Gene name|Compartment", x)))
     df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
     df_organellarMarkerSet = df_organellarMarkerSet.astype({"Gene names": "str"})
@@ -187,10 +111,13 @@ class SpatialDataSet:
         
         #self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
         if "organism" not in kwargs.keys():
-            self.markerproteins = self.markerproteins_set["Human - Swissprot"]
+            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format("Homo sapiens - Uniprot")))
+            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
         else:
-            assert kwargs["organism"] in self.markerproteins_set.keys()
-            self.markerproteins = self.markerproteins_set[kwargs["organism"]]
+            assert kwargs["organism"]+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes")
+            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(kwargs["organism"])))
+            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
+            self.organism = kwargs["organism"]
             del kwargs["organism"]
         
         self.analysed_datasets_dict = {}
@@ -310,6 +237,7 @@ class SpatialDataSet:
             """
             
             df_original = self.df_original.copy()
+            df_original.rename({"Proteins": "Protein IDs"}, axis=1, inplace=True)
             df_original = df_original.set_index([col for col in df_original.columns
                                                  if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
@@ -330,10 +258,23 @@ class SpatialDataSet:
             
             shape_dict["Original size"] = df_original.shape
             
-            df_index = df_original.xs(
-                np.nan, 0, "Reverse").xs(
-                np.nan, 0, "Potential contaminant").xs(
+            try:
+                df_index = df_original.xs(
+                    np.nan, 0, "Reverse")
+            except:
+                pass
+            
+            try:
+                df_index = df_index.xs(
+                np.nan, 0, "Potential contaminant")
+            except:
+                pass
+            
+            try:
+                df_index = df_index.xs(
                 np.nan, 0, "Only identified by site")
+            except:
+                pass
             
             df_index.replace(0, np.nan, inplace=True)
             shape_dict["Shape after categorical filtering"] = df_index.shape
@@ -580,11 +521,14 @@ class SpatialDataSet:
             
             # "MS/MS count"-column: take the sum over the fractions; if the sum is larger than n[fraction]*2, it will be stored in the new dataframe
             minms = (len(self.fractions) * self.summed_MSMS_counts)
-            df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= minms]
-
-            shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.unstack("Map").shape
             
-            df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
+            if minms > 0:
+                df_mscount_mapstacked = df_index.loc[df_index[("MS/MS count")].apply(np.sum, axis=1) >= minms]
+    
+                shape_dict["Shape after MS/MS value filtering"]=df_mscount_mapstacked.unstack("Map").shape
+                df_stringency_mapfracstacked = df_mscount_mapstacked.copy()
+            else:
+                df_stringency_mapfracstacked = df_index.copy()
 
             # series no dataframe is generated; if there are at least i.e. 4 consecutive non-NANs, data will be retained
             df_stringency_mapfracstacked = df_stringency_mapfracstacked.loc[
@@ -624,15 +568,15 @@ class SpatialDataSet:
                                "normalized profile"; the columns "normalized profile" and "MS/MS count" are stored as single level indices; plotting is possible now
 
             """
-
             df_01norm_mapstacked = df_stringency_mapfracstacked["LFQ intensity"].unstack("Fraction")
-
+            
             # 0:1 normalization of Ratio L/H
             df_01norm_unstacked = df_01norm_mapstacked.div(df_01norm_mapstacked.sum(axis=1), axis=0)
-
-            df_01_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame(df_01norm_unstacked.stack(
+            
+            df_rest = df_stringency_mapfracstacked.drop("LFQ intensity", axis=1)
+            df_01_stacked = df_rest.join(pd.DataFrame(df_01norm_unstacked.stack(
                    "Fraction"),columns=["LFQ intensity"]))
-
+            
             # rename columns: "LFQ intensity" into "normalized profile"
             df_01_stacked.columns = [col if col!="LFQ intensity" else "normalized profile" for col in
                                      df_01_stacked.columns]
@@ -658,8 +602,9 @@ class SpatialDataSet:
             """
 
             df_lognorm_ratio_stacked = df_stringency_mapfracstacked["LFQ intensity"].transform(np.log2)
-
-            df_log_stacked = df_stringency_mapfracstacked[["MS/MS count"]].join(pd.DataFrame(df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
+            
+            df_rest = df_stringency_mapfracstacked.drop("LFQ intensity", axis=1)
+            df_log_stacked = df_rest.join(pd.DataFrame(df_lognorm_ratio_stacked, columns=["LFQ intensity"]))
             
             # "LFQ intensity" will be renamed to "log profile"
             df_log_stacked.columns = [col if col!="LFQ intensity" else "log profile" for col in df_log_stacked.columns]
@@ -713,7 +658,8 @@ class SpatialDataSet:
                                    "filename" : self.filename,
                                    "comment" : self.comment,
                                    "Ratio H/L count" : self.RatioHLcount,
-                                   "Ratio variability" : self.RatioVariability
+                                   "Ratio variability" : self.RatioVariability,
+                                   "organism" : self.organism,
                                   }
             self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
             
@@ -745,7 +691,7 @@ class SpatialDataSet:
             comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
             df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
             df_01_comparison.set_index(comp_ids, append=True, inplace=True)
-            df_01_comparison.drop("MS/MS count", inplace=True, axis=1)
+            df_01_comparison.drop("MS/MS count", inplace=True, axis=1, errors="ignore")
             df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
             df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
@@ -759,14 +705,17 @@ class SpatialDataSet:
                                    "filename" : self.filename,
                                    "comment" : self.comment,
                                    "consecutive data points" : self.consecutiveLFQi,
-                                   "summed MS/MS counts" : self.summed_MSMS_counts
+                                   "summed MS/MS counts" : self.summed_MSMS_counts,
+                                   "organism" : self.organism,
                                   }
             self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy() 
             self.analysed_datasets_dict[self.expname] = self.analysis_summary_dict.copy()
             #return self.df_01_stacked
 
         else:
-            return "I do not know this"    
+            return "I do not know this"  
+
+       
     
     
     def plot_log_data(self):     
@@ -851,20 +800,25 @@ class SpatialDataSet:
         npr_t_dc = 1-df_index_MapStacked.isna().sum().sum()/np.prod(df_index_MapStacked.shape)
         
         #filtered
-        df_01_stacked.unstack(["Map", "Fraction"]).sort_index(axis=1)
         npgf_t = df_01_stacked.unstack(["Map", "Fraction"]).shape[0]
         df_01_MapStacked = df_01_stacked.unstack("Fraction")
         nprf_t = df_01_MapStacked.shape[0]/len(self.map_names)
         nprf_t_dc = 1-df_01_MapStacked.isna().sum().sum()/np.prod(df_01_MapStacked.shape)
         
         #unfiltered intersection
-        df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        try:
+            df_index_intersection = df_index_MapStacked.groupby(level="Sequence").filter(lambda x : len(x)==len(self.map_names))
+        except:
+            df_index_intersection = df_index_MapStacked.groupby(level="Protein IDs").filter(lambda x : len(x)==len(self.map_names))
         npr_i = df_index_intersection.shape[0]/len(self.map_names)
         npr_i_dc = 1-df_index_intersection.isna().sum().sum()/np.prod(df_index_intersection.shape)
         npg_i = df_index_intersection.unstack("Map").shape[0]
         
         #filtered intersection
-        df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
+        try:
+            df_01_intersection = df_01_MapStacked.groupby(level = "Sequence").filter(lambda x : len(x)==len(self.map_names))
+        except:
+            df_01_intersection = df_01_MapStacked.groupby(level = "Protein IDs").filter(lambda x : len(x)==len(self.map_names))
         nprf_i = df_01_intersection.shape[0]/len(self.map_names)
         nprf_i_dc = 1-df_01_intersection.isna().sum().sum()/np.prod(df_01_intersection.shape)
         npgf_i = df_01_intersection.unstack("Map").shape[0]
@@ -1352,6 +1306,7 @@ class SpatialDataSet:
                                                 x="Fraction", 
                                                 y="normalized profile",
                                                 color="Gene names",
+                                                line_group="Sequence" if "Sequence" in df_setofproteins.columns else "Gene names",
                                                 template="simple_white",
                                                 title="Relative abundance profile for {} of <br>the protein cluster: {}".format(map_of_interest, cluster_of_interest)
                                                )
@@ -1393,7 +1348,10 @@ class SpatialDataSet:
         
         df_quantification_overview = self.df_allclusters_clusterdist_fracunstacked_unfiltered.xs(cluster_of_interest, level="Cluster", axis=0)\
                                                                                              [self.fractions[0]].unstack("Map")
-        df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i=="Gene names"])
+        if "Sequence" in df_quantification_overview.index.names:
+            df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i in ["Sequence","Gene names"]])
+        else:
+            df_quantification_overview = df_quantification_overview.droplevel([i for i in df_quantification_overview.index.names if not i=="Gene names"])
         df_quantification_overview = df_quantification_overview.notnull().replace({True: "x", False: "-"})
         
         return df_quantification_overview
@@ -1421,6 +1379,8 @@ class SpatialDataSet:
 
         # "Gene names", "Map", "Cluster" and transferred into the index
         df_distance_map_cluster_gene_in_index = df_distance_noindex.set_index(["Gene names", "Map", "Cluster"])
+        if "Sequence" in df_distance_map_cluster_gene_in_index.columns:
+            df_distance_map_cluster_gene_in_index.set_index("Sequence", append=True, inplace=True)
 
         df_cluster_xmaps_distance_with_index = pd.DataFrame()
         
@@ -1714,25 +1674,24 @@ class SpatialDataSetComparison:
         
     analysed_datasets_dict = SpatialDataSet.analysed_datasets_dict
     css_color = SpatialDataSet.css_color
-    markerproteins_set = SpatialDataSet.markerproteins_set
     cache_stored_SVM = True
 
 
-    def __init__(self, clusters_for_ranking=["Proteasome", "Lysosome"], ref_exp="Exp2", **kwargs):
+    def __init__(self, ref_exp="Exp2", **kwargs): #clusters_for_ranking=["Proteasome", "Lysosome"]
         
-        self.clusters_for_ranking = clusters_for_ranking
+        #self.clusters_for_ranking = clusters_for_ranking
         self.ref_exp = ref_exp
         self.json_dict = {}
         #self.fractions, self.map_names = [], []  #self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
         #collapse_maps,collapse_cluster,  cluster_of_interest_comparison, multi_choice, multi_choice_venn, x_PCA_comp, y_PCA_comp
         
         
-        if "organism" not in kwargs.keys():
-            self.markerproteins = self.markerproteins_set["Human - Swissprot"]
-        else:
-            assert kwargs["organism"] in self.markerproteins_set.keys()
-            self.markerproteins = self.markerproteins_set[kwargs["organism"]]
-            del kwargs["organism"]
+        #if "organism" not in kwargs.keys():
+        #    self.markerproteins = self.markerproteins_set["Human - Swissprot"]
+        #else:
+        #    assert kwargs["organism"] in self.markerproteins_set.keys()
+        #    self.markerproteins = self.markerproteins_set[kwargs["organism"]]
+        #    del kwargs["organism"]
         
         #self.unique_proteins_total = unique_proteins_total
         
@@ -1839,22 +1798,22 @@ class SpatialDataSetComparison:
         self.analysis_parameters_total = {}
         unique_proteins_total = {}
         
+        df_01_combined = pd.DataFrame()
         for exp_name in json_dict.keys():
-            for data_type in json_dict[exp_name].keys():                   
-                if data_type == "0/1 normalized data" and exp_name == list(json_dict.keys())[0]:
-                    df_01_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_combined = df_01_combined.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
-                    df_01_combined.drop([col for col in df_01_combined.columns if not col.startswith("normalized profile")])
-                    df_01_combined.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_combined.columns], names=["Set", "Map", "Fraction"])
-                    df_01_combined.rename(columns = {"normalized profile":exp_name}, inplace=True)
-        
-                elif data_type == "0/1 normalized data" and exp_name != list(json_dict.keys())[0]:
+            for data_type in json_dict[exp_name].keys():
+                if data_type == "0/1 normalized data":
                     df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_toadd = df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"]).copy()
-                    df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")])
+                    df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"], inplace=True)
+                    if "Sequence" in df_01_toadd.columns:
+                        df_01_toadd.set_index(["Sequence"], inplace=True, append=True)
+                    df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")], inplace=True)
                     df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
                     df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
-                    df_01_combined = pd.concat([df_01_combined, df_01_toadd], axis=1)#, join="inner")  
+                    df_01_toadd.set_index(pd.Series(["?".join([str(i) for i in el]) for el in df_01_toadd.index.values], name="join"), append=True, inplace=True)
+                    if len(df_01_combined) == 0:
+                        df_01_combined = df_01_toadd.copy()
+                    else:
+                        df_01_combined = pd.concat([df_01_combined,df_01_toadd], sort=False, axis=1)
                         
                 elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
                     df_quantity_pr_pg_combined = pd.read_json(json_dict[exp_name][data_type])
@@ -1867,13 +1826,18 @@ class SpatialDataSetComparison:
                     
                 elif data_type == "Manhattan distances" and exp_name == list(json_dict.keys())[0]:
                     df_distances_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_distances_combined = df_distances_combined.set_index(["Map", "Gene names", "Cluster", "Protein IDs", 
-                                                                             "Compartment"])[["distance"]].unstack(["Map"])
+                    df_distances_combined = df_distances_combined.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"]).copy()
+                    if "Sequence" in df_distances_combined.columns:
+                        df_distances_combined.set_index(["Sequence"], inplace=True, append=True)
+                    df_distances_combined = df_distances_combined[["distance"]].unstack(["Map"])
                     df_distances_combined.rename(columns = {"distance":exp_name}, inplace=True)
         
                 elif data_type == "Manhattan distances" and exp_name != list(json_dict.keys())[0]:
                     df_distances_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_distances_toadd = df_distances_toadd.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"])[["distance"]].unstack(["Map"])
+                    df_distances_toadd = df_distances_toadd.set_index(["Map", "Gene names", "Cluster", "Protein IDs", "Compartment"]).copy()
+                    if "Sequence" in df_distances_toadd.columns:
+                        df_distances_toadd.set_index(["Sequence"], inplace=True, append=True)
+                    df_distances_toadd = df_distances_toadd[["distance"]].unstack(["Map"])
                     df_distances_toadd.rename(columns = {"distance":exp_name}, inplace=True)
                     df_distances_combined = pd.concat([df_distances_combined, df_distances_toadd], axis=1)#, join="inner")
                 
@@ -1913,7 +1877,7 @@ class SpatialDataSetComparison:
                 #except:
                 #    continue
                 #
-                
+        df_01_combined = df_01_combined.droplevel("join", axis=0)
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
         #df_01_filtered_combined = df_01_mean_combined.dropna()    
         df_01_combined.columns.names = ["Experiment", "Map", "Fraction"]
@@ -1962,6 +1926,17 @@ class SpatialDataSetComparison:
         self.df_dynamicRange_combined = df_dynamicRange_combined
         
         self.df_distance_comp = df_distance_comp
+        
+        try:
+            organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"]['organism']
+        except:
+            organism = "Homo sapiens - Uniprot"
+        
+        marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
+        self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
+        
+        self.clusters_for_ranking = self.markerproteins.keys()        
+           
 
     
     def perform_pca_comparison(self):
@@ -2002,7 +1977,6 @@ class SpatialDataSetComparison:
             df_mean = pd.concat([df_mean, df_exp], axis=1)
         df_mean = df_mean.rename_axis("Experiment", axis="columns").stack("Experiment").unstack("Fraction")
         
-        markerproteins = i_class_comp.markerproteins.copy()
         pca = PCA(n_components=3)
         
         df_pca = pd.DataFrame(pca.fit_transform(df_mean))
@@ -2475,7 +2449,7 @@ class SpatialDataSetComparison:
                 fig_globalRanking = px.bar(df_RelDistanceRanking.sort_values("Distance Ranking (rel, median)"), 
                                             x="Experiment",
                                             y="Distance Ranking (rel, median)", 
-                                            title="Median manhattan distance distribution for all protein clusters (n>=5 per cluster)",# - median of all individual normalized medians - reference experiment is the median across all experiments for each cluster",
+                                            title="Median manhattan distance distribution for <br>all protein clusters (n>=5 per cluster)",# - median of all individual normalized medians - reference experiment is the median across all experiments for each cluster",
                                             error_x="SEM", error_y="SEM", 
                                             color="Experiment", 
                                             template="simple_white")
@@ -2486,7 +2460,7 @@ class SpatialDataSetComparison:
                 fig_globalRanking = px.box(df_cluster_normalizedMedian_ref,
                                         x="Experiment",
                                         y="Normalized Median", 
-                                        title="Median manhattan distance distribution for all protein clusters (n>=5 per cluster)",# "Ranking - median of all individual normalized medians - reference is the median across all experiments for each cluster",
+                                        title="Median manhattan distance distribution for <br>all protein clusters (n>=5 per cluster)",# "Ranking - median of all individual normalized medians - reference is the median across all experiments for each cluster",
                                         color="Experiment",
                                         points="all",
                                         template="simple_white",
@@ -2523,59 +2497,39 @@ class SpatialDataSetComparison:
             fig_quantity_pr_pg: barplot, number of protein groups/profiles before/after filtering of the intersection/total quantity
         """
         
-        df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()        
+        df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)]
-        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
-                                                                                                                        categories=self.sorting_list, ordered=True))
-        #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
+        
+        df_quantity_pr_pg_combined.insert(0,"Expxfiltering",[" ".join([e,f]) for e,f in zip(
+            df_quantity_pr_pg_combined.Experiment, df_quantity_pr_pg_combined.filtering)])
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(
+            Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"], categories=multi_choice, ordered=True))
+
         df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "type"], ascending=[True, False], inplace=True)
-        #df_quantity_pr_pg_combined.sort_values("type", ascending=False, inplace=True)
         
         layout = go.Layout(barmode="overlay", 
           #xaxis_tickangle=90, 
           autosize=False,
-          width=300*len(multi_choice),
+          width=100*len(multi_choice)+150,
           height=400,
-          #xaxis=go.layout.XAxis(linecolor="black",
-          #                      linewidth=1,
-          #                      title="Experiment",
-          #                      mirror=True),
-          #yaxis=go.layout.YAxis(linecolor="black",
-          #                      linewidth=1,
-          #                      title="#",
-          #                      mirror=True),
-          #legend = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
           template="simple_white")
+        filtered = list(np.tile(["id","profile"],len(multi_choice)))
         
-        fig_quantity_pg = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of protein groups", color="type", barmode="overlay", labels={"Experiment":"", "filtering":""}, 
-                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-        fig_quantity_pg.update_layout(layout, title="Number of Protein Groups")
-
-        #fig_quantity_pg = go.Figure()
-        #for t in df_quantity_pr_pg_combined["type"].unique():
-        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
-        #    fig_quantity_pg.add_trace(go.Bar(
-        #        x=[plot_df["Experiment"], plot_df["filtering"]],
-        #        y=plot_df["number of protein groups"],
-        #        name=t))
-        #fig_quantity_pg.update_layout(title="Number of Protein Groups")
-        #fig_quantity_pg.update_layout(layout)
+        fig_quantity_pg = px.bar(df_quantity_pr_pg_combined, x="Expxfiltering", y="number of protein groups",
+                                 color="Experiment", barmode="overlay", hover_data=["type"],
+                                 opacity=0.8, color_discrete_sequence=px.colors.qualitative.D3)
+        fig_quantity_pg.update_layout(layout, title="Number of Protein Groups",
+                                      xaxis={"tickmode":"array", "tickvals":[el for el in range(len(multi_choice)*2)],
+                                             "ticktext":filtered, "title": {"text": None}})
+        
          
-        fig_quantity_pr = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of profiles", color="type", barmode="overlay", labels={"Experiment":"", "filtering":""}, 
-                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+         
+        fig_quantity_pr = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of profiles",
+                                 color="type", barmode="overlay", labels={"Experiment":"", "filtering":""}, 
+                                 facet_col="Experiment",template="simple_white", opacity=1)\
+                                .for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
         fig_quantity_pr.update_layout(layout, title="Number of Profiles" )
-
         
-        #fig_quantity_pr = go.Figure()
-        #for t in df_quantity_pr_pg_combined["type"].unique():
-        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["type"] == t]
-        #    fig_quantity_pr.add_trace(go.Bar(
-        #        x=[plot_df["Experiment"], plot_df["filtering"]],
-        #        y=plot_df["number of profiles"],
-        #        name=t))
-        #fig_quantity_pr.update_layout(title="Number of Profiles")
-        #fig_quantity_pr.update_layout(layout) 
-        #
         return fig_quantity_pg, fig_quantity_pr
     
     
@@ -2595,37 +2549,24 @@ class SpatialDataSetComparison:
         
         df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)].sort_values("filtering")
-        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
-                                                                                                                        categories=self.sorting_list, ordered=True))
+
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(
+            Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
+                categories=multi_choice, ordered=True))
+
         #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
         df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], inplace=True)
 
-        fig_pr_dc = px.bar(df_quantity_pr_pg_combined, x="type", y="data completeness of profiles", color="filtering", barmode="overlay", labels={"Experiment":"", "type":""}, 
-                                 facet_col="Experiment",template="simple_white", opacity=1).for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-        #fig_pr_dc.update_layout(layout)
-        #fig_pr_dc = go.Figure()
-        #for t in df_quantity_pr_pg_combined["filtering"].unique():
-        #    plot_df = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["filtering"] == t]
-        #    fig_pr_dc.add_trace(go.Bar(
-        #        x=[plot_df["Experiment"], plot_df["type"]],
-        #        y=plot_df["data completeness of profiles"],
-        #        name=t))
-            
+        fig_pr_dc = px.bar(df_quantity_pr_pg_combined.loc[df_quantity_pr_pg_combined.type=="total"], x="Experiment", y="data completeness of profiles",
+                           color="Experiment", barmode="overlay", hover_data=["filtering"],
+                           template="simple_white", opacity=0.8)
+        
         fig_pr_dc.update_layout(#barmode="overlay", 
                                          #xaxis_tickangle=90, 
-                                         title="Data Completeness of Profiles",
+                                         title="Profile completeness of all<br>identified protein groups",
                                          autosize=False,
-                                         width=300*len(multi_choice),
+                                         width=100*len(multi_choice)+150,
                                          height=400,
-                                         #xaxis=go.layout.XAxis(linecolor="black",
-                                         #                      linewidth=1,
-                                         #                      title="Experiment",
-                                         #                      mirror=True),
-                                         #yaxis=go.layout.YAxis(linecolor="black",
-                                         #                      linewidth=1,
-                                         #                      #title="",
-                                         #                      mirror=True),
-                                         #legend = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                                          template="simple_white")
         
         return fig_pr_dc
@@ -2656,78 +2597,93 @@ class SpatialDataSetComparison:
                 the combination.
             set : set
                 The set formed by the overlapping input sets.
-        """       
+        """
         
-        sets_uniqueProteins = [set(self.unique_proteins_total[i]) for i in multi_choice_venn]
-        num_combinations = 2 ** len(sets_uniqueProteins)
-        bit_flags = [2 ** n for n in range(len(sets_uniqueProteins))]
-        flags_zip_sets = [z for z in zip(bit_flags, sets_uniqueProteins)]
-    
-        combo_sets = []
-        overlapping_ids = []
-        experiments = []
-        #dictio = {}
-        for bits in range(num_combinations - 1, 0, -1):
-            include_sets = [s for flag, s in flags_zip_sets if bits & flag]
-            exclude_sets = [s for flag, s in flags_zip_sets if not bits & flag]
-            combo = set.intersection(*include_sets)
-            combo = set.difference(combo, *exclude_sets)
-            tag = "".join([str(int((bits & flag) > 0)) for flag in bit_flags])
-            
-            experiment_decoded = []
-            for digit, exp in zip(list(tag), multi_choice_venn):
-                if digit=="0":
-                    continue
+        def create_upsetplot(sets, multi_choice):
+            num_combinations = 2 ** len(sets)
+            bit_flags = [2 ** n for n in range(len(sets))]
+            flags_zip_sets = [z for z in zip(bit_flags, sets)]
+            combo_sets = []
+            overlapping_ids = []
+            experiments = []
+            #dictio = {}
+            for bits in range(num_combinations - 1, 0, -1):
+                include_sets = [s for flag, s in flags_zip_sets if bits & flag]
+                exclude_sets = [s for flag, s in flags_zip_sets if not bits & flag]
+                combo = set.intersection(*include_sets)
+                combo = set.difference(combo, *exclude_sets)
+                tag = "".join([str(int((bits & flag) > 0)) for flag in bit_flags])
+                
+                experiment_decoded = []
+                for digit, exp in zip(list(tag), multi_choice):
+                    if digit=="0":
+                        continue
+                    else:
+                        experiment_decoded.append(exp)
+                #dictio[len(combo)] = experiment_decoded
+                if len(multi_choice)>3:
+                    if len(combo)>300:
+                        overlapping_ids.append(len(combo))
+                        experiments.append(experiment_decoded)
                 else:
-                    experiment_decoded.append(exp)
-            #dictio[len(combo)] = experiment_decoded
-            if len(multi_choice_venn)>3:
-                if len(combo)>300:
-                    overlapping_ids.append(len(combo))
-                    experiments.append(experiment_decoded)
-                else:
-                    continue
-            else:
-                overlapping_ids.append(len(combo))
-                experiments.append(experiment_decoded)
-            #combo_sets.append((tag, len(combo)))
+                    if len(combo)>0:
+                        overlapping_ids.append(len(combo))
+                        experiments.append(experiment_decoded)
+                #combo_sets.append((tag, len(combo)))
+                
+            fig_UpSetPlot = plt.Figure()
+            series_UpSetPlot = from_memberships(experiments, data=overlapping_ids)
+            upplot(series_UpSetPlot, fig=fig_UpSetPlot, show_counts="%d")
+            return fig_UpSetPlot
             
-        figure_UpSetPlot = plt.Figure()
-        series_UpSetPlot = from_memberships(experiments, data=overlapping_ids)
-        plot(series_UpSetPlot, fig=figure_UpSetPlot, show_counts="%d")
-
-
+        
+        if "Sequence" not in self.df_01_filtered_combined.index.names:
+            sets_proteins_total = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Protein IDs"))
+                                for i in multi_choice_venn]
+            sets_proteins_intersection = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").unstack(["Map", "Exp_Map"]).dropna()\
+                                        .index.get_level_values("Protein IDs")) for i in multi_choice_venn]
+        else:
+            sets_proteins_total = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").index.get_level_values("Sequence"))
+                                for i in multi_choice_venn]
+            sets_proteins_intersection = [set(self.df_01_filtered_combined.xs(i, axis=0, level="Experiment").unstack(["Map", "Exp_Map"]).dropna()\
+                                        .index.get_level_values("Sequence")) for i in multi_choice_venn]
+        figure_UpSetPlot_total = create_upsetplot(sets_proteins_total, multi_choice_venn)
+        figure_UpSetPlot_int = create_upsetplot(sets_proteins_intersection, multi_choice_venn)
+        
+        #make matplot figure available for plotly
+        def convert_venn_jpg(vd):
+            vd = vd.figure
+            out_img = BytesIO()
+            plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
+            out_img.seek(0)  # rewind file
+            im = Image.open(out_img)
+            plt.clf()
+            return im
         
         if len(multi_choice_venn) == 2:
-            vd = venn2([set(self.unique_proteins_total[i]) for i in multi_choice_venn], 
-                       set_labels=([i for i in multi_choice_venn]),
-                       set_colors=("darksalmon", "darkgrey")
-                      )
+            vd_t = venn2(sets_proteins_total, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:2], alpha=0.8)
+            vd_t = plt.title("in at least one map")
+            im_t = convert_venn_jpg(vd_t)
+            vd_i = venn2(sets_proteins_intersection, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:2], alpha=0.8)
+            vd_i = plt.title("in all maps")
+            im_i = convert_venn_jpg(vd_i)
         elif len(multi_choice_venn) == 3:
-            vd = venn3([set(self.unique_proteins_total[i]) for i in multi_choice_venn],
-                       set_labels=([i for i in multi_choice_venn]),
-                       set_colors=("darksalmon", "darkgrey","rosybrown"),
-                       alpha=0.8
-                      )
+            vd_t = venn3(sets_proteins_total, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:3], alpha=0.8)
+            vd_t = plt.title("in at least one map")
+            im_t = convert_venn_jpg(vd_t)
+            vd_i = venn3(sets_proteins_intersection, set_labels=([i for i in multi_choice_venn]),
+                         set_colors=px.colors.qualitative.D3[0:3], alpha=0.8)
+            vd_i = plt.title("in all maps")
+            im_i = convert_venn_jpg(vd_i)
         
         else:
             im = "Venn diagram can be displayed for 3 Experiments or less"
-            return im, figure_UpSetPlot
-
-        vd = plt.title("Unique Protein Groups - Venn Diagram",
-                       pad=30,
-                       fontsize=20
-                      )
+            return im,im, figure_UpSetPlot_total, figure_UpSetPlot_int
         
-        #make matplot figure available for plotly
-        vd = vd.figure
-        out_img = io.BytesIO()
-        plt.savefig(out_img, bbox_inches="tight",format="jpg", dpi=72)
-        out_img.seek(0)  # rewind file
-        im = Image.open(out_img)
-        plt.clf()
-        
-        return im, figure_UpSetPlot
+        return im_t, im_i, figure_UpSetPlot_total, figure_UpSetPlot_int
     
     
     def dynamic_range_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], ref_exp="Exp1"):
@@ -2825,7 +2781,9 @@ class SpatialDataSetComparison:
             "euclidean distance": "euclidean",
             "manhattan distance": "manhattan",
             "1 - cosine correlation": "cosine",
-            "1 - pearson correlation": lambda x,y: 1-np.corrcoef(x,y)[0][1]
+            "1 - pearson correlation": lambda x,y: 1-np.corrcoef(x,y)[0][1],
+            "manhattan distance to average profile": [np.mean, pw.paired_manhattan_distances],
+            "manhattan distance to median profile": [np.median, pw.paired_manhattan_distances]
         }
         
         # Option assertion
@@ -2833,35 +2791,53 @@ class SpatialDataSetComparison:
         assert metric in metrics.keys()
         
         # Filter experiments and intersection of proteins
-        #df = self.df_01_filtered_combined.loc[
-        #    self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
         df = self.df_01_filtered_combined.loc[
             self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
-            
-        n_expmap = len(set(df.index.get_level_values("Exp_Map")))
-        df_across = df.groupby("Protein IDs").filter(lambda x: len(x)==n_expmap)
-        df_across.index = df_across.index.droplevel("Exp_Map")
-        df_across = df_across.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
+        
+        df.index = df.index.droplevel(["Exp_Map", "Gene names", "Compartment"])
+        if "Sequence" in df.index.names:
+            df.index = df.index.droplevel(["Protein IDs"])
+        df_across = df.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
         nPG = df_across.unstack(["Experiment", "Map"]).shape[0]
-
         
         # Calculate and consolidate distances
         distances = pd.DataFrame()
-        for exp in set(df.index.get_level_values("Experiment")):
+        for exp in set(df_across.index.get_level_values("Experiment")):
             df_m = df_across.xs(exp, level="Experiment", axis=0)
             maps = list(set(df_m.index.get_level_values("Map")))
-            distances_m = pd.DataFrame()
-            for i,mapi in enumerate(maps):
-                for j,mapj in enumerate(maps):
-                    # only look at each comparison once
-                    if j <= i:
-                        continue
-                    dist = pw.paired_distances(df_m.xs(mapi, level="Map", axis=0).values,
-                                               df_m.xs(mapj, level="Map", axis=0).values,
-                                               metric = metrics[metric])
-                    dist = pd.Series(dist, name="_".join([mapi,mapj]))
-                    distances_m = pd.concat([distances_m, dist], axis=1)
-            distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
+            
+            # this if clause switches between pairwise comparisons of profiles (else) and comparisons to an average/median profile
+            if " to " in metric:
+                df_m = df_m.unstack("Map")
+                
+                # calculate reference profiles
+                #df_profiles = df_m.apply(lambda x: x.unstack("Fraction").apply(metrics[metric][0], axis=0), axis=1)
+                df_profiles = df_m.stack("Fraction").apply(metrics[metric][0], axis=1).unstack("Fraction")
+                
+                # calculate the distance for every map
+                distances_m = pd.DataFrame()
+                for m in maps:
+                    dist_m = pd.DataFrame(metrics[metric][1](df_m.xs(m, level="Map", axis=1), df_profiles), columns = [m])
+                    distances_m = pd.concat([distances_m, dist_m], axis=1)
+                
+                distances_m.index = df_m.index
+                
+            else:
+                distances_m = pd.DataFrame()
+                
+                # loop over pairs of maps
+                for i,mapi in enumerate(maps):
+                    for j,mapj in enumerate(maps):
+                        # only look at each comparison once
+                        if j <= i:
+                            continue
+                        dist = pw.paired_distances(df_m.xs(mapi, level="Map", axis=0).values,
+                                                df_m.xs(mapj, level="Map", axis=0).values,
+                                                metric = metrics[metric])
+                        dist = pd.Series(dist, name="_".join([mapi,mapj]))
+                        distances_m = pd.concat([distances_m, dist], axis=1)
+                distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
+            
             distances = pd.concat([distances, pd.Series(distances_m.apply(cons_functions[consolidation], axis=1), name=exp)], axis=1)
         distances.index = distances_m.index
         
@@ -2879,7 +2855,7 @@ class SpatialDataSetComparison:
         # Create and return plot
         plot = ff.create_distplot(distances.T.values, distances.columns, show_hist=False)
         plot.update_layout(title="Distribution of {} {}s, n = {}".format(metric, consolidation, nPG),
-                           width=1500, height=600, template="simple_white")
+                           width=1500, height=600, template="simple_white", xaxis={"rangemode": "nonnegative"})
         return plot
 
         
@@ -3010,13 +2986,13 @@ class SpatialDataSetComparison:
         for exp in multi_choice:
             fig_markerPredictionAccuracy.add_trace(go.Bar(x=[exp], y=[df_AvgAllCluster[exp].loc["Recall"]], name=exp))
         fig_markerPredictionAccuracy.update_layout(template="simple_white", #showlegend=False, 
-                    title="Cluster Performance",
+                    title="Marker prediction accuracy - Overall recall",
                     xaxis=go.layout.XAxis(linecolor="black",
                                         linewidth=1,
                                         mirror=True),
                     yaxis=go.layout.YAxis(linecolor="black",
                                         linewidth=1,
-                                        title="F1 score - harmonic mean of recall and precision",
+                                        title="Marker prediction accuracy [%]",
                                         mirror=True),
                     )
         
@@ -3034,13 +3010,13 @@ class SpatialDataSetComparison:
                             marker=dict(color=pio.templates["simple_white"].layout["colorway"][i])
                                 ))
             fig_clusterPerformance.update_layout(template="simple_white", #showlegend=False, 
-                            title="Cluster Performance",
+                            title="Cluster wise SVM analysis",
                             xaxis=go.layout.XAxis(linecolor="black",
                                                 linewidth=1,
                                                 mirror=True),
                             yaxis=go.layout.YAxis(linecolor="black",
                                                 linewidth=1,
-                                                title="F1 score - harmonic mean of recall and precision",
+                                                title="F1 score", #- harmonic mean of recall and precision
                                                 mirror=True),
                             )
         
