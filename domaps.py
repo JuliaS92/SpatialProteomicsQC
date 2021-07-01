@@ -2332,7 +2332,7 @@ class SpatialDataSetComparison:
             return distance_boxplot_figure
     
     
-    def plot_biological_precision(self, multi_choice=None, clusters_for_ranking=None, min_members=5):
+    def plot_biological_precision(self, multi_choice=None, clusters_for_ranking=None, min_members=5, reference=""):
         if multi_choice is None:
             multi_choice = self.exp_names
         if clusters_for_ranking is None:
@@ -2344,11 +2344,15 @@ class SpatialDataSetComparison:
         df = df[df["Experiment"].isin(multi_choice)]
         df = df[df["Cluster"].isin(clusters_for_ranking)]
         
-        df_m = df.groupby(["Cluster", "Experiment", "Map"]).filter(lambda x: len(x)>=min_members)\
-                 .groupby(["Cluster", "Experiment", "Map"]).median().reset_index()
+        df_m = df.groupby(["Cluster", "Experiment", "Map"]).filter(lambda x: len(x)>=min_members)
+        df_c = df_m.groupby(["Cluster", "Experiment"]).median().reset_index()
+        df_m = df_m.groupby(["Cluster", "Experiment", "Map"]).median().reset_index()
         
         df_m = df_m.assign(Experiment_lexicographic_sort = pd.Categorical(df_m["Experiment"], categories=multi_choice, ordered=True))
         df_m = df_m.sort_values("Experiment_lexicographic_sort").drop("Experiment_lexicographic_sort", axis=1)\
+               .groupby("Experiment", as_index=False, group_keys=False).apply(lambda x: x.sort_values("distance", ascending=False))
+        df_c = df_c.assign(Experiment_lexicographic_sort = pd.Categorical(df_c["Experiment"], categories=multi_choice, ordered=True))
+        df_c = df_c.sort_values("Experiment_lexicographic_sort").drop("Experiment_lexicographic_sort", axis=1)\
                .groupby("Experiment", as_index=False, group_keys=False).apply(lambda x: x.sort_values("distance", ascending=False))
         
         bp_stacked_bar = px.bar(df_m, x="Experiment", y="distance", color="Cluster", hover_data=["Map"],
@@ -2358,8 +2362,12 @@ class SpatialDataSetComparison:
                                       .apply(lambda x: x-x.min(), axis=1).stack(["Experiment", "Map"]).reset_index(),
                                   x="Experiment", y="distance", color="Experiment", hover_data=["Cluster", "Map"],
                                   width=200+100*len(multi_choice), template="simple_white")
+        bp_box_minus_ref = px.box(df_c.set_index(["Experiment", "Cluster"]).unstack(["Experiment"])\
+                                      .apply(lambda x: x/x[("distance", reference)], axis=1).stack(["Experiment"]).reset_index(),
+                                  x="Experiment", y="distance", color="Experiment", hover_data=["Cluster"],
+                                  width=200+100*len(multi_choice), template="simple_white")
         
-        return bp_stacked_bar, bp_box_minus_min
+        return bp_stacked_bar, bp_box_minus_min, bp_box_minus_ref
         
         
     
