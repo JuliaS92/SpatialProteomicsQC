@@ -2052,7 +2052,7 @@ class SpatialDataSetComparison:
                                       )
                     
             pca_figure.update_layout(autosize=False, 
-                                     width=1400, 
+                                     width=700, 
                                      height=500,
                                      title="PCA plot for <br>the protein cluster: {}".format(cluster_of_interest_comparison),
                                      template="simple_white"
@@ -2121,20 +2121,6 @@ class SpatialDataSetComparison:
                                     opacity=0.9, 
                                     template="simple_white"
                                     )
-        
-#            px.scatter(data_frame=df_marker,
-#           x=self.x_PCA_comp,
-#           y=i_class.y_PCA_comp,
-#           color="Cluster",
-#           color_discrete_map=compartment_color,
-#           title="Protein subcellular localization by PCA",
-#           hover_data=["Protein IDs", "Gene names", "Compartment"],
-#           facet_col="Experiment",
-#           facet_col_wrap=2,
-#           opacity=0.9,
-#           height=2000
-#           )
-        
         
         fig_global_pca.update_layout(autosize=False, 
                                      width=1800 if markerset_or_cluster == False else 1600, 
@@ -2344,13 +2330,43 @@ class SpatialDataSetComparison:
                                                  )
             
             return distance_boxplot_figure
+    
+    
+    def plot_biological_precision(self, multi_choice=None, clusters_for_ranking=None, min_members=5):
+        if multi_choice is None:
+            multi_choice = self.exp_names
+        if clusters_for_ranking is None:
+            clusters_for_ranking = self.clusters_for_ranking
+        if len(multi_choice) == 0 or len(clusters_for_ranking) == 0:
+            return("Please provide at least one experiment and one cluster for ranking")
+        
+        df = self.df_distance_comp.copy()
+        df = df[df["Experiment"].isin(multi_choice)]
+        df = df[df["Cluster"].isin(clusters_for_ranking)]
+        
+        df_m = df.groupby(["Cluster", "Experiment", "Map"]).filter(lambda x: len(x)>=min_members)\
+                 .groupby(["Cluster", "Experiment", "Map"]).median().reset_index()
+        
+        df_m = df_m.assign(Experiment_lexicographic_sort = pd.Categorical(df_m["Experiment"], categories=multi_choice, ordered=True))
+        df_m = df_m.sort_values("Experiment_lexicographic_sort").drop("Experiment_lexicographic_sort", axis=1)\
+               .groupby("Experiment", as_index=False, group_keys=False).apply(lambda x: x.sort_values("distance", ascending=False))
+        
+        bp_stacked_bar = px.bar(df_m, x="Experiment", y="distance", color="Cluster", hover_data=["Map"],
+                                width=300+100*len(multi_choice), template="simple_white").update_layout(legend_traceorder="reversed")
+        
+        bp_box_minus_min = px.box(df_m.set_index(["Experiment", "Cluster", "Map"]).unstack(["Experiment", "Map"])\
+                                      .apply(lambda x: x-x.min(), axis=1).stack(["Experiment", "Map"]).reset_index(),
+                                  x="Experiment", y="distance", color="Experiment", hover_data=["Cluster", "Map"],
+                                  width=200+100*len(multi_choice), template="simple_white")
+        
+        return bp_stacked_bar, bp_box_minus_min
         
         
-  
+    
     def distance_ranking_barplot_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], clusters_for_ranking=None, ranking_boxPlot="Box plot"):#, toggle_sumORmedian=False):
     #ref_exp="Exp1", 
         if clusters_for_ranking is None:
-                clusters_for_ranking = self.clusters_for_ranking
+            clusters_for_ranking = self.clusters_for_ranking
             
             #an error massage, if no Experiments are selected, will be displayed already, that is why: return ""
         if len(multi_choice)>=1:
