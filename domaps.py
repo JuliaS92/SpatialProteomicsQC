@@ -2212,6 +2212,33 @@ class SpatialDataSetComparison:
         return df_distances
     
     
+    def get_complex_coverage(self, min_n=5):
+        full_coverage = {}
+        for complx in self.markerproteins.keys():
+            df = self.get_marker_proteins(self.exp_names, complx)
+            if len(df) >= min_n:
+                full_coverage[complx] = len(df)
+        partial_coverage = {}
+        for exp in self.exp_names:
+            for complx in self.markerproteins.keys():
+                if complx in full_coverage.keys():
+                    continue
+                df = self.get_marker_proteins([exp], complx)
+                #print(df)
+                if complx in partial_coverage.keys():
+                    partial_coverage[complx].append(len(df))
+                else:
+                    partial_coverage[complx] = [len(df)]
+        no_coverage = {}
+        for k in partial_coverage.keys():
+            if all([el < min_n for el in partial_coverage[k]]):
+                no_coverage[k] = partial_coverage[k]
+        for k in no_coverage.keys():
+            del partial_coverage[k]
+        self.coverage_lists = [full_coverage, partial_coverage, no_coverage]
+        return full_coverage, partial_coverage, no_coverage
+    
+    
     def distance_boxplot_comparison(self, cluster_of_interest_comparison="Proteasome", collapse_maps=False, multi_choice=["Exp1", "Exp2"]):
         """
         A box plot for desired experiments (multi_choice) and 1 desired cluster is generated displaying the distribution of the e.g.
