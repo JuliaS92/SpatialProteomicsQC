@@ -2038,7 +2038,7 @@ class SpatialDataSetComparison:
                         df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
             df_setofproteins_PCA.reset_index(inplace=True)
             
-            df_setofproteins_PCA = df_setofproteins_PCA.assign(Experiment_lexicographic_sort=pd.Categorical(df_setofproteins_PCA["Experiment"], categories=self.sorting_list,
+            df_setofproteins_PCA = df_setofproteins_PCA.assign(Experiment_lexicographic_sort=pd.Categorical(df_setofproteins_PCA["Experiment"], categories=multi_choice,
                                                                                                               ordered=True))
             df_setofproteins_PCA.sort_values("Experiment_lexicographic_sort", inplace=True)
                     
@@ -2266,7 +2266,7 @@ class SpatialDataSetComparison:
         
         df_distance_comp = self.df_distance_comp.copy()
         #set categroical column, allowing lexicographic sorting
-        df_distance_comp["Experiment_lexicographic_sort"] = pd.Categorical(df_distance_comp["Experiment"], categories=self.sorting_list, ordered=True)
+        df_distance_comp["Experiment_lexicographic_sort"] = pd.Categorical(df_distance_comp["Experiment"], categories=multi_choice, ordered=True)
         df_distance_comp.sort_values(["Experiment_lexicographic_sort", "Map"], inplace=True)
         
         if collapse_maps == False:
@@ -2459,7 +2459,6 @@ class SpatialDataSetComparison:
         #median makes a huge differnece, improves result of DIA, MQ, libary
         df_RelDistanceRanking = pd.concat([df_cluster_normalizedMedian_ref.median(axis=1), df_cluster_normalizedMedian_ref.sem(axis=1)], axis=1, 
                                         keys=["Distance Ranking (rel, median)", "SEM"]).reset_index().sort_values("Distance Ranking (rel, median)")
-        self.sorting_list = multi_choice#list(df_RelDistanceRanking["Experiment"])
         
         ranking_sum = df_cluster_normalizedMedian_ref.sum(axis=1).round(2)
         ranking_sum.name = "Normalized Median - Sum"
@@ -2473,7 +2472,7 @@ class SpatialDataSetComparison:
         df_cluster_normalizedMedian_ref.name="Normalized Median"
         df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.reset_index()
         self.df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=self.sorting_list, ordered=True))
+        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=multi_choice, ordered=True))
         df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
         
         
@@ -2754,7 +2753,7 @@ class SpatialDataSetComparison:
         df_dynamicRange_combined = self.df_dynamicRange_combined.copy()
         df_dynamicRange_combined = df_dynamicRange_combined[df_dynamicRange_combined["Experiment"].isin(multi_choice)]
         df_dynamicRange_combined = df_dynamicRange_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_dynamicRange_combined["Experiment"],
-                                                                                                                categories=self.sorting_list, ordered=True))
+                                                                                                                categories=multi_choice, ordered=True))
         
         df_dynamicRange_combined.sort_values(["Experiment_lexicographic_sort", "Dynamic Range"], inplace=True)
         
@@ -2900,9 +2899,9 @@ class SpatialDataSetComparison:
         
         distances = distances[multi_choice]
         #distances = distances[medians.rank().sort_values(ascending=False).index]
-        #self.sorting_list = list(medians.rank().sort_values(ascending=False).index)
+        #multi_choice = list(medians.rank().sort_values(ascending=False).index)
         
-        #df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=self.sorting_list, ordered=True))
+        #df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=multi_choice, ordered=True))
         #df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
         
         # Create and return plot
