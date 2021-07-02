@@ -2383,16 +2383,16 @@ class SpatialDataSetComparison:
                .groupby("Experiment", as_index=False, group_keys=False).apply(lambda x: x.sort_values("distance", ascending=False))
         
         bp_stacked_bar = px.bar(df_m, x="Experiment", y="distance", color="Cluster", hover_data=["Map"],
-                                width=300+100*len(multi_choice), template="simple_white").update_layout(legend_traceorder="reversed")
+                                width=300+100*len(multi_choice), template="simple_white", height=80+9*len(df_c)).update_layout(legend_traceorder="reversed")
         
         bp_box_minus_min = px.box(df_m.set_index(["Experiment", "Cluster", "Map"]).unstack(["Experiment", "Map"])\
                                       .apply(lambda x: x-x.min(), axis=1).stack(["Experiment", "Map"]).reset_index(),
                                   x="Experiment", y="distance", color="Experiment", hover_data=["Cluster", "Map"],
-                                  width=200+100*len(multi_choice), template="simple_white")
+                                  width=200+100*len(multi_choice), template="simple_white", height=400, points="all")
         bp_box_minus_ref = px.box(df_c.set_index(["Experiment", "Cluster"]).unstack(["Experiment"])\
                                       .apply(lambda x: x/x[("distance", reference)], axis=1).stack(["Experiment"]).reset_index(),
                                   x="Experiment", y="distance", color="Experiment", hover_data=["Cluster"],
-                                  width=200+100*len(multi_choice), template="simple_white")
+                                  width=200+100*len(multi_choice), template="simple_white", height=400, points="all")
         
         return bp_stacked_bar, bp_box_minus_min, bp_box_minus_ref
         
