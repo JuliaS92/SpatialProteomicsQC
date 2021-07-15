@@ -209,7 +209,7 @@ class SpatialDataSet:
                 RatioHLcount = self.RatioHLcount
             if RatioVariability is None:
                 RatioVariability = self.RatioVariability
-        if self.acquisition == "Custom":
+        elif self.acquisition == "Custom":
             if custom_columns is None:
                 custom_columns = self.custom_columns
             if custom_normalized is None:
