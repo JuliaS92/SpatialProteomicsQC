@@ -2468,18 +2468,23 @@ class SpatialDataSetComparison:
                .groupby("Experiment", as_index=False, group_keys=False, sort=False).apply(lambda x: x.sort_values("distance", ascending=False))
         
         bp_stacked_bar = px.bar(df_m, x="Experiment", y="distance", color="Cluster", hover_data=["Map"],
-                                width=300+100*len(multi_choice), template="simple_white", height=100+30*len(clusters_for_ranking)).update_layout(legend_traceorder="reversed")
+                                width=400+80*len(multi_choice), template="simple_white", height=100+30*len(clusters_for_ranking)).update_layout(legend_traceorder="reversed")
         
         bp_box_minus_min = px.box(df_m.set_index(["Experiment", "Cluster", "Map"]).unstack(["Experiment", "Map"])\
                                       .apply(lambda x: x-x.min(), axis=1).stack(["Experiment", "Map"]).reset_index()\
                                       .sort_values(["Experiment"], key=lambda x: [multi_choice.index(el) for el in x]),
                                   x="Experiment", y="distance", color="Experiment", hover_data=["Cluster", "Map"],
-                                  width=200+100*len(multi_choice), template="simple_white", height=400, points="all")
+                                  width=200+100*len(multi_choice), template="simple_white", height=400, points="all")\
+                                  .update_yaxes(title="distance - cluster offset (minimum)")
         bp_box_minus_ref = px.box(df_c.set_index(["Experiment", "Cluster"]).unstack(["Experiment"])\
                                       .apply(lambda x: x/x[("distance", reference)], axis=1).stack(["Experiment"]).reset_index()\
-                                      .sort_values(["Experiment"], key=lambda x: [multi_choice.index(el) for el in x]),
+                                      .sort_values(["Experiment"], key=lambda x: [multi_choice.index(el) for el in x])\
+                                      .loc[lambda x: x.Experiment != reference],
                                   x="Experiment", y="distance", color="Experiment", hover_data=["Cluster"],
-                                  width=200+100*len(multi_choice), template="simple_white", height=400, points="all")
+                                  color_discrete_sequence=[px.colors.qualitative.D3[multi_choice.index(el)]
+                                      for el in multi_choice if el != reference],
+                                  width=200+100*len(multi_choice), template="simple_white", height=400, points="all")\
+                                  .update_yaxes(title="distance relative to {}".format(reference))
         
         return bp_stacked_bar, bp_box_minus_min, bp_box_minus_ref
         
