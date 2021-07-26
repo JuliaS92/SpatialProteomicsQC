@@ -69,9 +69,9 @@ class SpatialDataSet:
     analysed_datasets_dict = {}
     
     df_organellarMarkerSet = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
-                                       usecols=lambda x: bool(re.match("Gene name|Compartment", x)))
-    df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
-    df_organellarMarkerSet = df_organellarMarkerSet.astype({"Gene names": "str"})
+                                       usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
+    #df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
+    #df_organellarMarkerSet = df_organellarMarkerSet.astype({"Gene names": "str"})
 
     def __init__(self, filename, expname, acquisition, comment, name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)", reannotate_genes=False, **kwargs):
         
@@ -461,7 +461,9 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Gene names")
+            df_stringency_mapfracstacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_stringency_mapfracstacked["Protein IDs"]])
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Protein ID")
+            df_stringency_mapfracstacked.drop("Protein ID", axis=1, inplace=True)
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
                                                     if c not in ["Ratio H/L count","Ratio H/L variability [%]","Ratio H/L"]], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
@@ -585,7 +587,9 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Gene names")
+            df_stringency_mapfracstacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_stringency_mapfracstacked["Protein IDs"]])
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Protein ID")
+            df_stringency_mapfracstacked.drop("Protein ID", axis=1, inplace=True)
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
                                                     if c!="MS/MS count" and c!="LFQ intensity"], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan : "undefined"}, level="Compartment", inplace=True)
@@ -756,8 +760,10 @@ class SpatialDataSet:
             df_index = custom_indexing_and_normalization()
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
-            df_01_stacked = df_index.stack(["Map", "Fraction"])
-            df_01_stacked = df_01_stacked.reset_index().merge(self.df_organellarMarkerSet, how="left", on="Gene names")
+            df_01_stacked = df_index.stack(["Map", "Fraction"]).reset_index()
+            df_01_stacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_01_stacked["Protein IDs"]])
+            df_01_stacked = df_01_stacked.merge(self.df_organellarMarkerSet, how="left", on="Protein ID")
+            df_01_stacked.drop("Protein ID", axis=1, inplace=True)
             df_01_stacked.set_index([c for c in df_01_stacked.columns if c not in ["normalized profile"]], inplace=True)
             df_01_stacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
             self.df_01_stacked = df_01_stacked
