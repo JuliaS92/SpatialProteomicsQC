@@ -19,6 +19,7 @@ from PIL import Image
 from upsetplot import from_memberships
 from upsetplot import plot as upplot
 import pkg_resources
+from scipy.stats import zscore
 
 def natsort_index_keys(x):
     order = natsort.natsorted(np.unique(x.values))
@@ -1097,13 +1098,13 @@ class SpatialDataSet:
         pca = PCA(n_components=3)
 
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
-        df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked))
+        df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked.apply(zscore, axis=0)))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_01orlog_fracunstacked.index
         self.df_pca = df_pca.sort_index(level=["Gene names", "Compartment"])
         
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
-        df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked))
+        df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked.apply(zscore, axis=0)))
         df_pca_combined.columns = ["PC1", "PC2", "PC3"]
         df_pca_combined.index = df_01orlog_MapFracUnstacked.index
         self.df_pca_combined = df_pca_combined.sort_index(level=["Gene names", "Compartment"])
@@ -2070,7 +2071,7 @@ class SpatialDataSetComparison:
         
         pca = PCA(n_components=3)
         
-        df_pca = pd.DataFrame(pca.fit_transform(df_mean))
+        df_pca = pd.DataFrame(pca.fit_transform(df_mean.apply(zscore, axis=0)))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_mean.index
         
