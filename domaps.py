@@ -2699,26 +2699,26 @@ class SpatialDataSetComparison:
         """
         
         df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
-        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)].sort_values("filtering")
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)]
 
+        df_quantity_pr_pg_combined.insert(0,"Expxfiltering",[" ".join([e,f]) for e,f in zip(
+            df_quantity_pr_pg_combined.Experiment, df_quantity_pr_pg_combined.filtering)])
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(
-            Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
-                categories=multi_choice, ordered=True))
+            Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"], categories=multi_choice, ordered=True))
 
         #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
-        df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], inplace=True)
-
-        fig_pr_dc = px.bar(df_quantity_pr_pg_combined.loc[df_quantity_pr_pg_combined.type=="total"], x="Experiment", y="data completeness of profiles",
-                           color="Experiment", barmode="overlay", hover_data=["filtering"],
-                           template="simple_white", opacity=0.8)
+        df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], ascending=[True, False], inplace=True)
+        filtered = list(np.tile(["id","profile"],len(multi_choice)))
         
-        fig_pr_dc.update_layout(#barmode="overlay", 
-                                         #xaxis_tickangle=90, 
-                                         title="Profile completeness of all<br>identified protein groups",
-                                         autosize=False,
-                                         width=100*len(multi_choice)+150,
-                                         height=400,
-                                         template="simple_white")
+        fig_pr_dc = px.bar(df_quantity_pr_pg_combined.loc[df_quantity_pr_pg_combined.type=="total"], x="Expxfiltering", y="data completeness of profiles",
+                           color="Experiment", barmode="overlay", hover_data=["filtering"],
+                           template="simple_white", opacity=0.8, color_discrete_sequence=px.colors.qualitative.D3)
+        
+        fig_pr_dc.update_layout(
+            title="Profile completeness of all<br>identified protein groups", autosize=False,
+            width=100*len(multi_choice)+150, height=400,
+            template="simple_white", xaxis={"tickmode":"array", "tickvals":[el for el in range(len(multi_choice)*2)],
+                                            "ticktext":filtered, "title": {"text": None}})
         
         return fig_pr_dc
     
