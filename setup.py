@@ -1,10 +1,9 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
 from setuptools import setup
+
+with open("requirements.txt") as requirements_file:
+    requirements = []
+    for line in requirements_file:
+        requirements.append(line)
 
 setup(name='domaps',
       version='0.1',
@@ -14,6 +13,7 @@ setup(name='domaps',
       author_email='schessner@biochem.mpg.de',
       license='MIT',
       packages=['domaps'],
+      install_requires = requirements,
       include_package_data=True,
-      zip_safe=False)
-
+      zip_safe=False,
+      python_requires='>=3.7.6',)
