@@ -3,3 +3,6 @@ This is a quality control tool for spatial proteomics data that has been develop
 
 ## **Disclaimer**
 While the code base underlying this tool has been reviewed thoroughly the interface is still in an unpolished state. Therefore we recommend sanity checking results from the interface and running clean sessions, i.e. only upload data you want to compare in that session and reload the page if you want to switch to a different project. As we will update the webpage from time to time it might be down for short intervals of time.
+
+## Running locally
+To run the app locally create a new python environment and install the package. Then you can either run a panel serve command from the command line or open a jupyter notebook and run the QCtool.ipynb directly. The latter will allow you to load files >80MB through the commented code cells at the end of the file.
