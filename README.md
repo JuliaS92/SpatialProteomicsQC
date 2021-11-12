@@ -14,6 +14,10 @@ git clone https://github.com/valbrecht/SpatialProteomicsQC
 
 pip install .
 ```
+If any pip installations fail due to external dependencies missing (e.g. zlib requirement for Pillow installation from source on python 3.6, or Microsoft Visual C++ 14 on windows) try installing that library using a binary file, thereby avoiding the dependency:
+```
+pip install --only-binary :all: Pillow
+```
 
 Then you can run a panel serve command from the command line:
 ```
