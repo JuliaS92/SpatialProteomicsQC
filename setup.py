@@ -16,4 +16,4 @@ setup(name='domaps',
       install_requires = requirements,
       include_package_data=True,
       zip_safe=False,
-      python_requires='>=3.7.6',)
+      python_requires='>=3.6',)
