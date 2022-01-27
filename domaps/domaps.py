@@ -19,6 +19,7 @@ from PIL import Image
 from upsetplot import from_memberships
 from upsetplot import plot as upplot
 import pkg_resources
+from scipy.stats import zscore
 
 def natsort_index_keys(x):
     order = natsort.natsorted(np.unique(x.values))
@@ -69,9 +70,9 @@ class SpatialDataSet:
     analysed_datasets_dict = {}
     
     df_organellarMarkerSet = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
-                                       usecols=lambda x: bool(re.match("Gene name|Compartment", x)))
-    df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
-    df_organellarMarkerSet = df_organellarMarkerSet.astype({"Gene names": "str"})
+                                       usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
+    #df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
+    #df_organellarMarkerSet = df_organellarMarkerSet.astype({"Gene names": "str"})
 
     def __init__(self, filename, expname, acquisition, comment, name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)", reannotate_genes=False, **kwargs):
         
@@ -461,7 +462,9 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Gene names")
+            df_stringency_mapfracstacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_stringency_mapfracstacked["Protein IDs"]])
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Protein ID")
+            df_stringency_mapfracstacked.drop("Protein ID", axis=1, inplace=True)
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
                                                     if c not in ["Ratio H/L count","Ratio H/L variability [%]","Ratio H/L"]], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
@@ -585,7 +588,9 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Gene names")
+            df_stringency_mapfracstacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_stringency_mapfracstacked["Protein IDs"]])
+            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Protein ID")
+            df_stringency_mapfracstacked.drop("Protein ID", axis=1, inplace=True)
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
                                                     if c!="MS/MS count" and c!="LFQ intensity"], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan : "undefined"}, level="Compartment", inplace=True)
@@ -756,8 +761,10 @@ class SpatialDataSet:
             df_index = custom_indexing_and_normalization()
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
-            df_01_stacked = df_index.stack(["Map", "Fraction"])
-            df_01_stacked = df_01_stacked.reset_index().merge(self.df_organellarMarkerSet, how="left", on="Gene names")
+            df_01_stacked = df_index.stack(["Map", "Fraction"]).reset_index()
+            df_01_stacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_01_stacked["Protein IDs"]])
+            df_01_stacked = df_01_stacked.merge(self.df_organellarMarkerSet, how="left", on="Protein ID")
+            df_01_stacked.drop("Protein ID", axis=1, inplace=True)
             df_01_stacked.set_index([c for c in df_01_stacked.columns if c not in ["normalized profile"]], inplace=True)
             df_01_stacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
             self.df_01_stacked = df_01_stacked
@@ -1091,13 +1098,13 @@ class SpatialDataSet:
         pca = PCA(n_components=3)
 
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
-        df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked))
+        df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked.apply(zscore, axis=0)))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_01orlog_fracunstacked.index
         self.df_pca = df_pca.sort_index(level=["Gene names", "Compartment"])
         
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
-        df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked))
+        df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked.apply(zscore, axis=0)))
         df_pca_combined.columns = ["PC1", "PC2", "PC3"]
         df_pca_combined.index = df_01orlog_MapFracUnstacked.index
         self.df_pca_combined = df_pca_combined.sort_index(level=["Gene names", "Compartment"])
@@ -2064,7 +2071,7 @@ class SpatialDataSetComparison:
         
         pca = PCA(n_components=3)
         
-        df_pca = pd.DataFrame(pca.fit_transform(df_mean))
+        df_pca = pd.DataFrame(pca.fit_transform(df_mean.apply(zscore, axis=0)))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_mean.index
         
@@ -2692,26 +2699,26 @@ class SpatialDataSetComparison:
         """
         
         df_quantity_pr_pg_combined = self.df_quantity_pr_pg_combined.copy()
-        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)].sort_values("filtering")
+        df_quantity_pr_pg_combined = df_quantity_pr_pg_combined[df_quantity_pr_pg_combined["Experiment"].isin(multi_choice)]
 
+        df_quantity_pr_pg_combined.insert(0,"Expxfiltering",[" ".join([e,f]) for e,f in zip(
+            df_quantity_pr_pg_combined.Experiment, df_quantity_pr_pg_combined.filtering)])
         df_quantity_pr_pg_combined = df_quantity_pr_pg_combined.assign(
-            Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"],
-                categories=multi_choice, ordered=True))
+            Experiment_lexicographic_sort = pd.Categorical(df_quantity_pr_pg_combined["Experiment"], categories=multi_choice, ordered=True))
 
         #df_quantity_pr_pg_combined.sort_values("Experiment_lexicographic_sort", inplace=True)
-        df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], inplace=True)
-
-        fig_pr_dc = px.bar(df_quantity_pr_pg_combined.loc[df_quantity_pr_pg_combined.type=="total"], x="Experiment", y="data completeness of profiles",
-                           color="Experiment", barmode="overlay", hover_data=["filtering"],
-                           template="simple_white", opacity=0.8)
+        df_quantity_pr_pg_combined.sort_values(["Experiment_lexicographic_sort", "filtering"], ascending=[True, False], inplace=True)
+        filtered = list(np.tile(["id","profile"],len(multi_choice)))
         
-        fig_pr_dc.update_layout(#barmode="overlay", 
-                                         #xaxis_tickangle=90, 
-                                         title="Profile completeness of all<br>identified protein groups",
-                                         autosize=False,
-                                         width=100*len(multi_choice)+150,
-                                         height=400,
-                                         template="simple_white")
+        fig_pr_dc = px.bar(df_quantity_pr_pg_combined.loc[df_quantity_pr_pg_combined.type=="total"], x="Expxfiltering", y="data completeness of profiles",
+                           color="Experiment", barmode="overlay", hover_data=["filtering"],
+                           template="simple_white", opacity=0.8, color_discrete_sequence=px.colors.qualitative.D3)
+        
+        fig_pr_dc.update_layout(
+            title="Profile completeness of all<br>identified protein groups", autosize=False,
+            width=100*len(multi_choice)+150, height=400,
+            template="simple_white", xaxis={"tickmode":"array", "tickvals":[el for el in range(len(multi_choice)*2)],
+                                            "ticktext":filtered, "title": {"text": None}})
         
         return fig_pr_dc
     
