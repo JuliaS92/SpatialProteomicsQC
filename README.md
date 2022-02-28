@@ -10,7 +10,7 @@ To run the app locally create a new python environment ([>=3.7.6](https://www.py
 ### Windows
 After downloading python you can either create a new environment for this application or run it in your main python environment (only recommended if this is the only thing you use python for).
 
-The following commands all need to be executed on the windows command line [basic navigation](https://riptutorial.com/cmd/example/8646/navigating-in-cmd). Assuming you are fine storing everything directly in your Windows user folder (C:\Users\me) you first create the environment (named domapsenv here, but any name is fine) and activate it:
+The following commands all need to be executed on the windows command line ([basic navigation](https://riptutorial.com/cmd/example/8646/navigating-in-cmd)). Assuming you are fine storing everything directly in your Windows user folder (C:\Users\me) you first create the environment (named domapsenv here, but any name is fine) and activate it:
 ```
 python -m venv .\domapsenv
 domapsenv\Scripts\activate
