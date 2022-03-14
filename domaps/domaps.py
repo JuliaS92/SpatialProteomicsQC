@@ -46,7 +46,7 @@ class SpatialDataSet:
     
     Spectronaut_columnRenaming = {
         "R.Condition": "Map", "PG.Genes" : "Gene names", "PG.Qvalue": "Q-value", "PG.Cscore":"C-Score", 
-        "PG.ProteinGroups" : "Protein IDs", "PG.RunEvidenceCount" : "MS/MS count", "PG.Quantity" : "LFQ intensity"
+        "PG.ProteinGroups" : "Original Protein IDs", "PG.RunEvidenceCount" : "MS/MS count", "PG.Quantity" : "LFQ intensity"
     }
     
     css_color = ["#b2df8a", "#6a3d9a", "#e31a1c", "#b15928", "#fdbf6f", "#ff7f00", "#cab2d6", "#fb9a99", "#1f78b4", "#ffff99", "#a6cee3", 
@@ -71,8 +71,6 @@ class SpatialDataSet:
     
     df_organellarMarkerSet = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
                                        usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
-    #df_organellarMarkerSet = df_organellarMarkerSet.rename(columns={"Gene name":"Gene names"})
-    #df_organellarMarkerSet = df_organellarMarkerSet.astype({"Gene names": "str"})
 
     def __init__(self, filename, expname, acquisition, comment, name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)", reannotate_genes=False, **kwargs):
         
@@ -119,11 +117,19 @@ class SpatialDataSet:
         #self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
         if "organism" not in kwargs.keys():
             marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format("Homo sapiens - Uniprot")))
-            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
+            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
+            df_organellarMarkerSet = pd.read_csv(
+                                                 pkg_resources.resource_stream(__name__,'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
+                                                 usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
+            self.df_organellarMarkerSet = df_organellarMarkerSet
         else:
             assert kwargs["organism"]+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes")
             marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(kwargs["organism"])))
-            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
+            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
+            df_organellarMarkerSet = pd.read_csv(
+                                                 pkg_resources.resource_stream(__name__,'annotations/organellemarkers/{}.csv'.format(kwargs["organism"])),
+                                                 usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
+            self.df_organellarMarkerSet = df_organellarMarkerSet
             self.organism = kwargs["organism"]
             del kwargs["organism"]
         
@@ -222,6 +228,8 @@ class SpatialDataSet:
                 consecutiveLFQi = self.consecutiveLFQi
             
         shape_dict = {}
+        df_organellarMarkerSet = self.df_organellarMarkerSet.copy()
+        df_organellarMarkerSet = df_organellarMarkerSet.rename({"Protein ID": "Protein IDs"}, axis=1).set_index("Protein IDs")
         
         
         def indexingdf():
@@ -249,7 +257,9 @@ class SpatialDataSet:
             """
             
             df_original = self.df_original.copy()
-            df_original.rename({"Proteins": "Protein IDs"}, axis=1, inplace=True)
+            df_original.rename({"Proteins": "Original Protein IDs"}, axis=1, inplace=True)
+            df_original.rename({"Protein IDs": "Original Protein IDs"}, axis=1, inplace=True)
+            df_original.insert(0, "Protein IDs", [split_ids_uniprot(el) for el in df_original["Original Protein IDs"]])
             df_original = df_original.set_index([col for col in df_original.columns
                                                  if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
@@ -305,6 +315,11 @@ class SpatialDataSet:
                 pass
             
             self.fractions = natsort.natsorted(list(df_index.columns.get_level_values("Fraction").unique()))
+            
+            # merge with markerset
+            df_index.columns = df_index.columns.values
+            df_index = df_index.join(df_organellarMarkerSet, how="left", on="Protein IDs").set_index("Compartment", append=True)
+            df_index.columns = pd.MultiIndex.from_tuples(df_index.columns, names=["Set", "Map", "Fraction"])
             self.df_index = df_index
             
             return df_index
@@ -335,6 +350,11 @@ class SpatialDataSet:
             # for custom upload assume full normalization for now. this should be extended to valid value filtering and 0-1 normalization later
             df_index = df_original.copy()
             self.fractions = natsort.natsorted(list(df_index.columns.get_level_values("Fraction").unique()))
+            
+            # merge with markerset
+            df_index.columns = df_index.columns.values
+            df_index = df_index.join(df_organellarMarkerSet, how="left", on="Protein IDs").set_index("Compartment", append=True)
+            df_index.columns = pd.MultiIndex.from_tuples(df_index.columns, names=["Set", "Map", "Fraction"])
             self.df_index = df_index
             
             return df_index
@@ -417,7 +437,7 @@ class SpatialDataSet:
                 df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Type
                 RatioHLcount: int, 2
                 RatioVariability: int, 30 
-                df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index 
+                df_organellarMarkerSet: df, columns: "Protein ID", "Compartment", no index 
                 fractions: list of fractions e.g. ["01K", "03K", ...]
 
             Returns:
@@ -462,9 +482,6 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_stringency_mapfracstacked["Protein IDs"]])
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Protein ID")
-            df_stringency_mapfracstacked.drop("Protein ID", axis=1, inplace=True)
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
                                                     if c not in ["Ratio H/L count","Ratio H/L variability [%]","Ratio H/L"]], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
@@ -543,7 +560,7 @@ class SpatialDataSet:
             Args:
                 df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Typ
                 self:
-                    df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
+                    df_organellarMarkerSet: df, columns: "Protein ID", "Compartment", no index
                     fractions: list of fractions e.g. ["01K", "03K", ...]
                     summed_MSMS_counts: int, 2
                     consecutiveLFQi: int, 4
@@ -588,9 +605,6 @@ class SpatialDataSet:
             df_organellarMarkerSet = self.df_organellarMarkerSet
             
             df_stringency_mapfracstacked.reset_index(inplace=True)
-            df_stringency_mapfracstacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_stringency_mapfracstacked["Protein IDs"]])
-            df_stringency_mapfracstacked = df_stringency_mapfracstacked.merge(df_organellarMarkerSet, how="left", on="Protein ID")
-            df_stringency_mapfracstacked.drop("Protein ID", axis=1, inplace=True)
             df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
                                                     if c!="MS/MS count" and c!="LFQ intensity"], inplace=True)
             df_stringency_mapfracstacked.rename(index={np.nan : "undefined"}, level="Compartment", inplace=True)
@@ -657,19 +671,20 @@ class SpatialDataSet:
 
             return df_log_stacked
         
+        
         def split_ids_uniprot(el):
             """
-            This finds the primary canoncial protein ID in the protein group. If no canonical ID is present it selects the first isoform ID.
+            This finds the primary canoncial protein ID in the protein group. If no canonical ID is present it selects the first isoform ID. If multiple canonical ids are present, it leaves the protein group unchanged.
             """
-            p1 = el.split(";")[0]
-            if "-" not in p1:
-                return p1
+            p1 = el.split(";")
+            p2 = [p.split("-")[0] for p in p1]
+            
+            if len(set(p2)) > 1:
+                return el
+            elif p2[0] in p1:
+                return p2[0]
             else:
-                p = p1.split("-")[0]
-                if p in el.split(";"):
-                    return p
-                else:
-                    return p1
+                return p1[0]
         
         if self.acquisition == "SILAC - MQ":
             
@@ -686,16 +701,13 @@ class SpatialDataSet:
             
             # format and reduce 0-1 normalized data for comparison with other experiments
             df_01_comparison = self.df_01_stacked.copy()
-            comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
-            df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
-            df_01_comparison.set_index(comp_ids, append=True, inplace=True)
             df_01_comparison.drop(["Ratio H/L count", "Ratio H/L variability [%]"], inplace=True, axis=1)
             df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
             df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
-            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
+            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id", "Original Protein IDs"], axis=1, errors="ignore")
             
             # poopulate analysis summary dictionary with (meta)data
-            unique_proteins = [split_ids_uniprot(i) for i in set(self.df_01_stacked.index.get_level_values("Protein IDs"))]
+            unique_proteins = list(set(self.df_01_stacked.index.get_level_values("Protein IDs")))
             unique_proteins.sort()
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
@@ -734,16 +746,13 @@ class SpatialDataSet:
             self.df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
             
             df_01_comparison = self.df_01_stacked.copy()
-            comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
-            df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
-            df_01_comparison.set_index(comp_ids, append=True, inplace=True)
             df_01_comparison.drop("MS/MS count", inplace=True, axis=1, errors="ignore")
             df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
             df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
-            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
+            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id", "Original Protein IDs"], axis=1, errors="ignore")
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
             
-            unique_proteins = [split_ids_uniprot(i) for i in set(self.df_01_stacked.index.get_level_values("Protein IDs"))]
+            unique_proteins = list(set(self.df_01_stacked.index.get_level_values("Protein IDs")))
             unique_proteins.sort()
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
@@ -762,24 +771,18 @@ class SpatialDataSet:
             map_names = df_index.columns.get_level_values("Map").unique()
             self.map_names = map_names
             df_01_stacked = df_index.stack(["Map", "Fraction"]).reset_index()
-            df_01_stacked.insert(0, "Protein ID", [split_ids_uniprot(el) for el in df_01_stacked["Protein IDs"]])
-            df_01_stacked = df_01_stacked.merge(self.df_organellarMarkerSet, how="left", on="Protein ID")
-            df_01_stacked.drop("Protein ID", axis=1, inplace=True)
             df_01_stacked.set_index([c for c in df_01_stacked.columns if c not in ["normalized profile"]], inplace=True)
             df_01_stacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
             self.df_01_stacked = df_01_stacked
             
             df_01_comparison = self.df_01_stacked.copy()
-            comp_ids = pd.Series([split_ids_uniprot(el) for el in df_01_comparison.index.get_level_values("Protein IDs")], name="Protein IDs")
-            df_01_comparison.index = df_01_comparison.index.droplevel("Protein IDs")
-            df_01_comparison.set_index(comp_ids, append=True, inplace=True)
             df_01_comparison.drop("MS/MS count", inplace=True, axis=1, errors="ignore")
             df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
             df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
-            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
+            df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id", "Original Protein IDs"], axis=1, errors="ignore")
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
             
-            unique_proteins = [split_ids_uniprot(i) for i in set(self.df_01_stacked.index.get_level_values("Protein IDs"))]
+            unique_proteins = list(set(self.df_01_stacked.index.get_level_values("Protein IDs")))
             unique_proteins.sort()
             self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
@@ -1101,13 +1104,13 @@ class SpatialDataSet:
         df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked.apply(zscore, axis=0)))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_01orlog_fracunstacked.index
-        self.df_pca = df_pca.sort_index(level=["Gene names", "Compartment"])
+        self.df_pca = df_pca.sort_index(level=["Protein IDs", "Compartment"])
         
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked.apply(zscore, axis=0)))
         df_pca_combined.columns = ["PC1", "PC2", "PC3"]
         df_pca_combined.index = df_01orlog_MapFracUnstacked.index
-        self.df_pca_combined = df_pca_combined.sort_index(level=["Gene names", "Compartment"])
+        self.df_pca_combined = df_pca_combined.sort_index(level=["Protein IDs", "Compartment"])
         
         map_names = self.map_names
         df_pca_all_marker_cluster_maps = pd.DataFrame()
@@ -1115,7 +1118,7 @@ class SpatialDataSet:
         for clusters in markerproteins:
             for marker in markerproteins[clusters]:
                 try:
-                    plot_try_pca = df_pca_filtered.xs(marker, level="Gene names", drop_level=False)
+                    plot_try_pca = df_pca_filtered.xs(marker, level="Protein IDs", drop_level=False)
                 except KeyError:
                     continue
                 df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.append(
@@ -1124,7 +1127,7 @@ class SpatialDataSet:
             df_pca_all_marker_cluster_maps = df_pca_filtered.stack("Map")
         else:
             df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.stack("Map")
-        self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.sort_index(level=["Gene names", "Compartment"])
+        self.df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.sort_index(level=["Protein IDs", "Compartment"])
 
         
     def plot_global_pca(self, map_of_interest="Map1", cluster_of_interest="Proteasome", x_PCA="PC1", y_PCA="PC3", collapse_maps=False):
@@ -1133,7 +1136,7 @@ class SpatialDataSet:
 
         Args:
             self:
-                df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
+                df_organellarMarkerSet: df, columns: "Protein ID", "Compartment", no index
                 df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3",
                     index: "Gene names", "Protein IDs", "C-Score", "Q-value", "Map", "Compartment", 
 
@@ -1147,7 +1150,7 @@ class SpatialDataSet:
             df_global_pca = self.df_pca_combined.reset_index()
             
         for i in self.markerproteins[cluster_of_interest]:
-            df_global_pca.loc[df_global_pca["Gene names"] == i, "Compartment"] = "Selection"
+            df_global_pca.loc[df_global_pca["Protein IDs"] == i, "Compartment"] = "Selection"
 
         compartments = self.df_organellarMarkerSet["Compartment"].unique()
         compartment_color = dict(zip(compartments, self.css_color))
@@ -1191,7 +1194,7 @@ class SpatialDataSet:
                 df_setofproteins_PCA = pd.DataFrame()
                 for marker in markerproteins[cluster_of_interest]:
                     try:
-                        plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Gene names", "Map"],
+                        plot_try_pca = df_pca_all_marker_cluster_maps.xs((marker, maps), level=["Protein IDs", "Map"],
                                                                          drop_level=False)
                     except KeyError:
                         continue
@@ -1267,8 +1270,8 @@ class SpatialDataSet:
             df_alldistances_individual_mapfracunstacked = df_alldistances_individual_mapfracunstacked.append(df_distances_individual)
             df_alldistances_aggregated_mapunstacked = df_alldistances_aggregated_mapunstacked.append(df_distances_aggregated)
         if len(df_alldistances_individual_mapfracunstacked) == 0:
-            self.df_distance_noindex = pd.DataFrame(columns = ["Gene names", "Map", "Cluster", "distance"])
-            self.df_allclusters_01_unfiltered_mapfracunstacked = pd.DataFrame(columns = ["Gene names", "Map", "Cluster", "distance"])
+            self.df_distance_noindex = pd.DataFrame(columns = ["Protein IDs", "Gene names", "Map", "Cluster", "distance"])
+            self.df_allclusters_01_unfiltered_mapfracunstacked = pd.DataFrame(columns = ["Protein IDs", "Gene names", "Map", "Cluster", "distance"])
             self.df_allclusters_clusterdist_fracunstacked_unfiltered = pd.DataFrame(columns = ["Fraction"])
             self.df_allclusters_clusterdist_fracunstacked = pd.DataFrame(columns = ["Fraction"])
             self.genenames_sortedout_list = "No clusters found"
@@ -1318,7 +1321,7 @@ class SpatialDataSet:
         df_cluster_unfiltered = pd.DataFrame()
         for marker in markers:
             try:
-                df_p = df_in.xs(marker, level="Gene names", axis=0, drop_level=False)
+                df_p = df_in.xs(marker, level="Protein IDs", axis=0, drop_level=False)
             except:
                 continue
             df_cluster_unfiltered = df_cluster_unfiltered.append(df_p)
@@ -1401,6 +1404,7 @@ class SpatialDataSet:
                                                 color="Gene names",
                                                 line_group="Sequence" if "Sequence" in df_setofproteins.columns else "Gene names",
                                                 template="simple_white",
+                                                hover_data=["Protein IDs", "Gene names"],
                                                 title="Relative abundance profile for {} of <br>the protein cluster: {}".format(map_of_interest, cluster_of_interest)
                                                )
     
@@ -1617,7 +1621,7 @@ class SpatialDataSet:
                 df_setofproteins_allMaps = pd.DataFrame()
                 for marker in self.markerproteins[clusters]:
                     try:
-                        df_marker_allMaps = df_01_stacked.xs(marker, level="Gene names", drop_level=False)
+                        df_marker_allMaps = df_01_stacked.xs(marker, level="Protein IDs", drop_level=False)
                     except KeyError:
                         continue
                     df_setofproteins_allMaps = df_setofproteins_allMaps.append(df_marker_allMaps)
@@ -2025,7 +2029,7 @@ class SpatialDataSetComparison:
             organism = "Homo sapiens - Uniprot"
         
         marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
-        self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Gene names"])}
+        self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
         
         self.clusters_for_ranking = self.markerproteins.keys()        
            
@@ -2075,20 +2079,11 @@ class SpatialDataSetComparison:
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_mean.index
         
-        
-        try:
-            markerproteins["PSMA subunits"] = [item for sublist in [re.findall("PSMA.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
-            markerproteins["PSMB subunits"] = [item for sublist in [re.findall("PSMB.*",p) for p in markerproteins["Proteasome"]] for item in sublist]
-            del markerproteins["Proteasome"]
-        except:
-            pass 
-        
         ###only one df, make annotation at that time
-        df_cluster = pd.DataFrame([(k, i) for k, l in markerproteins.items() for i in l], columns=["Cluster", "Gene names"])
-        df_global_pca = df_pca.reset_index().merge(df_cluster, how="left", on="Gene names")
+        df_cluster = pd.DataFrame([(k, i) for k, l in markerproteins.items() for i in l], columns=["Cluster", "Protein IDs"])
+        df_global_pca = df_pca.reset_index().merge(df_cluster, how="left", on="Protein IDs")
         df_global_pca.Cluster.replace(np.NaN, "Undefined", inplace=True)
         
-        self.markerproteins_splitProteasome = markerproteins
         self.df_pca = df_pca 
         self.df_global_pca = df_global_pca
             
@@ -2112,10 +2107,6 @@ class SpatialDataSetComparison:
             pca_figure: PCA plot for a specified protein cluster.
         """
     
-    
-    
-    
-    
         df_pca = self.df_pca.copy()
         markerproteins = self.markerproteins
  
@@ -2124,7 +2115,7 @@ class SpatialDataSetComparison:
             for map_or_exp in multi_choice:
                     for marker in markerproteins[cluster_of_interest_comparison]:
                         try:
-                            plot_try_pca = df_pca.xs((marker, map_or_exp), level=["Gene names", "Experiment"], drop_level=False)
+                            plot_try_pca = df_pca.xs((marker, map_or_exp), level=["Protein IDs", "Experiment"], drop_level=False)
                         except KeyError:
                             continue
                         df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
@@ -2185,7 +2176,7 @@ class SpatialDataSetComparison:
         compartments.insert(0, "undefined")
         compartments.insert(len(compartments), "Selection")
             
-        cluster = self.markerproteins_splitProteasome.keys()
+        cluster = self.markerproteins.keys()
         cluster_color = dict(zip(cluster, self.css_color))
         cluster_color["Undefined"] = "lightgrey"
                 
@@ -2195,7 +2186,7 @@ class SpatialDataSetComparison:
             df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster=="Undefined"].append(df_global_pca)
         else:
             for i in self.markerproteins[cluster_of_interest_comparison]:
-                df_global_pca_exp.loc[df_global_pca_exp["Gene names"] == i, "Compartment"] = "Selection"
+                df_global_pca_exp.loc[df_global_pca_exp["Protein IDs"] == i, "Compartment"] = "Selection"
             df_global_pca = df_global_pca_exp.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca_exp["Compartment"], 
                                                                                                      categories=[x for x in compartments], 
                                                                                                      ordered=True))
@@ -2231,7 +2222,7 @@ class SpatialDataSetComparison:
         df_cluster = pd.DataFrame()
         for marker in markers:
             try:
-                df_p = df_in.xs(marker, level="Gene names", axis=0, drop_level=False)
+                df_p = df_in.xs(marker, level="Protein IDs", axis=0, drop_level=False)
             except:
                 continue
             df_cluster = df_cluster.append(df_p)
@@ -2527,7 +2518,7 @@ class SpatialDataSetComparison:
         for cluster in clusters_for_ranking:
             try:
                 df_cluster = df_distance_comp[df_distance_comp["Cluster"]==cluster]
-                cluster_quantitity = df_cluster["Gene names"].unique().size
+                cluster_quantitity = df_cluster["Protein IDs"].unique().size
                 if  cluster_quantitity>= 5:
                     dict_quantified_cluster[cluster] = cluster_quantitity
                     all_median_one_cluster_several_exp = {}
