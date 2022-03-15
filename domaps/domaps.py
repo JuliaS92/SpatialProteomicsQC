@@ -296,7 +296,7 @@ class SpatialDataSet:
             df_original = self.df_original.copy()
             df_original.rename({"Proteins": "Original Protein IDs"}, axis=1, inplace=True)
             df_original.rename({"Protein IDs": "Original Protein IDs"}, axis=1, inplace=True)
-            df_original.insert(0, "Protein IDs", [split_ids_uniprot(el) for el in df_original["Original Protein IDs"]])
+            df_original.insert(0, "Protein IDs", [split_ids_uniprot(el) for el in df_original["Majority protein IDs"]])
             if reannotate_genes:
                 df_original["Gene names"] = reannotate_genes_uniprot(df_original["Protein IDs"])
             df_original = df_original.set_index([col for col in df_original.columns
