@@ -20,6 +20,8 @@ from upsetplot import from_memberships
 from upsetplot import plot as upplot
 import pkg_resources
 from scipy.stats import zscore
+import urllib.parse
+import urllib.request
 
 def natsort_index_keys(x):
     order = natsort.natsorted(np.unique(x.values))
@@ -171,7 +173,7 @@ class SpatialDataSet:
         return self.df_original
     
 
-    def processingdf(self, name_pattern=None, summed_MSMS_counts=None, consecutiveLFQi=None, RatioHLcount=None, RatioVariability=None, custom_columns=None, custom_normalized=None):
+    def processingdf(self, name_pattern=None, summed_MSMS_counts=None, consecutiveLFQi=None, RatioHLcount=None, RatioVariability=None, custom_columns=None, custom_normalized=None, reannotate_genes=True):
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
         characterized by a flat column index. These tasks is performed by following functions:
@@ -232,6 +234,41 @@ class SpatialDataSet:
         df_organellarMarkerSet = df_organellarMarkerSet.rename({"Protein ID": "Protein IDs"}, axis=1).set_index("Protein IDs")
         
         
+        def reannotate_genes_uniprot(column):
+            
+            protein_ids = []
+            split_ids = [[i.split("-")[0] for i in el.split(";")] for el in column]
+            for ids in split_ids:
+                for i in set(ids):
+                    if i not in protein_ids:
+                        protein_ids.append(i)
+            
+            url = 'https://www.uniprot.org/uploadlists/'
+            
+            params = {
+                'from': 'ACC+ID',
+                'to': 'GENENAME',
+                'format': 'tab',
+                'query': "\t".join(protein_ids)
+            }
+            
+            data = urllib.parse.urlencode(params)
+            data = data.encode('utf-8')
+            req = urllib.request.Request(url, data)
+            protein_gene = {}
+            with urllib.request.urlopen(req) as f:
+                response = f.read()
+            for l in response.decode('utf-8').split("\n")[1:-1]:
+                l = l.split("\t")
+                protein_gene[l[0]] = l[1]
+            
+            genes = list()
+            for ids in split_ids:
+                ids = [ids[el] for el in sorted([ids.index(i) for i in set(ids)])]
+                genes.append(";".join([p if p not in protein_gene.keys() else protein_gene[p] for p in ids]))
+            
+            return genes
+        
         def indexingdf():
             """
             For data output from MaxQuant, all columns - except of "MS/MS count" and "LFQ intensity" (LFQ) | "Ratio H/L count", "Ratio H/L variability [%]" 
@@ -260,6 +297,8 @@ class SpatialDataSet:
             df_original.rename({"Proteins": "Original Protein IDs"}, axis=1, inplace=True)
             df_original.rename({"Protein IDs": "Original Protein IDs"}, axis=1, inplace=True)
             df_original.insert(0, "Protein IDs", [split_ids_uniprot(el) for el in df_original["Original Protein IDs"]])
+            if reannotate_genes:
+                df_original["Gene names"] = reannotate_genes_uniprot(df_original["Protein IDs"])
             df_original = df_original.set_index([col for col in df_original.columns
                                                  if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
@@ -325,9 +364,12 @@ class SpatialDataSet:
             return df_index
         
         
+        
         def custom_indexing_and_normalization():
             df_original = self.df_original.copy()
             df_original.rename({custom_columns["ids"]: "Protein IDs", custom_columns["genes"]: "Gene names"}, axis=1, inplace=True)
+            if reannotate_genes:
+                df_original["Gene names"] = reannotate_genes_uniprot(df_original["Protein IDs"])
             df_original = df_original.set_index([col for col in df_original.columns
                                                  if any([re.match(s, col) for s in self.acquisition_set_dict[self.acquisition]]) == False])
     
@@ -389,6 +431,8 @@ class SpatialDataSet:
             df_original = self.df_original.copy()
             
             df_renamed = df_original.rename(columns=self.Spectronaut_columnRenaming)
+            if reannotate_genes:
+                df_renamed["Gene names"] = reannotate_genes_uniprot(df_renamed["Protein IDs"])
             
             df_renamed["Fraction"] = [re.match(self.name_pattern, i).group("frac") for i in df_renamed["Map"]]
             df_renamed["Map"] = [re.match(self.name_pattern, i).group("rep") for i in df_renamed["Map"]] if not "<cond>" in self.name_pattern else ["_".join(
