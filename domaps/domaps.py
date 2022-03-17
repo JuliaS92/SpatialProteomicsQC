@@ -1925,6 +1925,90 @@ class SpatialDataSetComparison:
                 exp_names: list of unique Experiment names - e.g. LFQ
         """
         
+        def relabel_groups(exp, pgs, genes, sep=";"):
+            def split_ids_uniprot(el):
+                """
+                This finds the primary canoncial protein ID in the protein group. If no canonical ID is present it selects the first isoform ID.
+                """
+                p1 = el.split(";")[0]
+                if "-" not in p1:
+                    return p1
+                else:
+                    p = p1.split("-")[0]
+                    if p in el.split(";"):
+                        return p
+                    else:
+                        return p1
+            
+            src = np.array([exp, [el.split(sep) for el in pgs], [el.count(sep) for el in pgs],
+                            [el.split(sep) for el in genes], [el.count(sep) for el in genes],
+                            [i for i in range(len(genes))]],
+                        dtype=object
+                        )
+            
+            src_single_gene = src[:,src[4] == 0]
+            src_single_gene = src_single_gene[:,src_single_gene[2].argsort()[::-1]]
+            src_multi_gene = src[:,src[4] != 0]
+            src_multi_gene = src_multi_gene[:,src_multi_gene[2].argsort()[::-1]]
+            
+            out = np.empty([5,0])
+            
+            # Process multi gene entries
+            while src_multi_gene.shape[1] > 0:
+                group_max = src_multi_gene[3,0]
+                pg_max = src_multi_gene[1,0]
+                
+                # find members from groups with multiple gene names
+                members_multi = [0]
+                for i,pg in enumerate(src_multi_gene[1]):
+                    if all(el in pg_max for el in pg) \
+                    and src_multi_gene[0,i] not in src_multi_gene[0, members_multi]:
+                        members_multi.append(i)
+                group = src_multi_gene[:, members_multi]
+                src_multi_gene = np.delete(src_multi_gene, members_multi, axis=1)
+                
+                # find members from groups with single gene names
+                members_single = []
+                for i,pg in enumerate(src_single_gene[1]):
+                    if all(el in pg_max for el in pg) \
+                    and src_single_gene[0,i] not in group[0] \
+                    and src_single_gene[0,i] not in src_single_gene[0, members_single]:
+                        members_single.append(i)
+                group = np.append(group, src_single_gene[:, members_single], axis=1)
+                src_single_gene = np.delete(src_single_gene, members_single, axis=1)
+                
+                # sort group by number of genes, then by number of protein groups and lastly 
+                group[1] = [sep.join(el) for el in group[1]]
+                group[3] = [sep.join(el) for el in group[3]]
+                pg_counts = {k:v for k,v in zip(*np.unique(group[1], return_counts=True))}
+                group = np.append(group, [[pg_counts[el] for el in group[1]]], axis=0)
+                group = group[:,np.lexsort((group[6], group[2], group[4]))]
+                #print(group_max, group)
+                
+                group_out = np.array([group[0],
+                                    np.repeat(group[1,-1], group.shape[1]),
+                                    np.repeat(group[3,-1], group.shape[1]),
+                                    np.repeat("multiple genes" if len(np.unique(group[3])) == 1 else "gene level conflict", group.shape[1]),
+                                    group[5]])
+                out = np.append(out, group_out, axis=1)
+            
+            # Process leftover single gene entries
+            single_out = np.array([src_single_gene[0],
+                                [split_ids_uniprot(sep.join(el)) for el in src_single_gene[1]],
+                                [el[0] for el in src_single_gene[3]],
+                                ["" if el == 0 else "isoforms discarded" for el in src_single_gene[2]],
+                                src_single_gene[5]
+                                ])
+            single_out[3] = ["isoforms discarded" if any([el == "isoforms discarded"
+                                                        for el,pg in zip(single_out[3], single_out[1]) if pg == pg_outer])
+                            else "" for pg_outer in single_out[1]]
+            out = np.append(out, single_out, axis=1)
+            out = out[0:4, out[-1].argsort()].T
+            return pd.DataFrame(out, columns = [
+                "Experiment", "Majority protein IDs", "Gene names",
+                "merge type"
+            ])
+        
         json_dict = self.json_dict
         
         #add experiments that are not stored in AnalysedDAtasets.json for comparison
@@ -1943,17 +2027,11 @@ class SpatialDataSetComparison:
             for data_type in json_dict[exp_name].keys():
                 if data_type == "0/1 normalized data":
                     df_01_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_01_toadd.set_index(["Gene names", "Protein IDs", "Compartment"], inplace=True)
-                    if "Sequence" in df_01_toadd.columns:
-                        df_01_toadd.set_index(["Sequence"], inplace=True, append=True)
-                    df_01_toadd.drop([col for col in df_01_toadd.columns if not col.startswith("normalized profile")], inplace=True)
-                    df_01_toadd.columns = pd.MultiIndex.from_tuples([el.split("?") for el in df_01_toadd.columns], names=["Set", "Map", "Fraction"])
-                    df_01_toadd.rename(columns = {"normalized profile":exp_name}, inplace=True)
-                    df_01_toadd.set_index(pd.Series(["?".join([str(i) for i in el]) for el in df_01_toadd.index.values], name="join"), append=True, inplace=True)
+                    df_01_toadd.insert(0,"Experiment",np.repeat(exp_name, len(df_01_toadd)))
                     if len(df_01_combined) == 0:
                         df_01_combined = df_01_toadd.copy()
                     else:
-                        df_01_combined = pd.concat([df_01_combined,df_01_toadd], sort=False, axis=1)
+                        df_01_combined = pd.concat([df_01_combined,df_01_toadd], sort=False, axis=0)
                         
                 elif data_type == "quantity: profiles/protein groups" and exp_name == list(json_dict.keys())[0]:
                     df_quantity_pr_pg_combined = pd.read_json(json_dict[exp_name][data_type])
@@ -2017,14 +2095,33 @@ class SpatialDataSetComparison:
                 #except:
                 #    continue
                 #
-        df_01_combined = df_01_combined.droplevel("join", axis=0)
+        ### New code for alignment:
+        j_reindex = df_01_combined.set_index(["Experiment", "Gene names", "Compartment","Protein IDs"])
+        j_reindex.columns = pd.MultiIndex.from_tuples([el.split("?")[1::] for el in j_reindex.columns], names=["Map", "Fraction"])
+        j_reindex = j_reindex.stack("Map").dropna()
+        full_coverage_index = j_reindex.unstack(["Map"])[j_reindex.columns[0]].apply(np.nanmax, axis=1).unstack("Experiment").dropna().index
+        full_cov = j_reindex.unstack(["Experiment", "Map"]).loc[full_coverage_index,:]
+        full_cov.set_index(pd.Index(np.repeat("", len(full_cov)), name="merge type"), append=True, inplace=True)
+        compl = j_reindex.unstack(["Experiment", "Map"]).drop(full_coverage_index)
+        compl = compl.stack(["Experiment"])
+        new = relabel_groups(compl.index.get_level_values("Experiment"),compl.index.get_level_values("Protein IDs"),[str(el) for el in compl.index.get_level_values("Gene names")])
+        new = new.rename({"Majority protein IDs": "Protein IDs"}, axis=1)
+        compl_new = compl.copy()
+        for i in new.columns:
+            if i in compl_new.index.names:
+                compl_new.index = compl_new.index.droplevel(i)
+            compl_new.set_index(pd.Index(new[i], name=i), append=True, inplace=True)
+        compl_new = compl_new.stack("Map").unstack(["Experiment", "Map"]) # rejoin index
+        compl_new.index = compl_new.index.reorder_levels(full_cov.index.names)
+        df_01_filtered_combined = pd.concat([full_cov, compl_new], axis=0).stack(["Experiment", "Map"])
+        #df_01_combined = df_01_combined.droplevel("join", axis=0)
         #filter for consistently quantified proteins (they have to be in all fractions and all maps)
         #df_01_filtered_combined = df_01_mean_combined.dropna()    
-        df_01_combined.columns.names = ["Experiment", "Map", "Fraction"]
+        #df_01_combined.columns.names = ["Experiment", "Map", "Fraction"]
         #reframe it to make it ready for PCA
-        df_01_filtered_combined = df_01_combined.stack(["Experiment", "Map"]).dropna(axis=0)
+        #df_01_filtered_combined = df_01_combined.stack(["Experiment", "Map"]).dropna(axis=0)
         #df_01_filtered_combined = df_01_combined.stack(["Experiment"]).dropna(axis=1)
-        df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
+        #df_01_filtered_combined = df_01_filtered_combined.div(df_01_filtered_combined.sum(axis=1), axis=0)
         #df_01_filtered_combined = df_01_combined.copy()
         #df_01_filtered_combined.columns.names = ["Experiment", "Fraction", "Map"]
         ## Replace protein IDs by the unifying protein ID across experiments
