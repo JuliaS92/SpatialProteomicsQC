@@ -1639,74 +1639,7 @@ class SpatialDataSet:
             
         except:
             return "This protein cluster was not quantified" 
-
-        
-    def dynamic_range(self):
-        """
-        Dynamic range of each individual protein clusters (of the median profile) across all maps is calculated"
-
-        Args:
-            self:
-                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
-                df_01_stacked: "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting. Additionally the columns 
-                               "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are found in LFQ and SILAC data respectively
-
-        Returns:
-            fig_dynamicRange: Bar plot, displaying the dynamic range for each protein cluster
-            self.df_dynamicRange: df, no index, columns: "Max", "Min", "Dynamic Range", "Cluster"
-        """
-
-        df_setofproteins_allMaps = pd.DataFrame()
-        df_dynamicRange = pd.DataFrame()
-        df_01_stacked = self.df_01_stacked
-
-        for clusters in self.markerproteins:
-            try:
-                df_setofproteins_allMaps = pd.DataFrame()
-                for marker in self.markerproteins[clusters]:
-                    try:
-                        df_marker_allMaps = df_01_stacked.xs(marker, level="Protein IDs", drop_level=False)
-                    except KeyError:
-                        continue
-                    df_setofproteins_allMaps = df_setofproteins_allMaps.append(df_marker_allMaps)
-                df_setofproteins_allMaps_median = df_setofproteins_allMaps["normalized profile"].unstack("Fraction").median()
-                
-                df_dynamicRange = df_dynamicRange.append(pd.DataFrame(np.array([[max(df_setofproteins_allMaps_median), 
-                                                                                 min(df_setofproteins_allMaps_median), 
-                                                                                 max(df_setofproteins_allMaps_median)-min(df_setofproteins_allMaps_median),
-                                                                                 clusters]]), 
-                                                                      columns=["Max", "Min", "Dynamic Range", "Cluster"]),
-                                                        ignore_index=True)
-            except:
-                continue
-        
-        self.analysis_summary_dict["Dynamic Range"] = df_dynamicRange.to_json()
-        
     
-    def plot_dynamic_range(self):
-        """
-        Dynamic range of each individual protein clusters (of the median profile) across all maps is displayed"
-
-        Args:
-            self:
-                markerproteins: dictionary, key: cluster name, value: gene names (e.g. {"Proteasome" : ["PSMA1", "PSMA2",...], ...}
-                df_01_stacked: "MAP" and "Fraction" are stacked; the data in the column "normalized profile" is used for plotting. Additionally the columns 
-                               "MS/MS count" and "Ratio H/L count | Ratio H/L variability [%] | Ratio H/L" are found in LFQ and SILAC data respectively
-
-        Returns:
-            fig_dynamicRange: Bar plot, displaying the dynamic range for each protein cluster
-            self.df_dynamicRange: df, no index, columns: "Max", "Min", "Dynamic Range", "Cluster"
-        """
-        
-        fig_dynamicRange = px.bar(pd.read_json(self.analysis_summary_dict["Dynamic Range"]), 
-                                  x="Cluster", 
-                                  y="Dynamic Range", 
-                                  base="Min", 
-                                  template="simple_white",
-                                  width=1000, 
-                                  height=500).update_xaxes(categoryorder="total ascending")
-        return fig_dynamicRange
-        
     
     def results_overview_table(self):
         """
@@ -1838,7 +1771,8 @@ class SpatialDataSetComparison:
         self.exp_names, self.exp_map_names = [], []
         
         self.df_01_filtered_combined, self.df_distance_comp = pd.DataFrame(), pd.DataFrame()
-        self.df_quantity_pr_pg_combined, self.df_dynamicRange_combined = pd.DataFrame(), pd.DataFrame()
+        self.df_quantity_pr_pg_combined = pd.DataFrame()
+        self.svm_results = dict()
         
 
     def read_jsonFile(self): #, content=None
@@ -1885,7 +1819,6 @@ class SpatialDataSetComparison:
                 "0/1 normalized data" : df - individual cluster,
                 "Distances to the median profile" : df - individual cluster,
                 "Manhattan distances" : df - individual cluster,
-                "Dynamic Range": df - individual cluster,
                 "Overview table" : df - individual cluster,
 
                ##if user perform the Misclassification Analysis befor downloading the dictionary AnalysedDatasets.json##
@@ -1919,7 +1852,6 @@ class SpatialDataSetComparison:
                             "distance": Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
                 df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
                                             "data completeness of profiles", "Experiment"
-                df_dynamicRange_combined: df, no index, column names: "Max", "Min", "Dynamic Range", "Cluster", "Experiment"
                 unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
                 exp_map_names: list of unique Exp_Map - fusions e.g. LFQ_Map1
                 exp_names: list of unique Experiment names - e.g. LFQ
@@ -2021,6 +1953,7 @@ class SpatialDataSetComparison:
     
         self.analysis_parameters_total = {}
         unique_proteins_total = {}
+        self.exp_names = list(json_dict.keys())
         
         df_01_combined = pd.DataFrame()
         for exp_name in json_dict.keys():
@@ -2059,33 +1992,28 @@ class SpatialDataSetComparison:
                     df_distances_toadd.rename(columns = {"distance":exp_name}, inplace=True)
                     df_distances_combined = pd.concat([df_distances_combined, df_distances_toadd], axis=1)#, join="inner")
                 
-                elif data_type == "Dynamic Range" and exp_name == list(json_dict.keys())[0]:
-                    df_dynamicRange_combined = pd.read_json(json_dict[exp_name][data_type])
-                    df_dynamicRange_combined["Experiment"] = exp_name
-                    
-                elif data_type == "Dynamic Range" and exp_name != list(json_dict.keys())[0]:
-                    df_dynamicRange_toadd = pd.read_json(json_dict[exp_name][data_type])
-                    df_dynamicRange_toadd["Experiment"] = exp_name
-                    df_dynamicRange_combined = pd.concat([df_dynamicRange_combined, df_dynamicRange_toadd]) 
-                
- #               if data_type == "Overview table" and exp_name == list(json_dict.keys())[0]:
- #                   #convert into dataframe
- #                   df_distanceOverview_combined = pd.read_json(json_dict[exp_name][data_type])
- #                   df_distanceOverview_combined["Experiment"] = exp_name
- #                   df_distanceOverview_combined = df_distanceOverview_combined.set_index(["Map", "Cluster", "Experiment"]).unstack(["Cluster"])
- #       
- #               elif data_type == "Overview table" and exp_name != list(json_dict.keys())[0]:
- #                   df_distanceOverview_toadd = pd.read_json(json_dict[exp_name][data_type])
- #                   df_distanceOverview_toadd["Experiment"] = exp_name
- #                   df_distanceOverview_toadd = df_distanceOverview_toadd.set_index(["Map", "Cluster", "Experiment"]).unstack(["Cluster"])
- #                   #dataframes will be concatenated, only proteins/Profiles that are in both df will be retained
- #                   df_distanceOverview_combined = pd.concat([df_distanceOverview_combined, df_distanceOverview_toadd])
-                
                 elif data_type == "Unique Proteins":
                     unique_proteins_total[exp_name] = json_dict[exp_name][data_type]
                 
                 elif data_type == "Analysis parameters":
                     self.analysis_parameters_total[exp_name] = json_dict[exp_name][data_type]
+                
+                elif data_type == "SVM results":
+                    for res in self.json_dict[exp_name]["SVM results"].keys():
+                        self.add_svm_results(exp_name,
+                                             pd.read_json(self.json_dict[exp_name]["SVM results"]["misclassification"]),
+                                             name=self.json_dict[exp_name]["SVM results"]["name"],
+                                             prediciton=pd.read_json(self.json_dict[exp_name]["SVM results"]["prediction"]),
+                                             comment=self.json_dict[exp_name]["SVM results"]["comment"],
+                                             overwrite=True # supposed to always exceed upload from old format
+                                             )
+                
+                elif data_type == "Misclassification Matrix":
+                    try:
+                        self.add_svm_results(exp_name, pd.read_json(self.json_dict[exp_name]["Misclassification Matrix"]), comment="read from old json file version")
+                    except:
+                        # should only happen if this has been loaded before and both SVM results and Misclassification Matrix are present
+                        pass
                     
                 #try:
                 #    for paramters in json_dict[exp_name][data_type].keys():
@@ -2153,14 +2081,12 @@ class SpatialDataSetComparison:
         #df_distance_comp.reset_index(inplace=True)
         
         self.unique_proteins_total = unique_proteins_total
-        self.exp_names = list(df_01_filtered_combined.index.get_level_values("Experiment").unique())
         self.exp_map_names = list(index_dist_ExpMap.unique())
         
         self.df_01_filtered_combined = df_01_filtered_combined 
         #self.df_01_mean_filtered_combined = df_01_mean_filtered_combined
         
         self.df_quantity_pr_pg_combined = df_quantity_pr_pg_combined
-        self.df_dynamicRange_combined = df_dynamicRange_combined
         
         self.df_distance_comp = df_distance_comp
         
@@ -2175,6 +2101,37 @@ class SpatialDataSetComparison:
         self.clusters_for_ranking = self.markerproteins.keys()        
            
 
+    def add_svm_result(self, experiment, misclassification, name="default", prediction=pd.DataFrame(), comment="", overwrite=True):
+        """
+        Add SVM output (either only misclassification matrix or whole prediction) to the data.
+        
+        Args:
+            self:
+                svm_results: dict, here all SVM output is stored
+            experiment: str
+            misclassification: pd.DataFrame
+            name: str, default=default
+            prediction: pd.DataFrame, default=empty dataframe
+            comment: str, default=empty string
+            overwrite: bool, default=True
+        Returns:
+            self.svm_results is being set
+        """
+        if experiment not in self.exp_names:
+            raise KeyError(f"Experiment {experiment} not found during SVM matrix storage")
+        
+        if experiment not in self.svm_results.keys():
+            self.svm_results[experiment] = dict()
+        
+        if name in self.svm_results[experiment].keys() and not overwrite:
+            raise KeyError(f"SVM result named {name} already exists for experiment {experiment}. Rename it or set overwrite=True.")
+        
+        self.svm_results[experiment][name] = {
+            "comment": comment,
+            "misclassification": misclassification,
+            "prediction": prediction
+        }
+    
     
     def perform_pca_comparison(self):
         """
@@ -2967,76 +2924,6 @@ class SpatialDataSetComparison:
             return im,im, figure_UpSetPlot_total, figure_UpSetPlot_int
         
         return im_t, im_i, figure_UpSetPlot_total, figure_UpSetPlot_int
-    
-    
-    def dynamic_range_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], ref_exp="Exp1"):
-        """
-        A box plot for desired experiments (multi_choice) and all protein clusters is generated displaying the dynamic range
-        
-        Args:
-            self:
-                multi_choice: list of experiment names 
-                df_dynamicRange_combined: df, no index, column names: "Max", "Min", "Dynamic Range", "Cluster", "Experiment"
-        
-        Returns:
-            fig_dynamic_range: bar plot, dynamic range of each protein cluster for desired experiments is displayed.
-        """
-        df_dynamicRange_combined = self.df_dynamicRange_combined.copy()
-        df_dynamicRange_combined = df_dynamicRange_combined[df_dynamicRange_combined["Experiment"].isin(multi_choice)]
-        df_dynamicRange_combined = df_dynamicRange_combined.assign(Experiment_lexicographic_sort = pd.Categorical(df_dynamicRange_combined["Experiment"],
-                                                                                                                categories=multi_choice, ordered=True))
-        
-        df_dynamicRange_combined.sort_values(["Experiment_lexicographic_sort", "Dynamic Range"], inplace=True)
-        
-        fig_dynamic_range = px.bar(df_dynamicRange_combined,  
-                                   x="Cluster", 
-                                   y="Dynamic Range", 
-                                   base="Min", 
-                                   facet_row="Experiment", 
-                                   template="simple_white",
-                                   height=400*len(multi_choice),
-                                   width=1200)
-        
-        df_dynamicRange_combined_ref = df_dynamicRange_combined.drop(["Experiment_lexicographic_sort"], axis=1)
-        df_dynamicRange_combined_ref = df_dynamicRange_combined.set_index(["Cluster", "Experiment"], drop=False).unstack("Cluster")["Dynamic Range"]
-        df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.div(df_dynamicRange_combined_ref.xs(ref_exp))
-        df_RelDynamicRange = pd.concat([df_dynamicRange_combined_ref.median(axis=1), df_dynamicRange_combined_ref.sem(axis=1)], axis=1, 
-                                       keys=["Dynamic Range (rel, median)", "SEM"]).reset_index()
-        
-        if collapse_cluster == False:
-            df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.stack("Cluster")
-            df_dynamicRange_combined_ref.name="Normalized Dynamic Range"
-            df_dynamicRange_combined_ref = df_dynamicRange_combined_ref.reset_index()
-            
-            fig_RelDynamicRange = px.bar(df_dynamicRange_combined_ref, 
-                                         x="Cluster", 
-                                         y="Normalized Dynamic Range", 
-                                         title="Dynamic Range - normalization to reference experiment: {}".format(ref_exp),
-                                         barmode="group", 
-                                         template="simple_white",
-                                         color="Experiment")
-            fig_RelDynamicRange.update_xaxes(categoryorder="total ascending")
-            fig_RelDynamicRange.update_layout(autosize=False,
-                                              width=1200 if len(multi_choice)<=3 else 300*len(multi_choice),
-                                              height=500,
-                                              template="simple_white"
-                                               )
-        else:
-            fig_RelDynamicRange = px.bar(df_RelDynamicRange.sort_values("Dynamic Range (rel, median)"), 
-                                         x="Experiment", 
-                                         y="Dynamic Range (rel, median)", 
-                                         error_x="SEM", error_y="SEM",
-                                         template="simple_white",
-                                         title="Dynamic Range - median of all individual normalized medians - reference experiment: {}".format(ref_exp),
-                                         color="Experiment")
-            fig_RelDynamicRange.update_layout(autosize=False,
-                                                width=250*len(multi_choice),
-                                                height=500,
-                                                template="simple_white"
-                                               )
-            
-            
-        return pn.Column(pn.Row(fig_dynamic_range), pn.Row(fig_RelDynamicRange))
     
     
     def calculate_global_scatter(self, multi_choice, metric, consolidation):
