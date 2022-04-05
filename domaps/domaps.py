@@ -1708,7 +1708,7 @@ class SpatialDataSetComparison:
         
     analysed_datasets_dict = {}
     css_color = SpatialDataSet.css_color
-    cache_stored_SVM = True
+    #cache_stored_SVM = True
 
 
     def __init__(self, ref_exp="Exp2", **kwargs): #clusters_for_ranking=["Proteasome", "Lysosome"]
@@ -1863,7 +1863,7 @@ class SpatialDataSetComparison:
                 
                 elif data_type == "Misclassification Matrix":
                     try:
-                        self.add_svm_result(exp_name, pd.read_json(self.json_dict[exp_name]["Misclassification Matrix"]), comment="read from old json file version")
+                        self.add_svm_result(exp_name, pd.read_json(self.json_dict[exp_name]["Misclassification Matrix"]), comment="read from old json file version") 
                     except:
                         # should only happen if this has been loaded before and both SVM results and Misclassification Matrix are present
                         pass
@@ -2865,9 +2865,9 @@ class SpatialDataSetComparison:
         
         global_SVM_dict_total = {}
         global_SVM_dict = {}
-        for exp in self.json_dict.keys():
+        for exp in self.svm_results.keys():
             try:
-                df_SVM = pd.read_json(self.json_dict[exp]["Misclassification Matrix"])
+                df_SVM = self.svm_results[exp]["default"]["misclassification"]
                 df_SVM["T: True group"] = df_SVM["T: True group"].str.replace(r'True: ', '')
             except KeyError:
                 continue
@@ -2920,25 +2920,25 @@ class SpatialDataSetComparison:
             self.global_SVM_dict = global_SVM_dict
             self.global_SVM_dict_total = global_SVM_dict_total
             
-        if global_SVM_dict=={}:
-            self.cache_stored_SVM = False
-            return
-        else:
-            df_clusterPerformance_global = pd.DataFrame.from_dict({(i,j): global_SVM_dict[i][j] 
-                                    for i in global_SVM_dict.keys() 
-                                    for j in global_SVM_dict[i].keys()},
-                                orient='index')
-            df_clusterPerformance_global.index.names = ["Experiment", "Type"]
-            self.df_clusterPerformance_global = df_clusterPerformance_global.T 
-            
-            df_AvgClusterPerformance_global = pd.DataFrame.from_dict({(i,j): global_SVM_dict_total[i][j] 
-                                    for i in global_SVM_dict_total.keys() 
-                                    for j in global_SVM_dict_total[i].keys()},
-                                orient='index')
-            df_AvgClusterPerformance_global.index.names = ["Experiment", "Type"]
-            self.df_AvgClusterPerformance_global = df_AvgClusterPerformance_global.T
-            self.cache_stored_SVM = True
-            return 
+        #f global_SVM_dict=={}:
+        #   self.cache_stored_SVM = False
+        #   return
+        #lse:
+        df_clusterPerformance_global = pd.DataFrame.from_dict({(i,j): global_SVM_dict[i][j] 
+                                for i in global_SVM_dict.keys() 
+                                for j in global_SVM_dict[i].keys()},
+                            orient='index')
+        df_clusterPerformance_global.index.names = ["Experiment", "Type"]
+        self.df_clusterPerformance_global = df_clusterPerformance_global.T 
+        
+        df_AvgClusterPerformance_global = pd.DataFrame.from_dict({(i,j): global_SVM_dict_total[i][j] 
+                                for i in global_SVM_dict_total.keys() 
+                                for j in global_SVM_dict_total[i].keys()},
+                            orient='index')
+        df_AvgClusterPerformance_global.index.names = ["Experiment", "Type"]
+        self.df_AvgClusterPerformance_global = df_AvgClusterPerformance_global.T
+        #elf.cache_stored_SVM = True
+        return 
             
             
     def svm_plotting(self, multi_choice):
@@ -2971,7 +2971,7 @@ class SpatialDataSetComparison:
         fig_clusterPerformance = go.Figure()
         list_data_type = ["Avg. all clusters", "Avg. all organelles"]
         for i,exp in enumerate(multi_choice):
-            df_clusterPerformance = df_clusterPerformance_global.xs(exp, level='Experiment', axis=1)
+            df_clusterPerformance = df_clusterPerformance_global.xs(exp, level='Experiment', axis=1).sort_index(axis=1)
             df_AvgClusterPerformance = df_AvgClusterPerformance_global.xs(exp, level='Experiment', axis=1)
             fig_clusterPerformance.add_trace(go.Scatter(x=df_clusterPerformance.columns, y=df_clusterPerformance.loc["F1"], 
                                                     marker=dict(color=pio.templates["simple_white"].layout["colorway"][i]), name=exp))
