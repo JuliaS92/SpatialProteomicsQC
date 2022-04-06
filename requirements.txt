@@ -3,7 +3,7 @@ scipy
 sklearn
 plotly==4.14.1
 holoviews>=1.14.1,<1.15
-panel==0.10.2
+panel==0.11.0
 param==1.10.1
 bokeh==2.2.3
 matplotlib-venn==0.11.6

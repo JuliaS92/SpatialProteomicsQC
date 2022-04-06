@@ -1854,16 +1854,17 @@ class SpatialDataSetComparison:
                 elif data_type == "SVM results":
                     for res in self.json_dict[exp_name]["SVM results"].keys():
                         self.add_svm_result(exp_name,
-                                             pd.read_json(self.json_dict[exp_name]["SVM results"]["misclassification"]),
-                                             name=self.json_dict[exp_name]["SVM results"]["name"],
-                                             prediciton=pd.read_json(self.json_dict[exp_name]["SVM results"]["prediction"]),
-                                             comment=self.json_dict[exp_name]["SVM results"]["comment"],
+                                             pd.read_json(self.json_dict[exp_name]["SVM results"][res]["misclassification"]),
+                                             name=res,
+                                             prediction=pd.read_json(self.json_dict[exp_name]["SVM results"][res]["prediction"]),
+                                             comment=self.json_dict[exp_name]["SVM results"][res]["comment"],
                                              overwrite=True # supposed to always exceed upload from old format
                                              )
                 
                 elif data_type == "Misclassification Matrix":
                     try:
-                        self.add_svm_result(exp_name, pd.read_json(self.json_dict[exp_name]["Misclassification Matrix"]), comment="read from old json file version") 
+                        self.add_svm_result(exp_name, pd.read_json(self.json_dict[exp_name]["Misclassification Matrix"]),
+                                            comment="read from old json file version", overwrite=False) 
                     except:
                         # should only happen if this has been loaded before and both SVM results and Misclassification Matrix are present
                         pass
@@ -2846,7 +2847,7 @@ class SpatialDataSetComparison:
         Returns:
             self.analysed_datasets_dict:
                 local dictionary (SVM_dict) will be assigned to the global dictionary self.analysed_datasets_dict, that is available for downloading
-                {"Experiment name" : {see def read_jsonFile(self) [below]}
+                {"Experiment name" : {see read_jsonFile(self) [below]}
                                      {"Misclassification Analysis": 
                                          {
                                           "True: ER" : {
