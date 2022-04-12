@@ -3296,7 +3296,7 @@ def align_datasets(df):
     df_01_aligned = df_01_aligned.unstack("Experiment") # rejoin index
     c = []
     for el in df_01_aligned.index.get_level_values("Protein IDs"):
-        cs = index_mapping.xs(el, level="Protein IDs", axis=0).Compartment.iloc[0,:].values
+        cs = [el for el in index_mapping.xs(el, level="Protein IDs", axis=0).Compartment.iloc[0,:].values if type(el) == str]
         if len(set(cs)) == 1:
             c.append(cs[0])
         else:
