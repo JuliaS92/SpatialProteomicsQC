@@ -22,6 +22,7 @@ import pkg_resources
 from scipy.stats import zscore
 import urllib.parse
 import urllib.request
+import bisect
 
 def natsort_index_keys(x):
     order = natsort.natsorted(np.unique(x.values))
@@ -1735,6 +1736,8 @@ class SpatialDataSetComparison:
         self.df_quantity_pr_pg_combined = pd.DataFrame()
         self.svm_results = dict()
         
+        self.parameters = dict()
+        
 
     def read_jsonFile(self): #, content=None
         """
@@ -2741,7 +2744,7 @@ class SpatialDataSetComparison:
         return im_t, im_i, figure_UpSetPlot_total, figure_UpSetPlot_int
     
     
-    def calculate_global_scatter(self, multi_choice, metric, consolidation):
+    def calculate_global_scatter(self, metric, consolidation):
         """
         A distribution plot of the profile scatter in each experiment is generated, with variable distance metric and consolidation of replicates.
         
@@ -2775,20 +2778,18 @@ class SpatialDataSetComparison:
         assert consolidation in cons_functions.keys()
         assert metric in metrics.keys()
         
-        # Filter experiments and intersection of proteins
-        df = self.df_01_filtered_combined.loc[
-            self.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice)].copy()
+        self.parameters["reproducibility metric"] = metric
+        self.parameters["reproducibility consolidation"] = consolidation
         
+        df = self.df_01_filtered_combined.copy()
         df.index = df.index.droplevel(["Exp_Map", "Gene names", "Compartment"])
         if "Sequence" in df.index.names:
             df.index = df.index.droplevel(["Protein IDs"])
-        df_across = df.unstack(["Experiment", "Map"]).dropna().stack(["Experiment", "Map"])
-        nPG = df_across.unstack(["Experiment", "Map"]).shape[0]
         
         # Calculate and consolidate distances
         distances = pd.DataFrame()
-        for exp in multi_choice:
-            df_m = df_across.xs(exp, level="Experiment", axis=0)
+        for exp in self.exp_names:
+            df_m = df.xs(exp, level="Experiment", axis=0).unstack("Map").dropna().stack("Map")
             maps = list(set(df_m.index.get_level_values("Map")))
             
             # this if clause switches between pairwise comparisons of profiles (else) and comparisons to an average/median profile
@@ -2822,15 +2823,70 @@ class SpatialDataSetComparison:
                         distances_m = pd.concat([distances_m, dist], axis=1)
                 distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
             
-            distances = pd.concat([distances, pd.Series(distances_m.apply(cons_functions[consolidation], axis=1), name=exp)], axis=1)
-        distances.index = distances_m.index
+            distances = pd.concat([distances,
+                                   pd.Series(distances_m.apply(cons_functions[consolidation], axis=1), name=exp, index=distances_m.index)],
+                                  axis=1)
         
         self.distances = distances
+    
+    
+    def plot_reproducibility_distribution(self, multi_choice=[], q=0.5,
+                                          show_full=True, show_rug=False, x_cut=None):
         
-        # Create and return plot
-        plot = ff.create_distplot(distances.T.values, distances.columns, show_hist=False)
-        plot.update_layout(title="Distribution of {} {}s, n = {}".format(metric, consolidation, nPG),
-                           width=1500, height=600, template="simple_white", xaxis={"rangemode": "nonnegative"})
+        if len(multi_choice) == 0:
+            multi_choice = self.exp_names
+        
+        distances = self.distances[multi_choice].copy()
+        if x_cut == None:
+            x_cut = 1.05*distances.max().max()
+        
+        # get data and labels set up for figure factory
+        if show_full:
+            plotdata = distances.join(distances.dropna(), lsuffix=" full", rsuffix=" overlap")
+        else:
+            plotdata = distances.dropna()
+        plotlabels = list(plotdata.columns)
+        plotdata = [vals.dropna() for k,vals in plotdata.T.iterrows()]
+        
+        # calculate quantiles
+        quantiles = dict()
+        for i, (name, data) in enumerate(zip(plotlabels, plotdata)):
+            quantiles[name] = np.quantile(data, q)
+        
+        # create plot
+        plot = ff.create_distplot(plotdata, plotlabels, show_hist=False, show_rug=show_rug, show_curve=True)
+        plot.update_layout(title="Distribution of {} {}, overlap = {}".format(self.parameters["reproducibility consolidation"],
+                                                                              self.parameters["reproducibility metric"],
+                                                                              len(plotdata[-1])),
+                           width=1000, height=600, template="simple_white",
+                           xaxis={"range": (0,x_cut), "rangemode": "nonnegative"},
+                           )
+        
+        # get color dictionary and assign same color to overlap and full coverage traces, assign legend groups
+        colors = []
+        plot.for_each_trace(lambda x: colors.append(x.marker.color),
+                            selector=lambda x: not x.name.endswith(" overlap"))
+        if show_full:
+            colors[distances.shape[1]::] = colors[:distances.shape[1]]
+        colors = {k: v for k,v in zip(plotlabels, colors)}
+        plot.for_each_trace(lambda x: x.update(legendgroup=x.name, marker_color=colors[x.name]))
+        
+        # get density estimates at quantile and add highlighting lines
+        densities = []
+        plot.for_each_trace(lambda x: densities.append(x.y[bisect.bisect(x.x, quantiles[x.name])]),
+                            selector=dict(type="scatter"))
+        for i, (name, data) in enumerate(zip(plotlabels, plotdata)):
+            plot.add_scatter(x=[quantiles[name], quantiles[name]], y=[0,densities[i]],
+                             text=["", "{:.4f}".format(quantiles[name])],
+                             name=name, legendgroup=name, showlegend=False,
+                             line_color=colors[name],
+                             mode="lines+text", textposition='top right')
+        
+        # dash full distribution traces
+        if show_full:
+            plot.for_each_trace(lambda x: x.update(line_dash="dash"),
+                                selector=lambda x: not x.name.endswith(" overlap"))
+        
         return plot
     
     
