@@ -202,7 +202,6 @@ class SpatialDataSet:
                 df_log_stacked: df; log transformed data
                 analysis_summary_dict["0/1 normalized data - mean"] : 0/1 normalized data across all maps by calculating the mean
                                      ["changes in shape after filtering"]
-                                     ["Unique Proteins"] : unique proteins, derived from the first entry of Protein IDs, seperated by a ";"
                                      ["Analysis parameters"] : {"acquisition" : ..., 
                                                                 "filename" : ...,
                                                             #SILAC#
@@ -713,10 +712,7 @@ class SpatialDataSet:
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
             
             # poopulate analysis summary dictionary with (meta)data
-            unique_proteins = list(set(self.df_01_stacked.index.get_level_values("Protein IDs")))
-            unique_proteins.sort()
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
@@ -758,9 +754,6 @@ class SpatialDataSet:
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
             
-            unique_proteins = list(set(self.df_01_stacked.index.get_level_values("Protein IDs")))
-            unique_proteins.sort()
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
@@ -788,9 +781,6 @@ class SpatialDataSet:
             df_01_comparison = df_01_comparison.copy().reset_index().drop(["C-Score", "Q-value", "Score", "Majority protein IDs", "Protein names", "id"], axis=1, errors="ignore")
             self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()#double_precision=4) #.reset_index()
             
-            unique_proteins = list(set(self.df_01_stacked.index.get_level_values("Protein IDs")))
-            unique_proteins.sort()
-            self.analysis_summary_dict["Unique Proteins"] = unique_proteins
             self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy() 
             analysis_parameters = {"acquisition" : self.acquisition, 
                                    "filename" : self.filename,
@@ -1728,8 +1718,6 @@ class SpatialDataSetComparison:
         #    self.markerproteins = self.markerproteins_set[kwargs["organism"]]
         #    del kwargs["organism"]
         
-        #self.unique_proteins_total = unique_proteins_total
-        
         self.exp_names, self.exp_map_names = [], []
         
         self.df_01_filtered_combined, self.df_distance_comp = pd.DataFrame(), pd.DataFrame()
@@ -1764,7 +1752,6 @@ class SpatialDataSetComparison:
                 },
                    
                 "quantity: profiles/protein groups" : df - number of protein groups | number of profiles | data completeness of profiles
-                "Unique Proteins": list,
                 "Analysis parameters" : {
                     "acquisition" : str,
                     "filename" : str,
@@ -1816,7 +1803,6 @@ class SpatialDataSetComparison:
                             "distance": Manhattan distances for each individual protein of the specified clusters (see self.markerproteins) are stored
                 df_quantity_pr_pg_combined: df, no index, column names: "filtering", "type", "number of protein groups", "number of profiles", 
                                             "data completeness of profiles", "Experiment"
-                unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
                 exp_map_names: list of unique Exp_Map - fusions e.g. LFQ_Map1
                 exp_names: list of unique Experiment names - e.g. LFQ
         """
@@ -1825,7 +1811,6 @@ class SpatialDataSetComparison:
         json_dict = self.json_dict
     
         self.analysis_parameters_total = {}
-        unique_proteins_total = {}
         self.exp_names = list(json_dict.keys())
         
         df_01_combined = pd.DataFrame()
@@ -1847,9 +1832,6 @@ class SpatialDataSetComparison:
                     df_quantity_pr_pg_toadd = pd.read_json(json_dict[exp_name][data_type])
                     df_quantity_pr_pg_toadd["Experiment"] = exp_name
                     df_quantity_pr_pg_combined = pd.concat([df_quantity_pr_pg_combined, df_quantity_pr_pg_toadd])
-                
-                elif data_type == "Unique Proteins":
-                    unique_proteins_total[exp_name] = json_dict[exp_name][data_type]
                 
                 elif data_type == "Analysis parameters":
                     self.analysis_parameters_total[exp_name] = json_dict[exp_name][data_type]
@@ -1901,7 +1883,6 @@ class SpatialDataSetComparison:
         index_ExpMap.name = "Exp_Map"
         df_01_filtered_combined.set_index(index_ExpMap, append=True, inplace=True)
         
-        self.unique_proteins_total = unique_proteins_total
         self.exp_map_names = list(index_ExpMap.unique())
         
         self.df_01_filtered_combined = df_01_filtered_combined
@@ -2630,7 +2611,7 @@ class SpatialDataSetComparison:
         return fig_pr_dc
     
     
-    def venn_sections(self, multi_choice_venn=["Exp1"]):
+    def venn_sections(self, multi_choice_venn=["Exp1"], omit_size=300):
         """
         UpsetPlot is created based on list of experiments. If 2/3 experiments are given, the Upsetlot displays all possible
         mutually exclusive overlapping combinations of these experiments. Additionally a Venn Diagram is created using matplotlib. 
@@ -2643,7 +2624,7 @@ class SpatialDataSetComparison:
         Args:
             multi_choice_venn: list of experiment names 
             self:
-                unique_proteins_total: dict, key: Experiment name, value: unique protein (groups)
+                df_01_filtered_combined: pd.DataFrame, Uses Protein IDs index level
         
         Returns:
             im: Venn diagram, made availabe flor plotly/webinterface
@@ -2680,7 +2661,7 @@ class SpatialDataSetComparison:
                         experiment_decoded.append(exp)
                 #dictio[len(combo)] = experiment_decoded
                 if len(multi_choice)>3:
-                    if len(combo)>300:
+                    if len(combo)>omit_size:
                         overlapping_ids.append(len(combo))
                         experiments.append(experiment_decoded)
                 else:
