@@ -144,6 +144,40 @@ class SpatialDataSet:
         self.analysis_summary_dict = {}
     
     
+    def run_pipeline(self, content=None, progressbar=None):
+        """
+        Run the whole processing pipeline without generating any visual output.
+        
+        Args:
+            self: needs to be fully configured by init arguments
+            content: None or file like object. Passed on to data_reading.
+            progressbar: None or progress indicator, "STDOUT" print, panel.pane object and panel.widget value setting implemented.
+        """
+        if str(type(progressbar)).startswith("panel.pane"):
+            def setprogress(x, progressbar=progressbar):
+                progressbar.object = x
+        elif str(type(progressbar)).startswith("panel.widget"):
+            def setprogress(x, progressbar=progressbar):
+                progressbar.value = x
+        elif progressbar == "STDOUT":
+            setprogress = lambda x: print(x)
+        else:
+            setprogress = lambda x: None
+        
+        setprogress("Data Reading ...")
+        self.data_reading(content=content)
+        setprogress("Data Processing ...")
+        self.processingdf()
+        self.quantity_profiles_proteinGroups()
+        setprogress("PCA ...")
+        self.perform_pca()
+        setprogress("Calculating Manhattan Distance ...")
+        self.calc_biological_precision()
+        setprogress("Assembling analysis output ...")
+        self.results_overview_table()
+        setprogress("Analysis finished.")
+    
+    
     def data_reading(self, filename=None, content=None):
         """
         Data import. Can read the df_original from a file or buffer. 
