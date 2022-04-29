@@ -39,7 +39,7 @@ if __name__ == "__main__":
             
             out = pg.merge(pr_count, on="Protein.Group", how="left")
             
-            out.rename({"Protein.Group": "Majority protein IDs", "Genes": "Gene names"}, axis=1, inplace=True)
+            out.rename({"Protein.Group": "Majority protein IDs", "Genes": "Gene names", "Protein.Ids": "Protein IDs"}, axis=1, inplace=True)
             out.insert(loc=out.shape[1], column="Potential contaminant", value="")
             out.insert(loc=out.shape[1], column="Reverse", value="")
             out.insert(loc=out.shape[1], column="Only identified by site", value="")
