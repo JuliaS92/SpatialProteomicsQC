@@ -1131,13 +1131,13 @@ class SpatialDataSet:
         pca = PCA(n_components=3)
 
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
-        df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked.apply(zscore, axis=0)))
+        df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked.apply(zscore, axis=0).replace(np.nan, 0)))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_01orlog_fracunstacked.index
         self.df_pca = df_pca.sort_index(level=["Protein IDs", "Compartment"])
         
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
-        df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked.apply(zscore, axis=0)))
+        df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked.apply(zscore, axis=0).replace(np.nan, 0)))
         df_pca_combined.columns = ["PC1", "PC2", "PC3"]
         df_pca_combined.index = df_01orlog_MapFracUnstacked.index
         self.df_pca_combined = df_pca_combined.sort_index(level=["Protein IDs", "Compartment"])
@@ -2006,7 +2006,7 @@ class SpatialDataSetComparison:
         
         pca = PCA(n_components=3)
         
-        df_pca = pd.DataFrame(pca.fit_transform(df_mean.apply(zscore, axis=0)))
+        df_pca = pd.DataFrame(pca.fit_transform(df_mean.apply(zscore, axis=0).replace(np.nan, 0)))
         df_pca.columns = ["PC1", "PC2", "PC3"]
         df_pca.index = df_mean.index
         
