@@ -5,6 +5,7 @@ import plotly.io as pio
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
+from plotly.subplots import make_subplots
 import re
 import traceback
 from io import BytesIO
@@ -2904,6 +2905,45 @@ class SpatialDataSetComparison:
         
         return plot
     
+    
+    def plot_overview(self, multi_choice, clusters, quantile):
+        dists = self.df_distance_comp.query('Cluster in @clusters').query('Experiment in @multi_choice')\
+            .groupby(["Experiment", "Map", "Cluster"]).median()\
+            .groupby("Experiment").sum().rename({"distance": "complex scatter"}, axis=1)
+        
+        rep = self.distances[multi_choice].dropna().apply(lambda x: np.quantile(x, quantile), axis=0)
+        rep.name = "intermap scatter"
+        
+        depth = self.df_quantity_pr_pg_combined.query('type == "intersection"').query('filtering == "after filtering"').query('Experiment in @multi_choice')\
+            [["Experiment", "number of protein groups"]].set_index("Experiment")\
+            .rename({"number of protein groups": "profiled depth"}, axis=1)
+        
+        df_plot = dists.join(rep).join(depth).melt(ignore_index=False).reset_index()
+        
+        fig = make_subplots(
+            1,3,
+            subplot_titles=["profiled depth", "complex scatter", "intermap scatter"],
+            horizontal_spacing=0.17
+        )
+        
+        for i,y in enumerate(["profiled depth", "complex scatter", "intermap scatter"]):
+            for j,e in enumerate(df_plot.Experiment.unique()):
+                fig.add_trace(go.Bar(x=df_plot.query('variable == @y and Experiment == @e').Experiment,
+                                     y=df_plot.query('variable == @y and Experiment == @e').value, name=e,
+                                     marker=dict(color=px.colors.qualitative.D3[j], coloraxis="coloraxis"),
+                                     legendgroup=e,
+                                     hovertemplate="%{y:.5r}"
+                                    ), 1, i+1)
+        fig.update_xaxes(matches='x').update_layout(template="simple_white", showlegend=False)
+        fig.for_each_yaxis(lambda x: x.update(title="full coverage protein groups" if x.anchor=="x"\
+                                              else "∑ median intracomplex distances" if x.anchor=="x2"\
+                                              else f"{quantile*100}% quantile of shared protein groups",
+                                              tickformat=".0s" if x.anchor == "x" else ".2r",
+                                              nticks=8, title_standoff=8 if x.anchor=="x" else 0
+                                             ))
+        fig.update_layout(width=320+(200*(j+1)), height=500, margin=dict(t=70,b=0,r=0,l=0),
+                          title="Overview of benchmarking output")
+        return fig
     
     def svm_processing(self):
         """
