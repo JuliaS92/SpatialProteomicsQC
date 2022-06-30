@@ -258,7 +258,7 @@ btn_home_analysesingle = pn.widgets.Button(name="Format and analyse single exper
                                            css_classes=["button-main"])
 lo_home_singleinstructions = pn.Column(
     pn.Pane(textfragments["home_single_shortinstructions"], width=CONTENT_WIDTH),
-    pn.Card("Add screenshot tutorial here.", header="Tutorial", width=CONTENT_WIDTH,
+    pn.Card(textfragments["quick_start_guide"], header="DOM-QC 1-min Quick Start Guide", width=CONTENT_WIDTH,
             name="tutorial_single", collapsed=True)
 )
 btn_home_benchmark = pn.widgets.Button(name="Benchmark multiple experiments",
@@ -266,8 +266,8 @@ btn_home_benchmark = pn.widgets.Button(name="Benchmark multiple experiments",
                                        css_classes=["button-main"])
 lo_home_benchmarkinstructions = pn.Column(
     pn.Pane(textfragments["home_benchmark_shortinstructions"], width=CONTENT_WIDTH),
-    pn.Card("Add screenshot tutorial here.", header="Tutorial", width=CONTENT_WIDTH,
-            name="tutorial_benchmark", collapsed=True)
+#    pn.Card("Add screenshot tutorial here.", header="Tutorial", width=CONTENT_WIDTH,
+#            name="tutorial_benchmark", collapsed=True)
 )
 
 #### Append layout to dashboard
@@ -314,7 +314,11 @@ dashboard_analysis.objects = [
 ####################
 lo_read_file = pn.Card(header="### Upload configuration", min_width=400)
 lo_config_instructions = pn.Card(
-    pn.Pane(textfragments["upload_details"]), header="### Details on configuring your data", width=400)
+    pn.Pane(textfragments["upload_instructions"]), header="### Instructions", width=400)
+lo_config_details = pn.Card(
+    pn.Pane(textfragments["upload_details"]), header="### Details on configuring your data", width=400, collapsed = True)
+lo_config_error_messages = pn.Card(
+    pn.Pane(textfragments["upload_error_messages"]), header="### Common error messages", width=400, collapsed = True)
 
 i_file = pn.widgets.FileInput(name="Upload file")
 loading_status = pn.Row()
@@ -379,7 +383,7 @@ dashboard_analysis.objects[[el.name for el in dashboard_analysis].index("file_co
 for el in [i_file,
     pn.Row(
         pn.Column(lo_read_file, analysis_status, loading_status),
-        lo_config_instructions
+        pn.Column(lo_config_instructions, lo_config_details, lo_config_error_messages) 
     )
 ]:
     dashboard_analysis.objects[[el.name for el in dashboard_analysis].index("file_config")].append(el)
@@ -507,6 +511,8 @@ def execution(event):
         analysis_status.object = "Please upload your custom file for gene reannotation"
     else:
         lo_config_instructions.collapsed = True
+        lo_config_details.collapsed = True
+        lo_config_error_messages.collapsed = True
         lo_read_file.collapsed = True
         output_layoutpos = [el.name for el in dashboard_analysis].index("analysis_output")
         dashboard_analysis.objects[output_layoutpos].objects = []
@@ -1588,15 +1594,20 @@ btn_coll_dropmem = pn.widgets.Button(name="Drop selected datasets from memory",
                                      button_type="danger", disabled=True) # move from top of page
 lo_coll_buttons = pn.WidgetBox(objects=[
     i_coll_download,
-    btn_coll_editnames,
-    btn_coll_reannotate,
+#    btn_coll_editnames,
+#    btn_coll_reannotate,
     btn_coll_runmain,
     btn_coll_dropmem
 ], width=300)
 
 ## Interaction pane
 lo_instructions_datamanagement = pn.Card(pn.pane.Markdown(textfragments["coll_status_default"]),
-                                         header="**Explanation**", width=400)
+                                         header="**Explanation**", width=400, collapsed=True)
+
+lo_instructions_error_messages = pn.Card(pn.pane.Markdown(textfragments["benchmark_error_messages"]),
+                                         header="**Common error messages**", width=400, collapsed=True)
+
+
 o_status_datamanagement = pn.pane.Markdown(width=400)
 def set_status_datamanagement(x, append=False):
     if not append:
@@ -1612,6 +1623,7 @@ def set_status_datamanagement(x, append=False):
 set_status_datamanagement("Step 1: Add datasets")
 o_dynamic_collectionmanagement = pn.Row()
 lo_coll_interactions = pn.Column(objects=[lo_instructions_datamanagement,
+                                          lo_instructions_error_messages,
                                           o_status_datamanagement,
                                           o_dynamic_collectionmanagement])
 
