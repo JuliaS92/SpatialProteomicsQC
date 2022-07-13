@@ -128,7 +128,7 @@ class SpatialDataSet:
             self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
             df_organellarMarkerSet = pd.read_csv(
                                                  pkg_resources.resource_stream(__name__,'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
-                                                 usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
+                                                 usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
             self.df_organellarMarkerSet = df_organellarMarkerSet
         else:
             assert kwargs["organism"]+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes")
@@ -136,7 +136,7 @@ class SpatialDataSet:
             self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
             df_organellarMarkerSet = pd.read_csv(
                                                  pkg_resources.resource_stream(__name__,'annotations/organellemarkers/{}.csv'.format(kwargs["organism"])),
-                                                 usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
+                                                 usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
             self.df_organellarMarkerSet = df_organellarMarkerSet
             self.organism = kwargs["organism"]
             del kwargs["organism"]
