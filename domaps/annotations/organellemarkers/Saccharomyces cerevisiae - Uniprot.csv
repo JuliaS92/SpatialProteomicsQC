@@ -1,0 +1,925 @@
+Gene name,Protein ID,ORF,Compartment,TMD?,topology,copy number,description
+SAC6,P32599,YDR129C,actin,no,soluble,25994,Fimbrin
+ABP1,P15891,YCR088W,actin,no,soluble,19342,Actin-binding protein of the cortical actin cytoskeleton
+ARC35,P53731,YNR035C,actin,no,soluble,13065,Subunit of the ARP2/3 complex
+EDE1,P34216,YBL047C,actin,no,soluble,12983,Scaffold protein involved in the formation of early endocytic sites
+ARC15,P40518,YIL062C,actin,no,soluble,11932,Subunit of the ARP2/3 complex
+ARC18,Q05933,YLR370C,actin,no,soluble,11539,Subunit of the ARP2/3 complex
+BBC1,P47068,YJL020C,actin,no,soluble,10019,Protein possibly involved in assembly of actin patches
+PAN1,P32521,YIR006C,actin,no,soluble,9763,Part of actin cytoskeleton-regulatory complex Pan1p-Sla1p-End3p
+SLA1,P32790,YBL007C,actin,no,soluble,8674,Cytoskeletal protein binding protein
+ARC40,P38328,YBR234C,actin,no,soluble,7898,Subunit of the ARP2/3 complex
+CAP2,P13517,YIL034C,actin,no,soluble,7206,Beta subunit of the capping protein heterodimer (Cap1p and Cap2p)
+SLA2,P33338,YNL243W,actin,no,soluble,6881,Adaptor protein that links actin to clathrin and endocytosis
+CAP1,P28495,YKL007W,actin,no,soluble,5944,Alpha subunit of the capping protein heterodimer (Cap1p and Cap2p)
+MYO5,Q04439,YMR109W,actin,no,soluble,5766,One of two type I myosin motors
+END3,P39013,YNL084C,actin,no,soluble,4507,EH domain-containing protein involved in endocytosis
+MYO3,P36006,YKL129C,actin,no,soluble,4361,One of two type I myosins
+BZZ1,P38822,YHR114W,actin,no,soluble,3845,SH3 domain protein implicated in regulating actin polymerization
+AIM21,P40563,YIR003W,actin,no,soluble,3655,Subunit of a complex that associates with actin filaments
+VRP1,P37370,YLR337C,actin,no,soluble,3203,Verprolin
+LAS17,Q12446,YOR181W,actin,no,soluble,2743,Actin assembly factor
+CWP2,P43497,YKL096W-A,cell wall,no,extracellular,52209,Covalently linked cell wall mannoprotein
+BGL2,P15703,YGR282C,cell wall,no,extracellular,25110,Endo-beta-1
+TIP1,P27654,YBR067C,cell wall,no,extracellular,14370,Major cell wall mannoprotein with possible lipase activity
+CCW12,Q12127,YLR110C,cell wall,no,extracellular,13881,Cell wall mannoprotein
+HSP150,P32478,YJL159W,cell wall,no,extracellular,11810,O-mannosylated heat shock protein
+CIS3,P47001,YJL158C,cell wall,no,extracellular,10727,Mannose-containing glycoprotein constituent of the cell wall
+SCW4,P53334,YGR279C,cell wall,no,extracellular,9037,Cell wall protein with similarity to glucanases
+CCW14,O13547,YLR390W-A,cell wall,no,extracellular,7590,Covalently linked cell wall glycoprotein
+UTR2,P32623,YEL040W,cell wall,no,extracellular,6896,Chitin transglycosylase
+CWP1,P28319,YKL096W,cell wall,no,extracellular,6791,Cell wall mannoprotein that localizes to birth scars of daughter cells
+TOS6,P48560,YNL300W,cell wall,no,extracellular,6737,Glycosylphosphatidylinositol-dependent cell wall protein
+GAS5,Q08193,YOL030W,cell wall,no,extracellular,6397,1
+SCW10,Q04951,YMR305C,cell wall,no,extracellular,6321,Cell wall protein with similarity to glucanases
+EXG1,P23776,YLR300W,cell wall,no,extracellular,6165,Major exo-1
+FIT2,Q08906,YOR382W,cell wall,no,extracellular,5744,Mannoprotein that is incorporated into the cell wall
+TOS1,P38288,YBR162C,cell wall,no,extracellular,5693,Covalently-bound cell wall protein of unknown function
+CTS1,P29029,YLR286C,cell wall,no,extracellular,5411,Endochitinase
+GAS3,Q03655,YMR215W,cell wall,no,extracellular,5101,Putative 1
+CRH1,P53301,YGR189C,cell wall,no,extracellular,4917,Chitin transglycosylase
+PST1,Q12355,YDR055W,cell wall,no,extracellular,3762,Cell wall protein that contains a putative GPI-attachment site
+SCW11,P53189,YGL028C,cell wall,no,extracellular,3756,Cell wall protein with similarity to glucanases
+FIT3,Q08907,YOR383C,cell wall,no,extracellular,3625,Mannoprotein that is incorporated into the cell wall
+SRL1,Q08673,YOR247W,cell wall,no,extracellular,3304,Mannoprotein that exhibits a tight association with the cell wall
+AFB1,Q07988,YLR040C,cell wall,no,extracellular,3265,MATalpha-specific a-factor blocker
+DAN4,P47179,YJR151C,cell wall,no,extracellular,2844,Cell wall mannoprotein
+SUN4,P53616,YNL066W,cell wall,no,extracellular,2664,Cell wall protein related to glucanases localized in birth scars
+SIM1,P40472,YIL123W,cell wall,no,extracellular,2170,Protein of the SUN family (Sim1p
+TIR4,Q12218,YOR009W,cell wall,no,extracellular,1925,Cell wall mannoprotein
+AGA2,P32781,YGL032C,cell wall,no,extracellular,1599,Adhesion subunit of a-agglutinin of a-cells
+TIR1,P10863,YER011W,cell wall,no,extracellular,1171,Cell wall mannoprotein
+TDH3,P00359,YGR192C,cytosol,no,soluble,746358,Glyceraldehyde-3-phosphate dehydrogenase (GAPDH)
+FBA1,P14540,YKL060C,cytosol,no,soluble,737009,Fructose 1
+ENO2,P00925,YHR174W,cytosol,no,soluble,736617,Enolase II
+PDC1,P06169,YLR044C,cytosol,no,soluble,581219,Major of three pyruvate decarboxylase isozymes
+PGK1,P00560,YCR012W,cytosol,no,soluble,535389,3-phosphoglycerate kinase
+TEF1,P02994,YPR080W,cytosol,no,soluble,533920,Translational elongation factor EF-1 alpha 1
+TEF2,P02994,YBR118W,cytosol,no,soluble,532551,Translational elongation factor EF-1 alpha 2
+AHP1,P38013,YLR109W,cytosol,no,soluble,291203,Thiol-specific peroxiredoxin
+SSA1,P10591,YAL005C,cytosol,no,soluble,255901,ATPase involved in protein folding and NLS-directed nuclear transport
+SSA2,P10592,YLL024C,cytosol,no,soluble,229625,HSP70 family ATP-binding protein
+GPM1,P00950,YKL152C,cytosol,no,soluble,187918,Tetrameric phosphoglycerate mutase
+YEF3,P16521,YLR249W,cytosol,no,soluble,172751,Translation elongation factor 3
+TDH2,P00358,YJR009C,cytosol,no,soluble,171296,Glyceraldehyde-3-phosphate dehydrogenase (GAPDH)
+PGI1,P12709,YBR196C,cytosol,no,soluble,158738,Glycolytic enzyme phosphoglucose isomerase
+CDC19,P00549,YAL038W,cytosol,no,soluble,144590,Pyruvate kinase
+HXK2,P04807,YGL253W,cytosol,no,soluble,136905,Hexokinase isoenzyme 2
+ALD6,P54115,YPL061W,cytosol,no,soluble,135000,Cytosolic aldehyde dehydrogenase
+HSC82,P15108,YMR186W,cytosol,no,soluble,134828,Cytoplasmic chaperone of the Hsp90 family
+TPI1,P00942,YDR050C,cytosol,no,soluble,121824,Triose phosphate isomerase
+GPP1,P41277,YIL053W,cytosol,no,soluble,118604,Constitutively expressed DL-glycerol-3-phosphate phosphatase
+OSI1,P36086,YKL071W,cytosol,no,soluble,115509,NADH-dependent aldehyde reductase
+MET6,P05694,YER091C,cytosol,no,soluble,111404,Cobalamin-independent methionine synthase
+GND1,P38720,YHR183W,cytosol,no,soluble,107317,6-phosphogluconate dehydrogenase (decarboxylating)
+PSA1,P41940,YDL055C,cytosol,no,soluble,104294,GDP-mannose pyrophosphorylase (mannose-1-phosphate guanyltransferase)
+TSA1,P34760,YML028W,cytosol,no,soluble,103335,Thioredoxin peroxidase
+SSB2,P40150,YNL209W,cytosol,no,soluble,102410,Cytoplasmic ATPase that is a ribosome-associated molecular chaperone
+ENO1,P00924,YGR254W,cytosol,no,soluble,99031,Enolase I
+EFT2,P32324,YDR385W,cytosol,no,soluble,93385,Elongation factor 2 (EF-2)
+TIF2,P10081,YJL138C,cytosol,no,soluble,92322,Translation initiation factor eIF4A
+TMA19,P35691,YKL056C,cytosol,no,soluble,90676,Protein that associates with ribosomes
+HSP82,P02829,YPL240C,cytosol,no,soluble,86723,Hsp90 chaperone
+PFK1,P16861,YGR240C,cytosol,no,soluble,77963,Alpha subunit of heterooctameric phosphofructokinase
+SOD1,P00445,YJR104C,cytosol,no,soluble,76043,Cytosolic copper-zinc superoxide dismutase
+FAS1,P07149,YKL182W,cytosol,no,soluble,74144,Beta subunit of fatty acid synthetase
+STM1,P34167,YLR150W,cytosol,no,soluble,70456,Protein required for optimal translation under nutrient stress
+TEF4,P36008,YKL081W,cytosol,no,soluble,69914,Gamma subunit of translational elongation factor eEF1B
+SSE1,P32589,YPL106C,cytosol,no,soluble,68635,ATPase component of heat shock protein Hsp90 chaperone complex
+EGD2,P38879,YHR193C,cytosol,no,soluble,66396,Alpha subunit of the nascent polypeptide-associated complex (NAC)
+BMH1,P29311,YER177W,cytosol,no,soluble,65471,14-3-3 protein
+SAM1,P10659,YLR180W,cytosol,no,soluble,65133,S-adenosylmethionine synthetase
+ADK1,P07170,YDR226W,cytosol,no,soluble,56107,Adenylate kinase
+LEU1,P07264,YGL009C,cytosol,no,soluble,56013,Isopropylmalate isomerase
+GDH1,P07262,YOR375C,cytosol,no,soluble,55615,NADP(+)-dependent glutamate dehydrogenase
+FAS2,P19097,YPL231W,cytosol,no,soluble,52956,Alpha subunit of fatty acid synthetase
+TIF1,P10081,YKR059W,cytosol,no,soluble,52628,Translation initiation factor eIF4A
+EFT1,P32324,YOR133W,cytosol,no,soluble,52464,Elongation factor 2 (EF-2)
+PFK2,P16862,YMR205C,cytosol,no,soluble,50861,Beta subunit of heterooctameric phosphofructokinase
+STI1,P15705,YOR027W,cytosol,no,soluble,50288,Evolutionarily-conserved Hsp90 cochaperone
+CDC60,P26637,YPL160W,cytosol,no,soluble,49749,Cytosolic leucyl tRNA synthetase
+ASN1,P49089,YPR145W,cytosol,no,soluble,48488,Asparagine synthetase
+THR4,P16120,YCR053W,cytosol,no,soluble,48158,Threonine synthase
+ALA1,P40825,YOR335C,cytosol,no,soluble,47441,Cytoplasmic and mitochondrial alanyl-tRNA synthetase
+EGD1,Q02642,YPL037C,cytosol,no,soluble,46777,Subunit beta1 of the nascent polypeptide-associated complex (NAC)
+CYS4,P32582,YGR155W,cytosol,no,soluble,45620,Cystathionine beta-synthase
+BMH2,P34730,YDR099W,cytosol,no,soluble,42982,14-3-3 protein
+IPP1,P00817,YBR011C,cytosol,no,soluble,42812,Cytoplasmic inorganic pyrophosphatase (PPase)
+MBF1,O14467,YOR298C-A,cytosol,no,soluble,42645,Transcriptional coactivator
+GRS1,P38088,YBR121C,cytosol,no,soluble,42610,Cytoplasmic and mitochondrial glycyl-tRNA synthase
+SES1,P07284,YDR023W,cytosol,no,soluble,41861,Cytosolic seryl-tRNA synthetase
+ILS1,P09436,YBL076C,cytosol,no,soluble,41712,Cytoplasmic isoleucine-tRNA synthetase
+ADO1,P47143,YJR105W,cytosol,no,soluble,41323,Adenosine kinase
+HXK1,P04806,YFR053C,cytosol,no,soluble,40800,Hexokinase isoenzyme 1
+CDC33,P07260,YOL139C,cytosol,no,soluble,40636,Translation initiation factor eIF4E
+ADE3,P07245,YGR204W,cytosol,no,soluble,40306,Cytoplasmic trifunctional enzyme C1-tetrahydrofolate synthase
+ADE17,P38009,YMR120C,cytosol,no,soluble,40292,Enzyme of 'de novo' purine biosynthesis
+VAS1,P07806,YGR094W,cytosol,no,soluble,39560,Mitochondrial and cytoplasmic valyl-tRNA synthetase
+SAM2,P19358,YDR502C,cytosol,no,soluble,38998,S-adenosylmethionine synthetase
+OLA1,P38219,YBR025C,cytosol,no,soluble,38234,P-loop ATPase with similarity to human OLA1 and bacterial YchF
+GLN1,P32288,YPR035W,cytosol,no,soluble,38231,Glutamine synthetase (GS)
+ARC1,P46672,YGL105W,cytosol,no,soluble,38196,Protein that binds tRNA and methionyl- and glutamyl-tRNA synthetases
+GUS1,P46655,YGL245W,cytosol,no,soluble,38110,Glutamyl-tRNA synthetase (GluRS)
+TRR1,P29509,YDR353W,cytosol,no,soluble,37897,Cytoplasmic thioredoxin reductase
+SUP45,P12385,YBR143C,cytosol,no,soluble,36685,Polypeptide release factor (eRF1) in translation termination
+HSP104,P31539,YLL026W,cytosol,no,soluble,35086,Disaggregase
+ADE6,P38972,YGR061C,cytosol,no,soluble,34954,Formylglycinamidine-ribonucleotide (FGAM)-synthetase
+HIS4,P00815,YCL030C,cytosol,no,soluble,34046,Multifunctional enzyme containing phosphoribosyl-ATP pyrophosphatase
+CYS3,P31373,YAL012W,cytosol,no,soluble,33347,Cystathionine gamma-lyase
+TRX2,P22803,YGR209C,cytosol,no,soluble,33336,Cytoplasmic thioredoxin isoenzyme
+DPS1,P04802,YLL018C,cytosol,no,soluble,33156,Aspartyl-tRNA synthetase
+HSP12,P22943,YFL014W,cytosol,no,soluble,32928,Plasma membrane protein involved in maintaining membrane organization
+YHB1,P39676,YGR234W,cytosol,no,soluble,31688,Nitric oxide oxidoreductase
+ASN2,P49090,YGR124W,cytosol,no,soluble,30867,Asparagine synthetase
+TIF5,P38431,YPR041W,cytosol,no,soluble,30676,Translation initiation factor eIF5
+TRP5,P00931,YGL026C,cytosol,no,soluble,30438,Tryptophan synthase
+URA1,P28272,YKL216W,cytosol,no,soluble,30111,Dihydroorotate dehydrogenase
+FPR1,P20081,YNL135C,cytosol,no,soluble,29826,Peptidyl-prolyl cis-trans isomerase (PPIase)
+MES1,P00958,YGR264C,cytosol,no,soluble,29753,Methionyl-tRNA synthetase
+OYE2,Q03558,YHR179W,cytosol,no,soluble,29619,Conserved NADPH oxidoreductase containing flavin mononucleotide (FMN)
+THS1,P04801,YIL078W,cytosol,no,soluble,29362,Threonyl-tRNA synthetase
+URA2,P07259,YJL130C,cytosol,no,soluble,29323,Bifunctional carbamoylphosphate synthetase/aspartate transcarbamylase
+SBA1,P28707,YKL117W,cytosol,no,soluble,28577,Co-chaperone that binds and regulates Hsp90 family chaperones
+TYS1,P36421,YGR185C,cytosol,no,soluble,28107,Cytoplasmic tyrosyl-tRNA synthetase
+ADE57,P07244,YGL234W,cytosol,no,soluble,28081,Bifunctional enzyme of 'de novo' purine nucleotide pathway
+GLY1,P37303,YEL046C,cytosol,no,soluble,28069,Threonine aldolase
+RPG1,P38249,YBR079C,cytosol,no,soluble,28010,eIF3a subunit of the eukaryotic translation initiation factor 3 (eIF3)
+HOM6,P31116,YJR139C,cytosol,no,soluble,27970,Homoserine dehydrogenase (L-homoserine:NADP oxidoreductase)
+NIP1,P32497,YMR309C,cytosol,no,soluble,27447,eIF3c subunit of the eukaryotic translation initiation factor 3 (eIF3)
+SUI2,P20459,YJR007W,cytosol,no,soluble,27273,Alpha subunit of the translation initiation factor eIF2
+IMD3,P50095,YLR432W,cytosol,no,soluble,27214,Inosine monophosphate dehydrogenase
+PRT1,P06103,YOR361C,cytosol,no,soluble,26937,eIF3b subunit of the eukaryotic translation initiation factor 3 (eIF3)
+CPR6,P53691,YLR216C,cytosol,no,soluble,26863,Peptidyl-prolyl cis-trans isomerase (cyclophilin)
+SNN1,P48232,YNL086W,endosomes,no,peripheral,10085,Subunit of the BLOC-1 complex involved in endosomal maturation
+VPS21,P36017,YOR089C,endosomes,no,peripheral,8704,Endosomal Rab family GTPase
+VPS4,P52917,YPR173C,endosomes,no,peripheral,4959,AAA-ATPase involved in multivesicular body (MVB) protein sorting
+BRO1,P48582,YPL084W,endosomes,no,peripheral,4780,Cytoplasmic class E vacuolar protein sorting (VPS) factor
+VTA1,Q06263,YLR181C,endosomes,no,peripheral,4268,Multivesicular body (MVB) protein
+VPS5,Q92331,YOR069W,endosomes,no,peripheral,3969,Nexin-1 homolog
+IST1,P53843,YNL265C,endosomes,no,peripheral,3118,Protein with positive role in the multivesicular body sorting pathway
+DID4,P36108,YKL002W,endosomes,no,peripheral,2857,Class E Vps protein of the ESCRT-III complex
+VPS17,P32913,YOR132W,endosomes,no,peripheral,2829,Subunit of the membrane-associated retromer complex
+HSE1,P38753,YHL002W,endosomes,no,peripheral,2756,Subunit of the endosomal Vps27p-Hse1p complex
+MVP1,P40959,YMR004W,endosomes,no,peripheral,2587,Protein required for sorting proteins to the vacuole
+PEP3,P27801,YLR148W,endosomes,no,peripheral,2308,Component of CORVET membrane tethering complex
+YPT35,P38815,YHR105W,endosomes,no,peripheral,2059,Endosomal protein of unknown function
+VFA1,P40080,YER128W,endosomes,no,peripheral,1988,Protein that interacts with Vps4p and has a role in vacuolar sorting
+KXD1,P53158,YGL079W,endosomes,no,peripheral,1697,Subunit of the BLOC-1 complex involved in endosomal maturation
+BLI1,P35727,YKL061W,endosomes,no,peripheral,1658,Subunit of the BLOC-1 complex involved in endosomal maturation
+VPS8,P39702,YAL002W,endosomes,no,peripheral,1353,Membrane-binding component of the CORVET complex
+RFU1,Q08003,YLR073C,endosomes,no,peripheral,1346,Protein that inhibits Doa4p deubiquitinating activity
+VPS3,P23643,YDR495C,endosomes,no,peripheral,1316,Component of CORVET membrane tethering complex
+MON1,P53129,YGL124C,endosomes,no,peripheral,1110,Subunit of a heterodimeric guanine nucleotide exchange factor (GEF)
+CCZ1,P38273,YBR131W,endosomes,no,peripheral,1101,Subunit of a heterodimeric guanine nucleotide exchange factor (GEF)
+PEP7,P32609,YDR323C,endosomes,no,peripheral,768,Adaptor protein involved in vesicle-mediated vacuolar protein sorting
+VPS38,Q05919,YLR360W,endosomes,no,peripheral,749,Part of a Vps34p phosphatidylinositol 3-kinase complex
+VPS15,P22219,YBR097W,endosomes,no,peripheral,665,Serine/threonine protein kinase involved in vacuolar protein sorting
+BLS1,Q06071,YLR408C,endosomes,no,peripheral,468,Subunit of the BLOC-1 complex involved in endosomal maturation
+KAR2,P16474,YJL034W,ER,no,lumenal,37456,ATPase involved in protein import into the ER
+RTN1,Q04947,YDR233C,ER,yes,integral,37100,Reticulon protein
+SND3,P38264,YBR106W,ER,yes,integral,30807,Involved in SRP-independent protein targeting to the ER
+PDI1,P17967,YCL043C,ER,no,lumenal,27549,Protein disulfide isomerase
+YOP1,Q12402,YPR028W,ER,yes,integral,18348,Reticulon-interacting protein
+SEC61,P32915,YLR378C,ER,yes,integral,17267,Conserved ER protein translocation channel
+SCS2,P40075,YER120W,ER,yes,integral,14184,Integral ER membrane protein
+OST4,Q99380,YDL232W,ER,yes,integral,14004,Subunit of the oligosaccharyltransferase complex of the ER lumen
+ERG11,P10614,YHR007C,ER,yes,integral,13032,Lanosterol 14-alpha-demethylase
+DPM1,P14020,YPR183W,ER,yes,integral,12976,Dolichol phosphate mannose (Dol-P-Man) synthase of ER membrane
+CPR5,P35176,YDR304C,ER,no,lumenal,11621,Peptidyl-prolyl cis-trans isomerase (cyclophilin) of the ER
+WBP1,P33767,YEL002C,ER,yes,integral,11465,Beta subunit of the oligosaccharyl transferase glycoprotein complex
+ELO3,P40319,YLR372W,ER,yes,integral,11219,Elongase
+ELO2,P25358,YCR034W,ER,yes,integral,10580,Fatty acid elongase
+OST1,P41543,YJL002C,ER,yes,integral,10487,Alpha subunit of the oligosaccharyltransferase complex of the ER lumen
+SSS1,P35179,YDR086C,ER,yes,integral,10099,Subunit of the Sec61p translocation complex (Sec61p-Sss1p-Sbh1p)
+SBH1,P52870,YER087C-B,ER,yes,integral,9810,Beta subunit of Sec61p ER translocation complex (Sec61p-Sss1p-Sbh1p)
+SEC63,P14906,YOR254C,ER,yes,integral,9491,Essential subunit of Sec63 complex
+OLE1,P21147,YGL055W,ER,yes,integral,9355,Delta(9) fatty acid desaturase
+CDS1,P38221,YBR029C,ER,yes,integral,8865,Phosphatidate cytidylyltransferase (CDP-diglyceride synthetase)
+YET3,Q07451,YDL072C,ER,yes,integral,8579,Protein of unknown function
+SWP1,Q02795,YMR149W,ER,yes,integral,8573,Delta subunit of the oligosaccharyl transferase glycoprotein complex
+SSH1,P38353,YBR283C,ER,yes,integral,8385,Subunit of the Ssh1 translocon complex
+PHO86,P46956,YJL117W,ER,yes,integral,7752,Endoplasmic reticulum (ER) resident protein
+EMC1,P25574,YCL045C,ER,yes,integral,7726,Member of conserved endoplasmic reticulum membrane complex
+SEC62,P21825,YPL094C,ER,yes,integral,7596,Essential subunit of Sec63 complex
+ERV14,P53173,YGL054C,ER,yes,integral,7503,COPII-coated vesicle protein
+YET1,P35723,YKL065C,ER,yes,integral,7431,Endoplasmic reticulum transmembrane protein
+SEC66,P33754,YBR171W,ER,yes,integral,7309,Non-essential subunit of Sec63 complex
+ERP2,P39704,YAL007C,ER,yes,integral,6821,Member of the p24 family involved in ER to Golgi transport
+EMC2,P47133,YJR088C,ER,yes,integral,6668,Member of conserved ER transmembrane complex
+EUG1,P32474,YDR518W,ER,no,lumenal,6613,Protein disulfide isomerase of the endoplasmic reticulum lumen
+ERV29,P53337,YGR284C,ER,yes,integral,6567,Protein localized to COPII-coated vesicles
+PGA2,P53903,YNL149C,ER,yes,integral,6491,Essential protein required for maturation of Gas1p and Pho8p
+ERG3,P32353,YLR056W,ER,yes,integral,6462,C-5 sterol desaturase
+LHS1,P36016,YKL073W,ER,no,lumenal,6432,Molecular chaperone of the endoplasmic reticulum lumen
+EMC5,P40540,YIL027C,ER,yes,integral,6059,Member of conserved ER transmembrane complex
+STT3,P39007,YGL022W,ER,yes,integral,5781,Catalytic subunit of the oligosaccharyltransferase complex of the ER l
+GET1,P53192,YGL020C,ER,yes,integral,5602,Subunit of the GET complex
+LCB2,P40970,YDR062W,ER,yes,integral,5539,Component of serine palmitoyltransferase
+MPD2,Q99316,YOL088C,ER,no,lumenal,5373,Member of the protein disulfide isomerase (PDI) family
+SUR2,P38992,YDR297W,ER,yes,integral,5344,Sphinganine C4-hydroxylase
+SEC72,P39742,YLR292C,ER,yes,integral,5290,Non-essential subunit of Sec63 complex
+PMT1,P33775,YDL095W,ER,yes,integral,5231,Protein O-mannosyltransferase of the ER membrane
+ERO1,Q03103,YML130C,ER,no,lumenal,5230,Thiol oxidase required for oxidative protein folding in the ER
+GPI11,Q06636,YDR302W,ER,yes,integral,5059,ER membrane protein involved in a late step of GPI anchor assembly
+PMT2,P31382,YAL023C,ER,yes,integral,5005,Protein O-mannosyltransferase of the ER membrane
+SBH2,P52871,YER019C-A,ER,yes,integral,4776,Ssh1p-Sss1p-Sbh2p complex component
+PIS1,P06197,YPR113W,ER,yes,integral,4717,Phosphatidylinositol synthase
+SPC3,Q12133,YLR066W,ER,yes,integral,4668,Subunit of signal peptidase complex
+PER33,Q12144,YLR064W,ER,yes,integral,4629,Protein that localizes to the endoplasmic reticulum
+RTN2,Q12443,YDL204W,ER,yes,integral,4592,Reticulon protein
+CYB5,P40312,YNL111C,ER,yes,integral,4468,Cytochrome b5
+ERP4,Q12450,YOR016C,ER,yes,integral,4267,Member of the p24 family involved in ER to Golgi transport
+SEY1,Q99287,YOR165W,ER,yes,integral,4191,Dynamin-like GTPase that mediates homotypic ER fusion
+OST3,P48439,YOR085W,ER,yes,integral,4142,Gamma subunit of the oligosaccharyltransferase complex of the ER lumen
+ERV41,Q04651,YML067C,ER,yes,integral,4043,Protein localized to COPII-coated vesicles
+ERG4,P25340,YGL012W,ER,yes,integral,4000,C-24(28) sterol reductase
+EMC4,P53073,YGL231C,ER,yes,integral,3893,Member of conserved ER transmembrane complex
+GET2,P40056,YER083C,ER,yes,integral,3871,Subunit of the GET complex
+ALG9,P53868,YNL219C,ER,yes,integral,3829,Mannosyltransferase
+CSG2,P35206,YBR036C,ER,yes,integral,3749,Endoplasmic reticulum membrane protein
+ELO1,P39540,YJL196C,ER,yes,integral,3658,Elongase I
+SCJ1,P25303,YMR214W,ER,no,lumenal,3626,One of several homologs of bacterial chaperone DnaJ
+ORM2,Q06144,YLR350W,ER,yes,integral,3593,Protein that mediates sphingolipid homeostasis
+EMC3,P36039,YKL207W,ER,yes,integral,3572,Member of conserved ER transmembrane complex
+YPF1,P34248,YKL100C,ER,yes,integral,3553,Intramembrane aspartyl protease of the perinuclear ER membrane
+PEX30,Q06169,YLR324W,ER,yes,integral,3505,ER-resident protein involved in peroxisomal biogenesis
+DGK1,Q12382,YOR311C,ER,yes,integral,3480,Diacylglycerol kinase
+DFM1,Q12743,YDR411C,ER,yes,integral,3467,Endoplasmic reticulum (ER) localized protein
+ERP3,Q12403,YDL018C,ER,yes,integral,3442,Protein with similarity to Emp24p and Erv25p
+LNP1,P38878,YHR192W,ER,yes,integral,3393,Lunapark family member involved in ER network formation
+ORM1,P53224,YGR038W,ER,yes,integral,3379,Protein that mediates sphingolipid homeostasis
+SPC1,P46965,YJR010C-A,ER,yes,integral,3338,Subunit of the signal peptidase complex (SPC)
+ALG12,P53730,YNR030W,ER,yes,integral,3337,Alpha-1
+SIL1,Q08199,YOL031C,ER,no,lumenal,3289,Nucleotide exchange factor for the ER lumenal Hsp70 chaperone Kar2p
+SCT1,P32784,YBL011W,ER,yes,integral,3095,Glycerol 3-phosphate/dihydroxyacetone phosphate sn-1 acyltransferase
+VMA21,P41806,YGR105W,ER,yes,integral,3010,Integral membrane protein required for V-ATPase function
+ALG11,P53954,YNL048W,ER,yes,integral,2867,Alpha-1
+SND2,Q99382,YLR065C,ER,yes,integral,2858,Protein involved in SRP-independent targeting of substrates to the ER
+APQ12,P40532,YIL040W,ER,yes,integral,2755,Nuclear envelope/ER integral membrane protein
+PER1,P25625,YCR044C,ER,yes,integral,2715,Protein of the endoplasmic reticulum
+UBC6,P33296,YER100W,ER,yes,integral,2708,Ubiquitin-conjugating enzyme involved in ERAD
+ERJ5,P43613,YFR041C,ER,yes,integral,2657,Type I membrane protein with a J domain
+SEC12,P11655,YNR026C,ER,yes,integral,2605,Guanine nucleotide exchange factor (GEF)
+GPI8,P49018,YDR331W,ER,yes,integral,2573,Catalytic subunit of the ER membrane GPI transamidase complex
+SSM4,P40318,YIL030C,ER,yes,integral,2480,Membrane-embedded ubiquitin-protein ligase and retrotranslocase
+ALG1,P16661,YBR110W,ER,yes,integral,2334,Mannosyltransferase
+ICE2,P40499,YIL090W,ER,yes,integral,2328,Integral ER membrane protein with type-III transmembrane domains
+ALG6,Q12001,YOR002W,ER,yes,integral,2035,ER-luminal alpha 1
+HRD3,Q05787,YLR207W,ER,yes,integral,1891,ER membrane protein that plays a central role in ERAD
+ATG40,Q99325,YOR152C,ER,yes,integral,1890,Autophagy receptor with a role in endoplasmic reticulum degradation
+ALG13,P53178,YGL047W,ER,no,peripheral,1883,Catalytic component of UDP-GlcNAc transferase
+ALG14,P38242,YBR070C,ER,yes,integral,1855,Component of UDP-GlcNAc transferase
+PEX29,Q03370,YDR479C,ER,yes,integral,1842,ER-resident protein involved in peroxisomal biogenesis
+MMM1,P41800,YLL006W,ER,yes,integral,1836,ER integral membrane protein
+OST6,Q03723,YML019W,ER,yes,integral,1800,Subunit of the oligosaccharyltransferase complex of the ER lumen
+HRD1,Q08109,YOL013C,ER,yes,integral,1519,Ubiquitin-protein ligase involved in ER-associated degradation (ERAD)
+GPI14,P47088,YJR013W,ER,yes,integral,1395,Glycosylphosphatidylinositol-alpha 1
+CNE1,P27825,YAL058W,ER,yes,integral,1135,Calnexin
+SPO7,P18410,YAL009W,ER,yes,integral,1104,Putative regulatory subunit of Nem1p-Spo7p phosphatase holoenzyme
+NEM1,P38757,YHR004C,ER,yes,integral,1036,Probable catalytic subunit of Nem1p-Spo7p phosphatase holoenzyme
+ERV15,P38312,YBR210W,ER,yes,integral,825,Protein involved in export of proteins from the endoplasmic reticulum
+ALG8,P40351,YOR067C,ER,yes,integral,635,Glucosyl transferase
+SCS22,Q6Q595,YBL091C-A,ER,yes,integral,632,Protein involved in regulation of phospholipid metabolism
+SEC59,P20048,YMR013C,ER,yes,integral,538,Dolichol kinase
+WSC4,P38739,YHL028W,ER,yes,integral,320,Endoplasmic reticulum (ER) membrane protein
+IRE1,P32361,YHR079C,ER,yes,integral,267,Serine-threonine kinase and endoribonuclease
+ARF1,P11076,YDL192W,Golgi,no,peripheral,33643,ADP-ribosylation factor
+VRG4,P40107,YGL225W,Golgi,yes,integral,20537,Golgi GDP-mannose transporter
+SEC26,P41810,YDR238C,Golgi,no,peripheral,16487,Essential beta-coat protein of the COPI coatomer
+SEC27,P41811,YGL137W,Golgi,no,peripheral,16404,Essential beta'-coat protein of the COPI coatomer
+COP1,P53622,YDL145C,Golgi,no,peripheral,16265,Alpha subunit of COPI vesicle coatomer complex
+SEC21,P32074,YNL287W,Golgi,no,peripheral,15933,Gamma subunit of coatomer
+RET2,P43621,YFR051C,Golgi,no,peripheral,10752,Delta subunit of the coatomer complex (COPI)
+SEC28,P40509,YIL076W,Golgi,no,peripheral,10523,Epsilon-COP subunit of the coatomer
+ARF2,P19146,YDL137W,Golgi,no,peripheral,10072,ADP-ribosylation factor
+KRE2,P27809,YDR483W,Golgi,yes,integral,8607,Alpha1
+GDA1,P32621,YEL042W,Golgi,yes,integral,7895,Guanosine diphosphatase located in the Golgi
+GLO3,P38682,YER122C,Golgi,no,peripheral,7304,ADP-ribosylation factor GTPase activating protein (ARF GAP)
+PMR1,P13586,YGL167C,Golgi,yes,integral,7303,High affinity Ca2+/Mn2+ P-type ATPase
+RBD2,Q12270,YPL246C,Golgi,yes,integral,7085,Possible rhomboid protease
+MNN2,P38069,YBR015C,Golgi,yes,integral,7052,Alpha-1
+GGA2,P38817,YHR108W,Golgi,no,peripheral,6979,Protein that regulates Arf1p
+TVP18,Q04767,YMR071C,Golgi,yes,integral,5577,Integral membrane protein
+SEC7,P11075,YDR170C,Golgi,no,peripheral,5253,Guanine nucleotide exchange factor (GEF) for ADP ribosylation factors
+KTR4,P38131,YBR199W,Golgi,yes,integral,5094,Glycosyltransferase involved in protein glycosylation
+MNN11,P46985,YJL183W,Golgi,yes,integral,5092,Subunit of a Golgi mannosyltransferase complex
+GGA1,Q06336,YDR358W,Golgi,no,peripheral,5001,Golgi-localized protein with homology to gamma-adaptin
+MNN5,P46982,YJL186W,Golgi,yes,integral,4859,Alpha-1
+RUD3,Q12234,YOR216C,Golgi,no,peripheral,4630,Golgi matrix protein
+TVP15,Q03860,YDR100W,Golgi,yes,integral,4597,Integral membrane protein
+MNN9,P39107,YPL050C,Golgi,yes,integral,4596,Subunit of Golgi mannosyltransferase complex
+GRH1,Q04410,YDR517W,Golgi,no,peripheral,4576,Acetylated cis-Golgi protein
+GOS1,P38736,YHL031C,Golgi,yes,integral,4356,v-SNARE protein involved in Golgi transport
+AUR1,P36107,YKL004W,Golgi,yes,integral,4305,Phosphatidylinositol:ceramide phosphoinositol transferase
+GRX7,P38068,YBR014C,Golgi,yes,integral,4216,Cis-golgi localized monothiol glutaredoxin
+AKR1,P39010,YDR264C,Golgi,yes,integral,4094,Palmitoyl transferase involved in protein palmitoylation
+GEA2,P39993,YEL022W,Golgi,no,peripheral,3973,Guanine nucleotide exchange factor for ADP ribosylation factors (ARFs)
+GNT1,Q12096,YOR320C,Golgi,yes,integral,3835,N-acetylglucosaminyltransferase
+KEI1,Q06346,YDR367W,Golgi,yes,integral,3614,Component of inositol phosphorylceramide (IPC) synthase
+HOC1,P47124,YJR075W,Golgi,yes,integral,3442,Alpha-1
+ANP1,P32629,YEL036C,Golgi,yes,integral,3411,Subunit of the alpha-1
+VAN1,P23642,YML115C,Golgi,yes,integral,3403,Component of the mannan polymerase I
+MNN10,P50108,YDR245W,Golgi,yes,integral,3189,Subunit of a Golgi mannosyltransferase complex
+DRS2,P39524,YAL026C,Golgi,yes,integral,3187,Trans-golgi network aminophospholipid translocase (flippase)
+COG8,Q04632,YML071C,Golgi,no,peripheral,3030,Component of the conserved oligomeric Golgi complex
+MNN1,P39106,YER001W,Golgi,yes,integral,2868,Alpha-1
+COG3,P40094,YER157W,Golgi,no,peripheral,2578,Essential component of the conserved oligomeric Golgi complex
+COG6,P53959,YNL041C,Golgi,no,peripheral,2524,Component of the conserved oligomeric Golgi complex
+COG1,P53079,YGL223C,Golgi,no,peripheral,2425,Essential component of the conserved oligomeric Golgi complex
+COG7,P53195,YGL005C,Golgi,no,peripheral,2389,Component of the conserved oligomeric Golgi complex
+KTR3,P38130,YBR205W,Golgi,yes,integral,2373,Putative alpha-1
+TVP23,P38962,YDR084C,Golgi,yes,integral,2275,Integral membrane protein
+COG5,P53951,YNL051W,Golgi,no,peripheral,2271,Component of the conserved oligomeric Golgi complex
+OCH1,P31755,YGL038C,Golgi,yes,integral,2243,Mannosyltransferase of the cis-Golgi apparatus
+YIP5,P53108,YGL161C,Golgi,yes,integral,2083,Protein that interacts with Rab GTPases
+GEA1,P47102,YJR031C,Golgi,no,peripheral,2076,Guanine nucleotide exchange factor for ADP ribosylation factors (ARFs)
+COG2,P53271,YGR120C,Golgi,no,peripheral,1989,Essential component of the conserved oligomeric Golgi complex
+KEX2,P13134,YNL238W,Golgi,yes,integral,1877,Kexin
+COG4,Q06096,YPR105C,Golgi,no,peripheral,1744,Essential component of the conserved oligomeric Golgi complex
+RGP1,P16664,YDR137W,Golgi,no,peripheral,1630,Subunit of a Golgi membrane exchange factor (Ric1p-Rgp1p)
+GYP1,Q08484,YOR070C,Golgi,no,peripheral,1514,Cis-golgi GTPase-activating protein (GAP) for yeast Rabs
+RIC1,P40395,YLR039C,Golgi,no,peripheral,1350,Protein involved in retrograde transport to the cis-Golgi network
+YND1,P40009,YER005W,Golgi,yes,integral,1126,Apyrase with wide substrate specificity
+SYS1,P41544,YJL004C,Golgi,yes,integral,999,Integral membrane protein of the Golgi
+ERG6,P25087,YML008C,lipid droplets,no,peripheral,23127,Delta(24)-sterol C-methyltransferase
+PLN1,P36139,YKR046C,lipid droplets,no,peripheral,6304,Perilipin
+ERG7,P38604,YHR072W,lipid droplets,no,peripheral,3482,Lanosterol synthase
+TGL1,P34163,YKL140W,lipid droplets,no,peripheral,3189,Steryl ester hydrolase
+YEH1,Q07804,YLL012W,lipid droplets,no,peripheral,2544,Steryl ester hydrolase
+TGL3,P40308,YMR313C,lipid droplets,no,peripheral,2339,Bifunctional triacylglycerol lipase and LPE acyltransferase
+TGL4,P36165,YKR089C,lipid droplets,no,peripheral,2303,Multifunctional lipase/hydrolase/phospholipase
+TGL5,Q12043,YOR081C,lipid droplets,no,peripheral,1922,Bifunctional triacylglycerol lipase and LPA acyltransferase
+YEH2,Q07950,YLR020C,lipid droplets,no,peripheral,1879,Steryl ester hydrolase
+BSC2,Q05611,YDR275W,lipid droplets,no,peripheral,1305,Protein of unknown function
+MMF1,P40185,YIL051C,mitochondria,no,soluble,34540,Mitochondrial protein required for transamination of isoleucine
+IDP1,P21954,YDL066W,mitochondria,no,soluble,23120,Mitochondrial NADP-specific isocitrate dehydrogenase
+ALD4,P46367,YOR374W,mitochondria,no,soluble,22200,Mitochondrial aldehyde dehydrogenase
+MDH1,P17505,YKL085W,mitochondria,no,soluble,20985,Mitochondrial malate dehydrogenase
+QCR2,P07257,YPR191W,mitochondria,no,soluble,19457,Subunit 2 of ubiquinol cytochrome-c reductase (Complex III)
+IDH2,P28241,YOR136W,mitochondria,no,soluble,18982,Subunit of mitochondrial NAD(+)-dependent isocitrate dehydrogenase
+MCR1,P36060,YKL150W,mitochondria,yes,integral,17331,Mitochondrial NADH-cytochrome b5 reductase
+CPR3,P25719,YML078W,mitochondria,no,soluble,17217,Mitochondrial peptidyl-prolyl cis-trans isomerase (cyclophilin)
+LSC1,P53598,YOR142W,mitochondria,no,soluble,16382,Alpha subunit of succinyl-CoA ligase
+ATP14,Q12349,YLR295C,mitochondria,no,soluble,16282,Subunit h of the F0 sector of mitochondrial F1F0 ATP synthase
+TOM70,P07213,YNL121C,mitochondria,yes,integral,14978,Component of the TOM (translocase of outer membrane) complex
+TOM22,P49334,YNL131W,mitochondria,yes,integral,14975,Component of the TOM (Translocase of Outer Membrane) complex
+TOM40,P23644,YMR203W,mitochondria,no,soluble,14871,Component of the TOM (translocase of outer membrane) complex
+TUF1,P02992,YOR187W,mitochondria,no,soluble,14557,Mitochondrial translation elongation factor Tu (EF-Tu)
+PDB1,P32473,YBR221C,mitochondria,no,soluble,14403,E1 beta subunit of the pyruvate dehydrogenase (PDH) complex
+GCV3,P39726,YAL044C,mitochondria,no,soluble,14067,H subunit of the mitochondrial glycine decarboxylase complex
+COR1,P07256,YBL045C,mitochondria,no,soluble,13995,Core subunit of the ubiquinol-cytochrome c reductase complex
+QCR7,P00128,YDR529C,mitochondria,no,soluble,13267,Subunit 7 of ubiquinol cytochrome-c reductase (Complex III)
+LSC2,P53312,YGR244C,mitochondria,no,soluble,13149,Beta subunit of succinyl-CoA ligase
+IDH1,P28834,YNL037C,mitochondria,no,soluble,12930,Subunit of mitochondrial NAD(+)-dependent isocitrate dehydrogenase
+ARG8,P18544,YOL140W,mitochondria,no,soluble,12811,Acetylornithine aminotransferase
+SHM1,P37292,YBR263W,mitochondria,no,soluble,12340,Mitochondrial serine hydroxymethyltransferase
+LYS12,P40495,YIL094C,mitochondria,no,soluble,12211,Homo-isocitrate dehydrogenase
+CIT1,P00890,YNR001C,mitochondria,no,soluble,11990,Mitochondrial citrate synthase
+ATP16,Q12165,YDL004W,mitochondria,no,soluble,11900,Delta subunit of the central stalk of mitochondrial F1F0 ATP synthase
+SOD2,P00447,YHR008C,mitochondria,no,soluble,11463,Mitochondrial manganese superoxide dismutase
+GCV1,P48015,YDR019C,mitochondria,no,soluble,11406,T subunit of the mitochondrial glycine decarboxylase complex
+KGD1,P20967,YIL125W,mitochondria,no,soluble,11221,Subunit of the mitochondrial alpha-ketoglutarate dehydrogenase complex
+ATP7,P30902,YKL016C,mitochondria,no,soluble,10847,Subunit d of the stator stalk of mitochondrial F1F0 ATP synthase
+AIM45,Q12480,YPR004C,mitochondria,no,soluble,10440,Putative ortholog of mammalian ETF-alpha
+COX6,P00427,YHR051W,mitochondria,no,soluble,10058,Subunit VI of cytochrome c oxidase (Complex IV)
+PHB1,P40961,YGR132C,mitochondria,no,soluble,9836,Subunit of the prohibitin complex (Phb1p-Phb2p)
+TIM13,P53299,YGR181W,mitochondria,no,soluble,9776,Mitochondrial intermembrane space protein
+COX4,P04037,YGL187C,mitochondria,no,soluble,9410,Subunit IV of cytochrome c oxidase
+NDE1,P40215,YMR145C,mitochondria,yes,integral,9235,Mitochondrial external NADH dehydrogenase
+MNP1,P53163,YGL068W,mitochondria,no,soluble,9181,Mitochondrial ribosomal protein of the large subunit
+TIM44,Q01852,YIL022W,mitochondria,no,soluble,9077,Essential component of the TIM23 complex
+LEU9,Q12166,YOR108W,mitochondria,no,soluble,8863,Alpha-isopropylmalate synthase II (2-isopropylmalate synthase)
+LYS4,P49367,YDR234W,mitochondria,no,soluble,8761,Homoaconitase
+GCV2,P49095,YMR189W,mitochondria,no,soluble,8754,P subunit of the mitochondrial glycine decarboxylase complex
+AIM17,P23180,YHL021C,mitochondria,no,soluble,8617,Protein of unknown function
+ACH1,P32316,YBL015W,mitochondria,no,soluble,8509,Protein with CoA transferase activity
+PUT2,P07275,YHR037W,mitochondria,no,soluble,8373,Delta-1-pyrroline-5-carboxylate dehydrogenase
+MAE1,P36013,YKL029C,mitochondria,no,soluble,8357,Mitochondrial malic enzyme
+CHA1,P25379,YCL064C,mitochondria,no,soluble,8233,Catabolic L-serine (L-threonine) deaminase
+HEM15,P16622,YOR176W,mitochondria,no,soluble,8079,Ferrochelatase
+PDX1,P16451,YGR193C,mitochondria,no,soluble,8067,E3-binding protein of the mitochondrial pyruvate dehydrogenase complex
+PRX1,P34227,YBL064C,mitochondria,no,soluble,8062,Mitochondrial peroxiredoxin with thioredoxin peroxidase activity
+MCO6,Q3E828,YJL127C-B,mitochondria,yes,integral,7831,Mitochondrial protein of unknown function
+AIM9,P40053,YER080W,mitochondria,no,soluble,7830,Protein of unknown function
+CIR1,P42940,YGR207C,mitochondria,no,soluble,7540,Mitochondrial protein that interacts with frataxin (Yfh1p)
+MSS116,P15424,YDR194C,mitochondria,no,soluble,7460,Mitochondrial transcription elongation factor
+NFU1,P32860,YKL040C,mitochondria,no,soluble,7392,Protein involved in Fe-S cluster transfer to mitochondrial clients
+NFS1,P25374,YCL017C,mitochondria,no,soluble,7365,Cysteine desulfurase
+TIM8,P57744,YJR135W-A,mitochondria,no,soluble,7334,Mitochondrial intermembrane space protein
+DLD2,P46681,YDL178W,mitochondria,no,soluble,7227,D-2-hydroxyglutarate dehydrogenase
+TRX3,P25372,YCR083W,mitochondria,no,soluble,7223,Mitochondrial thioredoxin
+TIM50,Q02776,YPL063W,mitochondria,yes,integral,7101,Essential component of the TIM23 complex
+AIM41,Q12032,YOR215C,mitochondria,no,soluble,6997,Protein of unknown function
+FMP41,P53889,YNL168C,mitochondria,no,soluble,6928,Putative protein of unknown function
+RDL2,Q08742,YOR286W,mitochondria,no,soluble,6888,Protein with rhodanese activity
+TOM5,P80967,YPR133W-A,mitochondria,yes,integral,6857,Component of the TOM (translocase of outer membrane) complex
+OM45,P16547,YIL136W,mitochondria,no,soluble,6786,Mitochondrial outer membrane protein of unknown function
+STF1,P01098,YDL130W-A,mitochondria,no,soluble,6701,Protein involved in regulation of the mitochondrial F1F0-ATP synthase
+MIS1,P09440,YBR084W,mitochondria,no,soluble,6654,Mitochondrial C1-tetrahydrofolate synthase
+FSF1,Q12029,YOR271C,mitochondria,yes,integral,6426,Putative protein
+MDM38,Q08179,YOL027C,mitochondria,yes,integral,6360,Membrane-associated mitochondrial ribosome receptor
+MSS51,P32335,YLR203C,mitochondria,no,soluble,6252,Specific translational activator for the mitochondrial COX1 mRNA
+MAS2,P11914,YHR024C,mitochondria,no,soluble,6240,Alpha subunit of the mitochondrial processing protease (MPP)
+YLH47,Q06493,YPR125W,mitochondria,yes,integral,6184,Mitochondrial inner membrane protein
+TOM20,P35180,YGR082W,mitochondria,yes,integral,6150,Component of the TOM (translocase of outer membrane) complex
+COX15,P40086,YER141W,mitochondria,yes,integral,6031,Heme a synthase
+ISD11,Q6Q560,YER048W-A,mitochondria,no,soluble,5996,Cysteine desulfurase (Nfs1p) activator
+MDJ1,P35191,YFL016C,mitochondria,no,soluble,5987,Co-chaperone that stimulates HSP70 protein Ssc1p ATPase activity
+ATP17,Q06405,YDR377W,mitochondria,yes,integral,5942,Subunit f of the F0 sector of mitochondrial F1F0 ATP synthase
+TIM9,O74700,YEL020W-A,mitochondria,no,soluble,5940,Essential protein of the mitochondrial intermembrane space
+OM14,P38325,YBR230C,mitochondria,yes,integral,5921,Mitochondrial outer membrane receptor for cytosolic ribosomes
+PIM1,P36775,YBL022C,mitochondria,no,soluble,5901,ATP-dependent Lon protease
+SDH2,P21801,YLL041C,mitochondria,no,soluble,5512,Iron-sulfur protein subunit of succinate dehydrogenase
+ISU1,Q03020,YPL135W,mitochondria,no,soluble,5477,Conserved protein of the mitochondrial matrix
+PAM16,P42949,YJL104W,mitochondria,no,soluble,5256,Subunit of the import motor (PAM complex)
+OXA1,P39952,YER154W,mitochondria,yes,integral,5197,Mitochondrial inner membrane insertase
+CYT1,P07143,YOR065W,mitochondria,yes,integral,5162,Cytochrome c1
+HEM1,P09950,YDR232W,mitochondria,no,soluble,5028,5-aminolevulinate synthase
+MAM33,P40513,YIL070C,mitochondria,no,soluble,5022,Acidic protein of the mitochondrial matrix that binds unassembled larg
+MRPL13,Q02204,YKR006C,mitochondria,no,soluble,5003,Mitochondrial ribosomal protein of the large subunit
+GRX5,Q02784,YPL059W,mitochondria,no,soluble,4976,Glutathione-dependent oxidoreductase
+COX7,P10174,YMR256C,mitochondria,yes,integral,4869,Subunit VII of cytochrome c oxidase (Complex IV)
+CYM1,P32898,YDR430C,mitochondria,no,soluble,4862,Lysine-specific metalloprotease of the pitrilysin family
+MRP7,P12687,YNL005C,mitochondria,no,soluble,4855,Mitochondrial ribosomal protein of the large subunit
+BIO2,P32451,YGR286C,mitochondria,no,soluble,4780,Biotin synthase
+MHR1,Q06630,YDR296W,mitochondria,no,soluble,4490,Mitochondrial ribosomal protein of the large subunit
+MRPL15,P36523,YLR312W-A,mitochondria,no,soluble,4427,Mitochondrial ribosomal protein of the large subunit
+YTA12,P40341,YMR089C,mitochondria,yes,integral,4411,Mitochondrial inner membrane m-AAA protease component
+MRP1,P10662,YDR347W,mitochondria,no,soluble,4399,Mitochondrial ribosomal protein of the small subunit
+MRP13,P12686,YGR084C,mitochondria,no,soluble,4351,Mitochondrial ribosomal protein of the small subunit
+ISU2,Q12056,YOR226C,mitochondria,no,soluble,4167,Mitochondrial protein required for iron-sulfur protein synthesis
+RMD9,P53140,YGL107C,mitochondria,no,soluble,4166,Mitochondrial protein that controls mitochondrial gene expression
+MAS1,P10507,YLR163C,mitochondria,no,soluble,4095,Beta subunit of the mitochondrial processing protease (MPP)
+CBP6,P07253,YBR120C,mitochondria,no,soluble,4089,Mitochondrial protein required for translation of the COB mRNA
+MRPL32,P25348,YCR003W,mitochondria,no,soluble,4077,Mitochondrial ribosomal protein of the large subunit
+MRPS28,P21771,YDR337W,mitochondria,no,soluble,4063,Mitochondrial ribosomal protein of the small subunit
+MRPL10,P36520,YNL284C,mitochondria,no,soluble,4056,Mitochondrial ribosomal protein of the large subunit
+MIA40,P36046,YKL195W,mitochondria,yes,integral,4025,Import and assembly protein in mitochondrial intermembrane space
+PAM17,P36147,YKR065C,mitochondria,yes,integral,4005,Constituent of the TIM23 complex
+CBP3,P21560,YPL215W,mitochondria,no,soluble,3987,Mitochondrial protein required for assembly of cytochrome bc1 complex
+LIP5,P32875,YOR196C,mitochondria,no,soluble,3986,Protein involved in biosynthesis of the coenzyme lipoic acid
+PTH2,P34222,YBL057C,mitochondria,yes,integral,3970,One of two mitochondrially-localized peptidyl-tRNA hydrolases
+MRP4,P32902,YHL004W,mitochondria,no,soluble,3969,Mitochondrial ribosomal protein of the small subunit
+MRPL50,P53724,YNR022C,mitochondria,no,soluble,3934,Mitochondrial ribosomal protein of the large subunit
+MRPL35,Q06678,YDR322W,mitochondria,no,soluble,3928,Mitochondrial ribosomal protein of the large subunit
+HTB1,P02293,YDR224C,nucleus,no,soluble,134559,Histone H2B
+HTB2,P02294,YBL002W,nucleus,no,soluble,101430,Histone H2B
+HHF2,P02309,YNL030W,nucleus,no,soluble,68836,Histone H4
+HTA2,P04912,YBL003C,nucleus,no,soluble,67315,Histone H2A
+NOP58,Q12499,YOR310C,nucleus,no,soluble,28378,Protein involved in producing mature rRNAs and snoRNAs
+YRA1,Q12159,YDR381W,nucleus,no,soluble,26822,Nuclear polyadenylated RNA-binding protein
+HHF1,P02309,YBR009C,nucleus,no,soluble,25215,Histone H4
+NOP56,Q12460,YLR197W,nucleus,no,soluble,24381,Essential evolutionarily-conserved nucleolar protein
+NOP1,P15646,YDL014W,nucleus,no,soluble,24153,Histone glutamine methyltransferase
+WTM1,Q12363,YOR230W,nucleus,no,soluble,21883,Transcriptional modulator
+GAR1,P28007,YHR089C,nucleus,no,soluble,19378,Protein component of the H/ACA snoRNP pseudouridylase complex
+CBF5,P33322,YLR175W,nucleus,no,soluble,18603,Pseudouridine synthase catalytic subunit of box H/ACA snoRNPs
+RPB10,P22139,YOR210W,nucleus,no,soluble,17845,RNA polymerase subunit ABC10-beta
+NHP2,P32495,YDL208W,nucleus,no,soluble,17222,Protein related to mammalian high mobility group (HMG) proteins
+NSR1,P27476,YGR159C,nucleus,no,soluble,16609,Nucleolin
+RPO21,P04050,YDL140C,nucleus,no,soluble,16113,RNA polymerase II largest subunit B220
+TIF6,Q12522,YPR016C,nucleus,no,soluble,15404,Constituent of 66S pre-ribosomal particles
+RPA190,P10964,YOR341W,nucleus,no,soluble,14969,RNA polymerase I largest subunit A190
+SPT16,P32558,YGL207W,nucleus,no,soluble,14767,Subunit of the heterodimeric FACT complex (Spt16p-Pob3p)
+NHP6A,P11632,YPR052C,nucleus,no,soluble,14762,High-mobility group (HMG) protein
+RPB2,P08518,YOR151C,nucleus,no,soluble,14417,RNA polymerase II second largest subunit B150
+RPC40,P07703,YPR110C,nucleus,no,soluble,14336,RNA polymerase subunit AC40
+HTA1,P04911,YDR225W,nucleus,no,soluble,14327,Histone H2A
+NCL1,P38205,YBL024W,nucleus,no,soluble,14175,S-adenosyl-L-methionine-dependent tRNA: m5C-methyltransferase
+RPA135,P22138,YPR010C,nucleus,no,soluble,13568,RNA polymerase I second largest subunit A135
+RRP5,Q05022,YMR229C,nucleus,no,soluble,13399,RNA binding protein involved in synthesis of 18S and 5.8S rRNAs
+HHT1,P61830,YBR010W,nucleus,no,soluble,13263,Histone H3
+HHT2,P61830,YNL031C,nucleus,no,soluble,13263,Histone H3
+RPC19,P28000,YNL113W,nucleus,no,soluble,13239,RNA polymerase subunit AC19
+RVB1,Q03940,YDR190C,nucleus,no,soluble,13124,ATP-dependent DNA helicase
+NOP10,Q6Q547,YHR072W-A,nucleus,no,soluble,12139,Subunit of box H/ACA snoRNP complex
+NOP2,P40991,YNL061W,nucleus,no,soluble,12109,rRNA m5C methyltransferase
+RPA12,P32529,YJR063W,nucleus,no,soluble,11999,RNA polymerase I subunit A12.2
+DBP3,P20447,YGL078C,nucleus,no,soluble,11233,RNA-Dependent ATPase
+MRT4,P33201,YKL009W,nucleus,no,soluble,11173,Protein involved in mRNA turnover and ribosome assembly
+NSP1,P14907,YJL041W,nucleus,no,soluble,10385,FG-nucleoporin component of central core of the nuclear pore complex
+NUG1,P40010,YER006W,nucleus,no,soluble,10309,GTPase that associates with nuclear 60S pre-ribosomes
+FPR3,P38911,YML074C,nucleus,no,soluble,10307,Nucleolar peptidyl-prolyl cis-trans isomerase (PPIase)
+BRX1,Q08235,YOL077C,nucleus,no,soluble,10163,Nucleolar protein
+POB3,Q04636,YML069W,nucleus,no,soluble,10154,Subunit of the heterodimeric FACT complex (Spt16p-Pob3p)
+SPT5,P27692,YML010W,nucleus,no,soluble,9928,Spt4p/5p (DSIF) transcription elongation factor complex subunit
+HTZ1,Q12692,YOL012C,nucleus,no,soluble,9912,Histone variant H2AZ
+TUP1,P16649,YCR084C,nucleus,no,soluble,9774,General repressor of transcription
+FPR4,Q06205,YLR449W,nucleus,no,soluble,9517,Peptidyl-prolyl cis-trans isomerase (PPIase)
+SRP40,P32583,YKR092C,nucleus,no,soluble,9434,Nucleolar serine-rich protein
+RPA49,Q01080,YNL248C,nucleus,no,soluble,9402,RNA polymerase I subunit A49
+NOP7,P53261,YGR103W,nucleus,no,soluble,9270,Component of several different pre-ribosomal particles
+RPB3,P16370,YIL021W,nucleus,no,soluble,9093,RNA polymerase II third largest subunit B44
+RPB11,P38902,YOL005C,nucleus,no,soluble,9089,RNA polymerase II subunit B12.5
+SPT6,P23615,YGR116W,nucleus,no,soluble,8837,Nucleosome remodeling protein
+NOG2,P53742,YNR053C,nucleus,no,soluble,8743,Putative GTPase
+SPT4,P32914,YGR063C,nucleus,no,soluble,8567,Spt4p/5p (DSIF) transcription elongation factor complex subunit
+LHP1,P33399,YDL051W,nucleus,no,soluble,8346,RNA binding protein required for maturation of tRNA and U6 snRNA
+CRM1,P30822,YGR218W,nucleus,no,soluble,8276,Nuclear export factor
+RPA34,P47006,YJL148W,nucleus,no,soluble,8225,RNA polymerase I subunit A34.5
+UTP10,P42945,YJL109C,nucleus,no,soluble,8151,Nucleolar protein
+HHO1,P53551,YPL127C,nucleus,no,soluble,8125,Histone H1
+TPA1,P40032,YER049W,nucleus,no,soluble,7971,Prolyl hydroxylase
+NHP6B,P11633,YBR089C-A,nucleus,no,soluble,7847,High-mobility group (HMG) protein
+PUS1,Q12211,YPL212C,nucleus,no,soluble,7833,tRNA:pseudouridine synthase
+NOC2,P39744,YOR206W,nucleus,no,soluble,7496,Protein involved in ribosome biogenesis
+MAK21,Q12176,YDR060W,nucleus,no,soluble,7462,Constituent of 66S pre-ribosomal particles
+RSC8,P43609,YFR037C,nucleus,no,soluble,7401,Component of the RSC chromatin remodeling complex
+RPA43,P46669,YOR340C,nucleus,no,soluble,7388,RNA polymerase I subunit A43
+UTP8,P53276,YGR128C,nucleus,no,soluble,7347,Nucleolar protein required for export of tRNAs from the nucleus
+DST1,P07273,YGL043W,nucleus,no,soluble,7193,General transcription elongation factor TFIIS
+NOP12,Q08208,YOL041C,nucleus,no,soluble,7150,Nucleolar protein involved in pre-25S rRNA processing
+NUP57,P48837,YGR119C,nucleus,no,soluble,7048,FG-nucleoporin component of central core of the nuclear pore complex
+NOP16,P40007,YER002W,nucleus,no,soluble,7032,Constituent of 66S pre-ribosomal particles
+NRD1,P53617,YNL251C,nucleus,no,soluble,6882,RNA-binding subunit of Nrd1 complex
+BDF1,P35817,YLR399C,nucleus,no,soluble,6880,Chromatin modifying regulator of meiosis-specific genes
+PUF6,Q04373,YDR496C,nucleus,no,soluble,6829,Pumilio-homology domain protein
+BFR2,Q06631,YDR299W,nucleus,no,soluble,6802,Component of the SSU and 90S preribosomes
+ETT1,Q08421,YOR051C,nucleus,no,soluble,6756,Nuclear protein that inhibits replication of Brome mosaic virus
+NAN1,Q02931,YPL126W,nucleus,no,soluble,6560,U3 snoRNP protein
+RTF1,P53064,YGL244W,nucleus,no,soluble,6510,Subunit of RNAPII-associated chromatin remodeling Paf1 complex
+RRP15,Q06511,YPR143W,nucleus,no,soluble,6495,Nucleolar protein
+UTP22,P53254,YGR090W,nucleus,no,soluble,6359,Component of the small-subunit processome
+NOP13,P53883,YNL175C,nucleus,no,soluble,6347,Nucleolar protein found in preribosomal complexes
+KRR1,P25586,YCL059C,nucleus,no,soluble,6339,Nucleolar protein required for rRNA synthesis and ribosomal assembly
+UTP9,P38882,YHR196W,nucleus,no,soluble,6323,Nucleolar protein
+RFA3,P26755,YJL173C,nucleus,no,soluble,6304,Subunit of heterotrimeric Replication Protein A (RPA)
+RPB8,P20436,YOR224C,nucleus,no,soluble,6275,RNA polymerase subunit ABC14.5
+ABF1,P14164,YKL112W,nucleus,no,soluble,6206,DNA binding protein with possible chromatin-reorganizing activity
+STO1,P34160,YMR125W,nucleus,no,soluble,6205,Large subunit of the nuclear mRNA cap-binding protein complex
+CBC2,Q08920,YPL178W,nucleus,no,soluble,6111,Small subunit of the heterodimeric cap binding complex with Sto1p
+CTR9,P89105,YOL145C,nucleus,no,soluble,6036,Component of the Paf1p complex involved in transcription elongation
+DRS1,P32892,YLL008W,nucleus,no,soluble,5978,Nucleolar DEAD-box protein required for ribosome assembly and function
+TAF14,P35189,YPL129W,nucleus,no,soluble,5966,Subunit of TFIID
+NOP4,P37838,YPL043W,nucleus,no,soluble,5837,Nucleolar protein
+YTM1,Q12024,YOR272W,nucleus,no,soluble,5793,Ribosomal assembly factor and 66S pre-ribosomal particle constituent
+RRP7,P25368,YCL031C,nucleus,no,soluble,5786,Essential protein involved in rRNA processing and ribosome biogenesis
+ARP7,Q12406,YPR034W,nucleus,no,soluble,5728,Component of both the SWI/SNF and RSC chromatin remodeling complexes
+ESF1,Q06344,YDR365C,nucleus,no,soluble,5700,Nucleolar protein involved in pre-rRNA processing
+RCL1,Q08096,YOL010W,nucleus,no,soluble,5699,Endonuclease that cleaves pre-rRNA at site A2 for 18S rRNA biogenesis
+RPB9,P27999,YGL070C,nucleus,no,soluble,5647,RNA polymerase II subunit B12.6
+RPO31,P04051,YOR116C,nucleus,no,soluble,5592,RNA polymerase III largest subunit C160
+REB1,P21538,YBR049C,nucleus,no,soluble,5582,RNA polymerase I enhancer binding protein
+NUP145,P49687,YGL092W,nucleus,no,soluble,5564,Essential protein with distinct roles in two nuclear pore subcomplexes
+SSF1,P38789,YHR066W,nucleus,no,soluble,5564,Constituent of 66S pre-ribosomal particles
+UTP13,Q05946,YLR222C,nucleus,no,soluble,5561,Nucleolar protein
+NCB2,Q92317,YDR397C,nucleus,no,soluble,5479,Subunit of a heterodimeric NC2 transcription regulator complex
+CYC8,P14922,YBR112C,nucleus,no,soluble,5404,General transcriptional co-repressor
+CDC73,Q06697,YLR418C,nucleus,no,soluble,5367,Component of the Paf1p complex
+ELF1,P36053,YKL160W,nucleus,no,soluble,5354,Transcription elongation factor with a conserved zinc finger domain
+UTP18,P40362,YJL069C,nucleus,no,soluble,5255,Small-subunit processome protein involved in pre-18S rRNA maturation
+NOP53,Q12080,YPL146C,nucleus,no,soluble,5251,Nucleolar protein
+HTL1,Q9URQ5,YCR020W-B,nucleus,no,soluble,5239,Component of the RSC chromatin remodeling complex
+PAF1,P38351,YBR279W,nucleus,no,soluble,5232,Component of the Paf1p complex involved in transcription elongation
+NOP6,Q07623,YDL213C,nucleus,no,soluble,5221,rRNA-binding protein required for 40S ribosomal subunit biogenesis
+NET1,P47035,YJL076W,nucleus,no,soluble,5204,Core subunit of the RENT complex
+POM152,P39685,YMR129W,nucleus,yes,integral,5192,Glycoprotein subunit of transmembrane ring of nuclear pore complex
+SMX2,P40204,YFL017W-A,nucleus,no,soluble,5058,Core Sm protein Sm G
+NOC3,Q07896,YLR002C,nucleus,no,soluble,5039,Subunit of a nuclear complex with Noc2p and pre-replicative complexes
+BUR6,P40096,YER159C,nucleus,no,soluble,4971,Subunit of a heterodimeric NC2 transcription regulator complex
+MOT1,P32333,YPL082C,nucleus,no,soluble,4935,Essential protein involved in regulation of transcription
+RRP1,P35178,YDR087C,nucleus,no,soluble,4869,Essential evolutionarily conserved nucleolar protein
+RRP9,Q06506,YPR137W,nucleus,no,soluble,4866,Protein involved in pre-rRNA processing
+NUP60,P39705,YAR002W,nucleus,no,soluble,4865,FG-nucleoporin component of central core of the nuclear pore complex
+NIC96,P34077,YFR002W,nucleus,no,soluble,4862,Linker nucleoporin component of the nuclear pore complex (NPC)
+HCA4,P20448,YJL033W,nucleus,no,soluble,4854,DEAD box RNA helicase
+CGR1,P53188,YGL029W,nucleus,no,soluble,4838,Protein involved in nucleolar integrity and processing of pre-rRNA
+NUP188,P52593,YML103C,nucleus,no,soluble,4820,Subunit of the inner ring of the nuclear pore complex (NPC)
+NDC1,P32500,YML031W,nucleus,yes,integral,4097,Subunit of the transmembrane ring of the nuclear pore complex (NPC)
+POM34,Q12445,YLR018C,nucleus,yes,integral,4027,Subunit of the transmembrane ring of the nuclear pore complex (NPC)
+MDH3,P32419,YDL078C,peroxisome,no,lumenal,9783,Peroxisomal malate dehydrogenase
+PCS60,P38137,YBR222C,peroxisome,no,lumenal,6256,Oxalyl-CoA synthetase
+PEX25,Q02969,YPL112C,peroxisome,no,peripheral,3473,Peripheral peroxisomal membrane peroxin
+PEX14,P53112,YGL153W,peroxisome,yes,integral,3407,Central component of the peroxisomal importomer complex
+LPX1,Q12405,YOR084W,peroxisome,no,lumenal,2891,Peroxisomal matrix-localized lipase
+POX1,P13711,YGL205W,peroxisome,no,lumenal,2489,Fatty-acyl coenzyme A oxidase
+PEX21,P50091,YGR239C,peroxisome,no,peripheral,2268,Peroxin required for peroxisomal matrix protein targeting
+ANT1,Q06497,YPR128C,peroxisome,yes,integral,2250,Peroxisomal adenine nucleotide transporter
+PEX1,P24004,YKL197C,peroxisome,no,peripheral,2041,AAA-peroxin
+PEX13,P80667,YLR191W,peroxisome,yes,integral,1631,Peroxisomal importomer complex component
+PEX6,P33760,YNL329C,peroxisome,no,peripheral,1594,AAA-peroxin
+PEX3,P28795,YDR329C,peroxisome,yes,integral,1583,Peroxisomal membrane protein (PMP)
+PEX15,Q08215,YOL044W,peroxisome,yes,integral,1546,Tail-anchored type II integral peroxisomal membrane protein
+PEX34,P25584,YCL056C,peroxisome,yes,integral,1465,Protein that regulates peroxisome populations
+PEX17,P40155,YNL214W,peroxisome,no,peripheral,1431,Membrane peroxin of the peroxisomal importomer complex
+POT1,P27796,YIL160C,peroxisome,no,lumenal,1413,3-ketoacyl-CoA thiolase with broad chain length specificity
+PEX22,P39718,YAL055W,peroxisome,yes,integral,1391,Putative peroxisomal membrane protein
+PEX4,P29340,YGR133W,peroxisome,no,peripheral,1279,Peroxisomal ubiquitin conjugating enzyme
+PEX12,Q04370,YMR026C,peroxisome,yes,integral,1241,C3HC4-type RING-finger peroxin and E3 ubiquitin ligase
+INP1,Q03694,YMR204C,peroxisome,no,peripheral,1060,Peripheral membrane protein of peroxisomes
+CTA1,P15202,YDR256C,peroxisome,no,lumenal,1032,Catalase A
+PEX8,P53248,YGR077C,peroxisome,no,lumenal,951,Intraperoxisomal organizer of the peroxisomal import machinery
+PEX10,Q05568,YDR265W,peroxisome,yes,integral,707,Peroxisomal membrane E3 ubiquitin ligase
+SPS19,P32573,YNL202W,peroxisome,no,lumenal,694,Peroxisomal 2
+PEX32,P38292,YBR168W,peroxisome,yes,integral,598,Peroxisomal integral membrane protein
+PEX2,P32800,YJL210W,peroxisome,yes,integral,506,RING-finger peroxin and E3 ubiquitin ligase
+PEX27,Q08580,YOR193W,peroxisome,no,peripheral,451,Peripheral peroxisomal membrane protein
+PMP1,P32903,YCR024C-A,PM,yes,integral,69604,Regulatory subunit for the plasma membrane H(+)-ATPase Pma1p
+PMP2,P40975,YEL017C-A,PM,yes,integral,61354,Proteolipid associated with plasma membrane H(+)-ATPase (Pma1p)
+ZEO1,Q08245,YOL109W,PM,no,peripheral,52943,Peripheral membrane protein of the plasma membrane
+PMA1,P05030,YGL008C,PM,yes,integral,40732,Plasma membrane P2-type H+-ATPase
+PMA2,P19657,YPL036W,PM,yes,integral,40689,Plasma membrane H+-ATPase
+PIL1,P53252,YGR086C,PM,no,peripheral,29832,Eisosome core component
+NCE102,Q12207,YPR149W,PM,yes,integral,27336,Protein of unknown function
+LSP1,Q12230,YPL004C,PM,no,peripheral,26182,Eisosome core component
+HXT6,P39003,YDR343C,PM,yes,integral,25872,High-affinity glucose transporter
+GAS1,P22146,YMR307W,PM,no,GPI-anchored,23296,Beta-1
+ECM33,P38248,YBR078W,PM,no,GPI-anchored,19890,GPI-anchored protein involved in efficient glucose uptake
+HXT3,P32466,YDR345C,PM,yes,integral,19445,Low affinity glucose transporter of the major facilitator superfamily
+GNP1,P48813,YDR508C,PM,yes,integral,11584,Broad specificity amino acid permease
+AUS1,Q08409,YOR011W,PM,yes,integral,10541,Plasma membrane sterol transporter of the ATP-binding cassette family
+PDR5,P33302,YOR153W,PM,yes,integral,10371,Plasma membrane ATP-binding cassette (ABC) transporter
+SUR7,P54003,YML052W,PM,yes,integral,7813,Plasma membrane protein
+HXT1,P32465,YHR094C,PM,yes,integral,6830,Low-affinity glucose transporter of the major facilitator superfamily
+EIS1,Q05050,YMR031C,PM,no,peripheral,6815,Component of the eisosome required for proper eisosome assembly
+HNM1,P19807,YGL077C,PM,yes,integral,6073,Plasma membrane transporter for choline
+FET3,P38993,YMR058W,PM,yes,integral,5727,Ferro-O2-oxidoreductase
+FTR1,P40088,YER145C,PM,yes,integral,5558,High affinity iron permease
+PHO84,P25297,YML123C,PM,yes,integral,5213,High-affinity inorganic phosphate (Pi) transporter
+PDR12,Q02785,YPL058C,PM,yes,integral,4948,Plasma membrane ATP-binding cassette (ABC) transporter
+PRY3,P47033,YJL078C,PM,no,GPI-anchored,4887,GPI-anchored cell wall protein involved in export of sterols
+EGT2,P42835,YNL327W,PM,no,GPI-anchored,4803,Glycosylphosphatidylinositol (GPI)-anchored cell wall endoglucanase
+TOH1,P46992,YJL171C,PM,no,GPI-anchored,4773,GPI-anchored cell wall protein of unknown function
+STE2,D6VTK4,YFL026W,PM,yes,integral,4771,Receptor for alpha-factor pheromone
+DCW1,P36091,YKL046C,PM,no,GPI-anchored,4673,Putative mannosidase
+FUI1,P38196,YBL042C,PM,yes,integral,4648,High affinity uridine permease
+PUN1,Q06991,YLR414C,PM,yes,integral,4630,Plasma membrane protein with a role in cell wall integrity
+MDG1,P53885,YNL173C,PM,no,peripheral,4365,Plasma membrane protein
+TAT2,P38967,YOL020W,PM,yes,integral,4315,High affinity tryptophan and tyrosine permease
+CTR1,P49573,YPR124W,PM,yes,integral,4222,High-affinity copper transporter of plasma membrane
+SNQ2,P32568,YDR011W,PM,yes,integral,4095,Plasma membrane ATP-binding cassette (ABC) transporter
+AGP1,P25376,YCL025C,PM,yes,integral,4012,Broad-specificity
+HXT2,P23585,YMR011W,PM,yes,integral,3931,High-affinity glucose transporter of the major facilitator superfamily
+TPO4,Q12256,YOR273C,PM,yes,integral,3846,Polyamine transporter of the major facilitator superfamily
+SLM1,P40485,YIL105C,PM,no,peripheral,3797,Phosphoinositide PI4
+TNA1,P53322,YGR260W,PM,yes,integral,3790,High affinity nicotinic acid plasma membrane permease
+TPO3,Q06451,YPR156C,PM,yes,integral,3768,Polyamine transporter of the major facilitator superfamily
+STE18,P18852,YJR086W,PM,no,lipid-anchored,3752,G protein gamma subunit
+CAN1,P04817,YEL063C,PM,yes,integral,3618,Plasma membrane arginine permease
+SEG1,Q04279,YMR086W,PM,no,peripheral,3552,Component of eisosome required for proper eisosome assembly
+SFK1,P35735,YKL051W,PM,yes,integral,3500,Protein that regulates phospholipid asymmetry at plasma membrane
+TAT1,P38085,YBR069C,PM,yes,integral,3424,Amino acid transporter for valine
+EFR3,Q03653,YMR212C,PM,no,peripheral,3333,Protein required for Stt4-containing PI kinase complex localization
+TPO1,Q07824,YLL028W,PM,yes,integral,3171,Polyamine transporter of the major facilitator superfamily
+MEP3,P53390,YPR138C,PM,yes,integral,3135,Ammonium permease of high capacity and low affinity
+YOR1,P53049,YGR281W,PM,yes,integral,3019,Plasma membrane ATP-binding cassette (ABC) transporter
+QDR2,P40474,YIL121W,PM,yes,integral,2985,Plasma membrane transporter of the major facilitator superfamily
+HIP1,P06775,YGR191W,PM,yes,integral,2982,High-affinity histidine permease
+STE6,P12866,YKL209C,PM,yes,integral,2898,Plasma membrane ATP-binding cassette (ABC) transporter
+ENA1,P13587,YDR040C,PM,yes,integral,2891,P-type ATPase sodium pump
+PDR15,Q04182,YDR406W,PM,yes,integral,2838,Plasma membrane ATP binding cassette (ABC) transporter
+MID2,P36027,YLR332W,PM,yes,integral,2769,O-glycosylated plasma membrane protein
+YPS1,P32329,YLR120C,PM,no,GPI-anchored,2585,Aspartic protease
+PTR2,P32901,YKR093W,PM,yes,integral,2551,Integral membrane peptide transporter
+MEP2,P41948,YNL142W,PM,yes,integral,2515,Ammonium permease involved in regulation of pseudohyphal growth
+PHO90,P39535,YJL198W,PM,yes,integral,2508,Low-affinity phosphate transporter
+ENA2,Q01896,YDR039C,PM,yes,integral,2448,P-type ATPase sodium pump
+PSR1,Q07800,YLL010C,PM,no,peripheral,2317,Plasma membrane-associated protein phosphatase
+FPS1,P23900,YLL043W,PM,yes,integral,2264,Aquaglyceroporin
+ATO3,Q12359,YDR384C,PM,yes,integral,2211,Plasma membrane protein
+NCW2,Q05777,YLR194C,PM,no,GPI-anchored,2199,GPI-anchored protein involved in cell wall remodeling
+PHO89,P38361,YBR296C,PM,yes,integral,2160,Plasma membrane Na+/Pi cotransporter
+ENA5,Q12691,YDR038C,PM,yes,integral,2154,Protein with similarity to P-type ATPase sodium pumps
+WSC2,P53832,YNL283C,PM,yes,integral,2048,Sensor-transducer of the stress-activated PKC1-MPK1 signaling pathway
+MEP1,P40260,YGR121C,PM,yes,integral,1926,Ammonium permease
+ATR1,P13090,YML116W,PM,yes,integral,1926,Multidrug efflux pump of the major facilitator superfamily
+ZRT2,Q12436,YLR130C,PM,yes,integral,1872,Low-affinity zinc transporter of the plasma membrane
+AQR1,P53943,YNL065W,PM,yes,integral,1755,Plasma membrane transporter of the major facilitator superfamily
+ITR2,P30606,YOL103W,PM,yes,integral,1643,Myo-inositol transporter
+NHA1,Q99271,YLR138W,PM,yes,integral,1641,Na+/H+ antiporter
+QDR3,P38227,YBR043C,PM,yes,integral,1624,Multidrug transporter of the major facilitator superfamily
+THI7,Q05998,YLR237W,PM,yes,integral,1612,Plasma membrane transporter responsible for the uptake of thiamine
+SEG2,P34250,YKL105C,PM,no,peripheral,1573,Eisosome component
+VHT1,P53241,YGR065C,PM,yes,integral,1564,High-affinity plasma membrane H+-biotin (vitamin H) symporter
+ALR1,Q08269,YOL130W,PM,yes,integral,1312,Plasma membrane Mg(2+) transporter
+RIM9,Q04734,YMR063W,PM,yes,integral,1227,Plasma membrane protein of unknown function
+TPN1,P53099,YGL186C,PM,yes,integral,1181,Plasma membrane pyridoxine (vitamin B6) transporter
+MKC7,P53379,YDR144C,PM,no,GPI-anchored,1153,GPI-anchored aspartyl protease
+DFG16,Q99234,YOR030W,PM,yes,integral,1148,Probable multiple transmembrane protein
+HOL1,P53389,YNR055C,PM,yes,integral,1062,Putative transporter in the major facilitator superfamily
+RIM21,P48565,YNL294C,PM,yes,integral,348,pH sensor molecule
+PRE8,P23639,YML092C,proteasome,no,soluble,20654,Alpha 2 subunit of the 20S proteasome
+SCL1,P21243,YGL011C,proteasome,no,soluble,19513,Alpha 1 subunit of the 20S proteasome
+PRE5,P40302,YMR314W,proteasome,no,soluble,19340,Alpha 6 subunit of the 20S proteasome
+RPT6,Q01939,YGL048C,proteasome,no,soluble,17229,ATPase of the 19S regulatory particle of the 26S proteasome
+PRE9,P23638,YGR135W,proteasome,no,soluble,17201,Alpha 3 subunit of the 20S proteasome
+PUP2,P32379,YGR253C,proteasome,no,soluble,17100,Alpha 5 subunit of the 20S proteasome
+PRE6,P40303,YOL038W,proteasome,no,soluble,16957,Alpha 4 subunit of the 20S proteasome
+RPN11,P43588,YFR004W,proteasome,no,soluble,16400,Metalloprotease subunit of 19S regulatory particle
+RPT5,P33297,YOR117W,proteasome,no,soluble,16309,ATPase of the 19S regulatory particle of the 26S proteasome
+PRE3,P38624,YJL001W,proteasome,no,soluble,15579,Beta 1 subunit of the 20S proteasome
+PUP3,P25451,YER094C,proteasome,no,soluble,15457,Beta 3 subunit of the 20S proteasome
+PRE4,P30657,YFR050C,proteasome,no,soluble,15446,Beta 7 subunit of the 20S proteasome
+RPT2,P40327,YDL007W,proteasome,no,soluble,15168,ATPase of the 19S regulatory particle of the 26S proteasome
+PRE10,P21242,YOR362C,proteasome,no,soluble,15024,Alpha 7 subunit of the 20S proteasome
+RPN12,P32496,YFR052W,proteasome,no,soluble,15018,Subunit of the 19S regulatory particle of the 26S proteasome lid
+RPN5,Q12250,YDL147W,proteasome,no,soluble,14645,Subunit of the CSN and 26S proteasome lid complexes
+RPN9,Q04062,YDR427W,proteasome,no,soluble,14071,Non-ATPase regulatory subunit of the 26S proteasome
+SEM1,O94742,YDR363W-A,proteasome,no,soluble,13352,19S proteasome regulatory particle lid subcomplex component
+PRE1,P22141,YER012W,proteasome,no,soluble,13312,Beta 4 subunit of the 20S proteasome
+RPN2,P32565,YIL075C,proteasome,no,soluble,13297,Subunit of the 26S proteasome
+RPN6,Q12377,YDL097C,proteasome,no,soluble,13137,Essential
+RPT1,P33299,YKL145W,proteasome,no,soluble,12952,ATPase of the 19S regulatory particle of the 26S proteasome
+PUP1,P25043,YOR157C,proteasome,no,soluble,11679,Beta 2 subunit of the 20S proteasome
+RPT4,P53549,YOR259C,proteasome,no,soluble,11657,ATPase of the 19S regulatory particle of the 26S proteasome
+RPN1,P38764,YHR027C,proteasome,no,soluble,11502,Non-ATPase base subunit of the 19S RP of the 26S proteasome
+PRE7,P23724,YBL041W,proteasome,no,soluble,10467,Beta 6 subunit of the 20S proteasome
+RPN8,Q08723,YOR261C,proteasome,no,soluble,10410,Essential non-ATPase regulatory subunit of the 26S proteasome
+PRE2,P30656,YPR103W,proteasome,no,soluble,10384,Beta 5 subunit of the 20S proteasome
+RPN7,Q06103,YPR108W,proteasome,no,soluble,9907,Essential non-ATPase regulatory subunit of the 26S proteasome
+RPN3,P40016,YER021W,proteasome,no,soluble,9081,Essential non-ATPase regulatory subunit of the 26S proteasome lid
+RPN13,O13563,YLR421C,proteasome,no,soluble,6873,Subunit of the 19S regulatory particle of the 26S proteasome lid
+RPN10,P38886,YHR200W,proteasome,no,soluble,5697,Proteasome polyubiquitin receptor
+RPT3,P33298,YDR394W,proteasome,no,soluble,5232,ATPase of the 19S regulatory particle of the 26S proteasome
+RPL22A,P05749,YLR061W,ribosome,no,soluble,118983,Ribosomal 60S subunit protein L22A
+RPL8A,P17076,YHL033C,ribosome,no,soluble,113252,Ribosomal 60S subunit protein L8A
+RPL1B,P0CX44,YGL135W,ribosome,no,soluble,110146,Ribosomal 60S subunit protein L1B
+RPS1B,P23248,YML063W,ribosome,no,soluble,107000,Ribosomal protein of the small (40S) subunit
+RPL41A,P0CX86,YDL184C,ribosome,no,soluble,106439,Ribosomal 60S subunit protein L41A
+RPL41B,P0CX87,YDL133C-A,ribosome,no,soluble,103128,Ribosomal 60S subunit protein L41B
+RPS21B,Q3E754,YJL136C,ribosome,no,soluble,99708,Protein component of the small (40S) ribosomal subunit
+RPS4A,P0CX35,YJR145C,ribosome,no,soluble,99147,Protein component of the small (40S) ribosomal subunit
+RPL3,P14126,YOR063W,ribosome,no,soluble,95351,Ribosomal 60S subunit protein L3
+RPL8B,P29453,YLL045C,ribosome,no,soluble,91729,Ribosomal 60S subunit protein L8B
+RPS26A,P39938,YGL189C,ribosome,no,soluble,90556,Protein component of the small (40S) ribosomal subunit
+RPS4B,P0CX36,YHR203C,ribosome,no,soluble,88908,Protein component of the small (40S) ribosomal subunit
+RPS0B,P46654,YLR048W,ribosome,no,soluble,88691,Protein component of the small (40S) ribosomal subunit
+RPL43A,P0CX25,YPR043W,ribosome,no,soluble,87658,Ribosomal 60S subunit protein L43A
+RPS17B,P14127,YDR447C,ribosome,no,soluble,83909,Ribosomal protein 51 (rp51) of the small (40s) subunit
+RPS17A,P02407,YML024W,ribosome,no,soluble,81932,Ribosomal protein 51 (rp51) of the small (40s) subunit
+RPL19B,P0CX83,YBL027W,ribosome,no,soluble,80265,Ribosomal 60S subunit protein L19B
+RPL12B,P0CX54,YDR418W,ribosome,no,soluble,79137,Ribosomal 60S subunit protein L12B
+RPL7A,P05737,YGL076C,ribosome,no,soluble,78377,Ribosomal 60S subunit protein L7A
+RPS26B,P39939,YER131W,ribosome,no,soluble,77439,Protein component of the small (40S) ribosomal subunit
+RPS3,P05750,YNL178W,ribosome,no,soluble,77234,Protein component of the small (40S) ribosomal subunit
+RPL4A,P10664,YBR031W,ribosome,no,soluble,76066,Ribosomal 60S subunit protein L4A
+RPL25,P04456,YOL127W,ribosome,no,soluble,75828,Ribosomal 60S subunit protein L25
+RPL10,P41805,YLR075W,ribosome,no,soluble,74858,Ribosomal 60S subunit protein L10
+RPL29,P05747,YFR032C-A,ribosome,no,soluble,72573,Ribosomal 60S subunit protein L29
+RPS20,P38701,YHL015W,ribosome,no,soluble,72189,Protein component of the small (40S) ribosomal subunit
+RPL28,P02406,YGL103W,ribosome,no,soluble,71369,Ribosomal 60S subunit protein L28
+RPS7A,P26786,YOR096W,ribosome,no,soluble,70601,Protein component of the small (40S) ribosomal subunit
+RPS9B,P05755,YBR189W,ribosome,no,soluble,70257,Protein component of the small (40S) ribosomal subunit
+RPL11B,Q3E757,YGR085C,ribosome,no,soluble,69672,Ribosomal 60S subunit protein L11B
+RPL35A,P0CX84,YDL191W,ribosome,no,soluble,69549,Ribosomal 60S subunit protein L35A
+RPS6A,P0CX37,YPL090C,ribosome,no,soluble,69398,Protein component of the small (40S) ribosomal subunit
+RPS8A,P0CX39,YBL072C,ribosome,no,soluble,67865,Protein component of the small (40S) ribosomal subunit
+RPL26B,P53221,YGR034W,ribosome,no,soluble,67290,Ribosomal 60S subunit protein L26B
+RPL26A,P05743,YLR344W,ribosome,no,soluble,66974,Ribosomal 60S subunit protein L26A
+RPS9A,O13516,YPL081W,ribosome,no,soluble,66820,Protein component of the small (40S) ribosomal subunit
+RPS21A,P0C0V8,YKR057W,ribosome,no,soluble,66467,Protein component of the small (40S) ribosomal subunit
+RPS12,P48589,YOR369C,ribosome,no,soluble,65711,Protein component of the small (40S) ribosomal subunit
+RPL9B,P51401,YNL067W,ribosome,no,soluble,64276,Ribosomal 60S subunit protein L9B
+RPL21A,Q02753,YBR191W,ribosome,no,soluble,63797,Ribosomal 60S subunit protein L21A
+RPS8B,P0CX40,YER102W,ribosome,no,soluble,62537,Protein component of the small (40S) ribosomal subunit
+RPS13,P05756,YDR064W,ribosome,no,soluble,62207,Protein component of the small (40S) ribosomal subunit
+RPL18A,P0CX49,YOL120C,ribosome,no,soluble,60355,Ribosomal 60S subunit protein L18A
+RPL5,P26321,YPL131W,ribosome,no,soluble,59936,Ribosomal 60S subunit protein L5
+RPS11A,P0CX47,YDR025W,ribosome,no,soluble,59924,Protein component of the small (40S) ribosomal subunit
+RPL9A,P05738,YGL147C,ribosome,no,soluble,59820,Ribosomal 60S subunit protein L9A
+RPS25A,Q3E792,YGR027C,ribosome,no,soluble,59656,Protein component of the small (40S) ribosomal subunit
+RPS2,P25443,YGL123W,ribosome,no,soluble,58722,Protein component of the small (40S) subunit
+RPL24A,P04449,YGL031C,ribosome,no,soluble,57123,Ribosomal 60S subunit protein L24A
+RPL31A,P0C2H8,YDL075W,ribosome,no,soluble,54812,Ribosomal 60S subunit protein L31A
+RPL20A,P0CX23,YMR242C,ribosome,no,soluble,54568,Ribosomal 60S subunit protein L20A
+RPS7B,P48164,YNL096C,ribosome,no,soluble,54294,Protein component of the small (40S) ribosomal subunit
+RPS16A,P0CX51,YMR143W,ribosome,no,soluble,54006,Protein component of the small (40S) ribosomal subunit
+RPL16B,P26785,YNL069C,ribosome,no,soluble,53398,Ribosomal 60S subunit protein L16B
+RPS27B,P38711,YHR021C,ribosome,no,soluble,52159,Protein component of the small (40S) ribosomal subunit
+RPS15,Q01855,YOL040C,ribosome,no,soluble,52121,Protein component of the small (40S) ribosomal subunit
+RPS25B,P0C0T4,YLR333C,ribosome,no,soluble,51486,Protein component of the small (40S) ribosomal subunit
+RPS14A,P06367,YCR031C,ribosome,no,soluble,51361,Protein component of the small (40S) ribosomal subunit
+RPL13A,Q12690,YDL082W,ribosome,no,soluble,51290,Ribosomal 60S subunit protein L13A
+RPL2A,P0CX45,YFR031C-A,ribosome,no,soluble,51078,Ribosomal 60S subunit protein L2A
+RPS27A,P35997,YKL156W,ribosome,no,soluble,50979,Protein component of the small (40S) ribosomal subunit
+RPL14A,P36105,YKL006W,ribosome,no,soluble,50771,Ribosomal 60S subunit protein L14A
+RPS1A,P33442,YLR441C,ribosome,no,soluble,50202,Ribosomal protein of the small (40S) subunit
+RPS28A,Q3E7X9,YOR167C,ribosome,no,soluble,49393,Protein component of the small (40S) ribosomal subunit
+RPL20B,P0CX24,YOR312C,ribosome,no,soluble,49393,Ribosomal 60S subunit protein L20B
+RPL34A,P87262,YER056C-A,ribosome,no,soluble,48965,Ribosomal 60S subunit protein L34A
+RPS19B,P07281,YNL302C,ribosome,no,soluble,48680,Protein component of the small (40S) ribosomal subunit
+RPL30,P14120,YGL030W,ribosome,no,soluble,48221,Ribosomal 60S subunit protein L30
+RPS30B,P0CX34,YOR182C,ribosome,no,soluble,48028,Protein component of the small (40S) ribosomal subunit
+RPL2B,P0CX46,YIL018W,ribosome,no,soluble,47718,Ribosomal 60S subunit protein L2B
+RPL13B,P40212,YMR142C,ribosome,no,soluble,47410,Ribosomal 60S subunit protein L13B
+RPL32,P38061,YBL092W,ribosome,no,soluble,47048,Ribosomal 60S subunit protein L32
+RPP2A,P05319,YOL039W,ribosome,no,soluble,47017,Ribosomal protein P2 alpha
+RPL27B,P0C2H7,YDR471W,ribosome,no,soluble,46600,Ribosomal 60S subunit protein L27B
+RPS5,P26783,YJR123W,ribosome,no,soluble,46502,Protein component of the small (40S) ribosomal subunit
+RPS30A,P0CX33,YLR287C-A,ribosome,no,soluble,46315,Protein component of the small (40S) ribosomal subunit
+RPS24A,P0CX31,YER074W,ribosome,no,soluble,45621,Protein component of the small (40S) ribosomal subunit
+RPS10B,P46784,YMR230W,ribosome,no,soluble,45312,Protein component of the small (40S) ribosomal subunit
+RPL19A,P0CX82,YBR084C-A,ribosome,no,soluble,45283,Ribosomal 60S subunit protein L19A
+RPS31,P05759,YLR167W,ribosome,no,soluble,44117,Fusion protein cleaved to yield ribosomal protein S31 and ubiquitin
+RPL21B,Q12672,YPL079W,ribosome,no,soluble,43430,Ribosomal 60S subunit protein L21B
+RPL33B,P41056,YOR234C,ribosome,no,soluble,42035,Ribosomal 60S subunit protein L33B
+RPL35B,P0CX85,YDL136W,ribosome,no,soluble,41748,Ribosomal 60S subunit protein L35B
+RPL14B,P38754,YHL001W,ribosome,no,soluble,41192,Ribosomal 60S subunit protein L14B
+RPS22A,P0C0W1,YJL190C,ribosome,no,soluble,40374,Protein component of the small (40S) ribosomal subunit
+RPL6A,Q02326,YML073C,ribosome,no,soluble,39839,Ribosomal 60S subunit protein L6A
+RPL12A,P0CX53,YEL054C,ribosome,no,soluble,38899,Ribosomal 60S subunit protein L12A
+RPS24B,P0CX32,YIL069C,ribosome,no,soluble,38461,Protein component of the small (40S) ribosomal subunit
+RPS18A,P0CX55,YDR450W,ribosome,no,soluble,38112,Protein component of the small (40S) ribosomal subunit
+RPL6B,P05739,YLR448W,ribosome,no,soluble,37816,Ribosomal 60S subunit protein L6B
+RPS11B,P0CX48,YBR048W,ribosome,no,soluble,37610,Protein component of the small (40S) ribosomal subunit
+RPL17A,P05740,YKL180W,ribosome,no,soluble,37495,Ribosomal 60S subunit protein L17A
+RPL37A,P49166,YLR185W,ribosome,no,soluble,37052,Ribosomal 60S subunit protein L37A
+RPL24B,P24000,YGR148C,ribosome,no,soluble,36900,Ribosomal 60S subunit protein L24B
+RPL4B,P49626,YDR012W,ribosome,no,soluble,36864,Ribosomal 60S subunit protein L4B
+RPL36B,O14455,YPL249C-A,ribosome,no,soluble,36380,Ribosomal 60S subunit protein L36B
+RPL43B,P0CX26,YJR094W-A,ribosome,no,soluble,35617,Ribosomal 60S subunit protein L43B
+RPL16A,P26784,YIL133C,ribosome,no,soluble,35456,Ribosomal 60S subunit protein L16A
+RPL18B,P0CX50,YNL301C,ribosome,no,soluble,35392,Ribosomal 60S subunit protein L18B
+RPL34B,P40525,YIL052C,ribosome,no,soluble,35104,Ribosomal 60S subunit protein L34B
+RPL1A,P0CX43,YPL220W,ribosome,no,soluble,35057,Ribosomal 60S subunit protein L1A
+RPS22B,Q3E7Y3,YLR367W,ribosome,no,soluble,34606,Protein component of the small (40S) ribosomal subunit
+RPL42A,P0CX27,YNL162W,ribosome,no,soluble,33040,Ribosomal 60S subunit protein L42A
+RPL38,P49167,YLR325C,ribosome,no,soluble,32579,Ribosomal 60S subunit protein L38
+RPS29B,P41058,YDL061C,ribosome,no,soluble,31924,Protein component of the small (40S) ribosomal subunit
+RPL42B,P0CX28,YHR141C,ribosome,no,soluble,31039,Ribosomal 60S subunit protein L42B
+RPL17B,P46990,YJL177W,ribosome,no,soluble,30677,Ribosomal 60S subunit protein L17B
+RPL15A,P05748,YLR029C,ribosome,no,soluble,30528,Ribosomal 60S subunit protein L15A
+RPS16B,P0CX52,YDL083C,ribosome,no,soluble,29939,Protein component of the small (40S) ribosomal subunit
+RPS23B,P0CX30,YPR132W,ribosome,no,soluble,29902,Ribosomal protein 28 (rp28) of the small (40S) ribosomal subunit
+RPL33A,P05744,YPL143W,ribosome,no,soluble,29679,Ribosomal 60S subunit protein L33A
+RPL36A,P05745,YMR194W,ribosome,no,soluble,29505,Ribosomal 60S subunit protein L36A
+RPL37B,P51402,YDR500C,ribosome,no,soluble,28792,Ribosomal 60S subunit protein L37B
+RPS19A,P07280,YOL121C,ribosome,no,soluble,28109,Protein component of the small (40S) ribosomal subunit
+RPL11A,P0C0W9,YPR102C,ribosome,no,soluble,27594,Ribosomal 60S subunit protein L11A
+RPS23A,P0CX29,YGR118W,ribosome,no,soluble,27232,Ribosomal protein 28 (rp28) of the small (40S) ribosomal subunit
+RPL31B,P0C2H9,YLR406C,ribosome,no,soluble,24603,Ribosomal 60S subunit protein L31B
+RPL7B,Q12213,YPL198W,ribosome,no,soluble,22629,Ribosomal 60S subunit protein L7B
+RPS6B,P0CX38,YBR181C,ribosome,no,soluble,20840,Protein component of the small (40S) ribosomal subunit
+RPS18B,P0CX56,YML026C,ribosome,no,soluble,19802,Protein component of the small (40S) ribosomal subunit
+RPL22B,P56628,YFL034C-A,ribosome,no,soluble,19147,Ribosomal 60S subunit protein L22A
+RPL23B,P0CX42,YER117W,ribosome,no,soluble,17015,Ribosomal 60S subunit protein L23B
+RPS10A,Q08745,YOR293W,ribosome,no,soluble,15898,Protein component of the small (40S) ribosomal subunit
+RPS0A,P32905,YGR214W,ribosome,no,soluble,13774,Ribosomal 40S subunit protein S0A
+RPL40B,P0CH09,YKR094C,ribosome,no,soluble,13325,Ubiquitin-ribosomal 60S subunit protein L40B fusion protein
+RPS14B,P39516,YJL191W,ribosome,no,soluble,13149,Protein component of the small (40S) ribosomal subunit
+RPL23A,P0CX41,YBL087C,ribosome,no,soluble,12746,Ribosomal 60S subunit protein L23A
+RPS29A,P41057,YLR388W,ribosome,no,soluble,11265,Protein component of the small (40S) ribosomal subunit
+RPL40A,P0CH08,YIL148W,ribosome,no,soluble,10435,Ubiquitin-ribosomal 60S subunit protein L40A fusion protein
+RPS28B,P0C0X0,YLR264W,ribosome,no,soluble,8600,Protein component of the small (40S) ribosomal subunit
+RPL39,P04650,YJL189W,ribosome,no,soluble,8331,Ribosomal 60S subunit protein L39
+RPL27A,P0C2H6,YHR010W,ribosome,no,soluble,7380,Ribosomal 60S subunit protein L27A
+RPL15B,P54780,YMR121C,ribosome,no,soluble,2605,Ribosomal 60S subunit protein L15B
+VMA1,P17255,YDL185W,vacuole,no,peripheral,64990,Subunit A of the V1 peripheral membrane domain of V-ATPase
+VMA4,P22203,YOR332W,vacuole,no,peripheral,40566,Subunit E of the V1 domain of the vacuolar H+-ATPase (V-ATPase)
+VMA2,P16140,YBR127C,vacuole,no,peripheral,37171,Subunit B of V1 peripheral membrane domain of vacuolar H+-ATPase
+VMA10,P48836,YHR039C-A,vacuole,no,peripheral,29531,Subunit G of the V1 peripheral membrane domain of V-ATPase
+PEP4,P07267,YPL154C,vacuole,no,lumenal,24369,Vacuolar aspartyl protease (proteinase A)
+VPH1,P32563,YOR270C,vacuole,yes,integral,20462,Subunit a of the vacuolar-ATPase V0 domain
+APE3,P37302,YBR286W,vacuole,no,lumenal,20329,Vacuolar aminopeptidase Y
+VMA13,P41807,YPR036W,vacuole,no,peripheral,18836,Subunit H of the V1 peripheral membrane domain of V-ATPase
+VMA5,P31412,YKL080W,vacuole,no,peripheral,16708,Subunit C of the V1 peripheral membrane domain of V-ATPase
+VTC4,P47075,YJL012C,vacuole,yes,integral,13396,Vacuolar membrane polyphosphate polymerase
+VMA7,P39111,YGR020C,vacuole,no,peripheral,11748,Subunit F of the V1 peripheral membrane domain of V-ATPase
+VMA8,P32610,YEL051W,vacuole,no,peripheral,11280,Subunit D of the V1 peripheral membrane domain of V-ATPase
+CPS1,P27614,YJL172W,vacuole,yes,integral,10500,Vacuolar carboxypeptidase S
+VAC8,P39968,YEL013W,vacuole,no,lipid-anchored,9669,Vacuolar membrane protein
+VMA16,P23968,YHR026W,vacuole,yes,integral,9361,Subunit c'' of the vacuolar ATPase
+VBA2,P38358,YBR293W,vacuole,yes,integral,8712,Permease of basic amino acids in the vacuolar membrane
+APE1,P14904,YKL103C,vacuole,no,lumenal,8293,Vacuolar aminopeptidase yscI
+PRC1,P00729,YMR297W,vacuole,no,lumenal,8228,Vacuolar carboxypeptidase Y (proteinase C
+VTC3,Q02725,YPL019C,vacuole,yes,integral,8066,Regulatory subunit of the vacuolar transporter chaperone (VTC) complex
+PRB1,P09232,YEL060C,vacuole,no,lumenal,8037,Vacuolar proteinase B (yscB) with H3 N-terminal endopeptidase activity
+YPQ1,Q12010,YOL092W,vacuole,yes,integral,7945,Putative vacuolar membrane transporter for cationic amino acids
+ZRC1,P20107,YMR243C,vacuole,yes,integral,7349,Vacuolar membrane zinc transporter
+VTC2,P43585,YFL004W,vacuole,yes,integral,5824,Regulatory subunit of the vacuolar transporter chaperone (VTC) complex
+YBT1,P32386,YLL048C,vacuole,yes,integral,5661,Transporter of the ATP-binding cassette (ABC) family
+VMA3,P25515,YEL027W,vacuole,yes,integral,5416,Proteolipid subunit c of the V0 domain of vacuolar H(+)-ATPase
+VTC1,P40046,YER072W,vacuole,yes,integral,5416,Regulatory subunit of the vacuolar transporter chaperone (VTC) complex
+MEH1,Q02205,YKR007W,vacuole,no,peripheral,4834,Subunit of the EGO/GSE complex
+ATG42,P38109,YBR139W,vacuole,no,lumenal,4606,Vacuolar serine-type carboxypeptidase
+YPQ2,Q06328,YDR352W,vacuole,yes,integral,4289,Putative vacuolar membrane transporter for cationic amino acids
+FTH1,P38310,YBR207W,vacuole,yes,integral,4267,Putative high affinity iron transporter
+YCF1,P39109,YDR135C,vacuole,yes,integral,4264,Vacuolar glutathione S-conjugate transporter
+VMA11,P32842,YPL234C,vacuole,yes,integral,3943,Vacuolar ATPase V0 domain subunit c'
+SLM4,P38247,YBR077C,vacuole,no,peripheral,3907,Subunit of the EGO/GSE complex
+PHO8,P11491,YDR481C,vacuole,yes,integral,3505,Repressible vacuolar alkaline phosphatase
+CCC1,P47818,YLR220W,vacuole,yes,integral,3502,Vacuolar Fe2+/Mn2+ transporter
+TMS1,Q12116,YDR105C,vacuole,yes,integral,3441,Vacuolar membrane protein of unknown function
+PMC1,P38929,YGL006W,vacuole,yes,integral,3371,Vacuolar Ca2+ ATPase involved in depleting cytosol of Ca2+ ions
+COT1,P32798,YOR316C,vacuole,yes,integral,3101,Vacuolar transporter that mediates zinc transport into the vacuole
+IVY1,Q04934,YDR229W,vacuole,no,peripheral,3099,Phospholipid-binding protein that interacts with both Ypt7p and Vps33p
+NPC2,Q12408,YDL046W,vacuole,no,lumenal,2840,Sterol transport protein and functional homolog of human NPC2/He1
+VBA3,P25594,YCL069W,vacuole,yes,integral,2772,Permease of basic amino acids in the vacuolar membrane
+YVC1,Q12324,YOR087W,vacuole,yes,integral,2628,Vacuolar cation channel
+GTR1,Q00582,YML121W,vacuole,no,peripheral,2620,Subunit of a TORC1-stimulating GTPase and the EGO/GSE complex
+VAC14,Q06708,YLR386W,vacuole,no,peripheral,2539,Enzyme regulator
+BPT1,P14772,YLL015W,vacuole,yes,integral,2489,ABC type transmembrane transporter of MRP/CFTR family
+GTR2,P53290,YGR163W,vacuole,no,peripheral,2471,Subunit of a TORC1-stimulating GTPase and the EGO/GSE complex
+VAM7,P32912,YGL212W,vacuole,no,peripheral,2444,Vacuolar SNARE protein
+AMS1,P22855,YGL156W,vacuole,no,lumenal,2113,Vacuolar alpha mannosidase
+VTC5,P38966,YDR089W,vacuole,yes,integral,1942,Novel subunit of the vacuolar transporter chaperone complex
+NCR1,Q12200,YPL006W,vacuole,yes,integral,1907,Vacuolar membrane protein involved with Npc2p in sterol trafficking
+PFA3,P42836,YNL326C,vacuole,yes,integral,1701,Palmitoyltransferase for Vac8p
+MNR2,P35724,YKL064W,vacuole,yes,integral,1506,Vacuolar membrane protein required for magnesium homeostasis
+VAM6,Q07468,YDL077C,vacuole,no,peripheral,1347,Guanine nucleotide exchange factor for the GTPase Gtr1p
+ATG22,P25568,YCL038C,vacuole,yes,integral,1068,Vacuolar integral membrane protein required for efflux of amino acids
+VHC1,P38329,YBR235W,vacuole,yes,integral,1063,Vacuolar membrane cation-chloride cotransporter (CCC)
+VAC7,P53950,YNL054W,vacuole,yes,integral,985,Integral vacuolar membrane protein
+ATG15,P25641,YCR068W,vacuole,yes,integral,850,Phospholipase
+ZRT3,P34240,YKL175W,vacuole,yes,integral,766,Vacuolar membrane zinc transporter
+FAB1,P34756,YFR019W,vacuole,no,peripheral,652,1-phosphatidylinositol-3-phosphate 5-kinase
