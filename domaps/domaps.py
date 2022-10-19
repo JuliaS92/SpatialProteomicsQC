@@ -212,7 +212,63 @@ class SpatialDataSet:
 
         return self.df_original
     
-
+    
+    def process_input(
+        self,
+        input_format="wide",
+        quality_filter="LFQ_count",
+        input_logged=False,
+        input_inverted=False,
+        normalize=False,
+        yields=[]):
+        """
+        
+        """
+        
+        ## Format data based on input columns
+        if input_format == "long":
+            df_index = format_data_long(self.df_original)
+        elif input_format == "wide":
+            df_index = format_data_wide(self.df_original)
+        else:
+            raise ValueError("Unknown input format")
+        
+        ## Filter data quality as applicable
+        if quality_filter == "SILAC_countvar":
+            df_filtered = filter_SILAC_countvar(df_index)
+        elif quality_filter == "LFQ_count":
+            df_filtered = filter_LFQ_count(df_index)
+        elif quality_filter == "singlecolumn":
+            df_filtered = filter_singlecolumn(df_index)
+        elif quality_filter == None:
+            df_filtered = df_index
+        else:
+            raise ValueError("Unknown quality filter")
+        
+        ## Run data tranformations
+        if self.input_invert or self.input_unlog:
+            df_transformed = transform_data(df_filtered,
+                                            invert = self.input_invert,
+                                            unlog = self.input_unlog,
+                                            log = False)
+        else:
+            df_transformed = df_filtered
+        if normalize:
+            df_transformed = normalize_samples(df_transformed,
+                                               method=self.input_samplenormalization)
+        if len(yields) == 0:
+            df_transformed = weigh_yields(df_transformed)
+        
+        ## Normalize profiles
+        df_01_stacked = normalize_sum1(df_transformed)
+        
+        self.df_index = df_index
+        self.df_filtered = df_filtered
+        self.df_01_stacked = df_01_stacked
+        
+        return df_01_stacked
+    
+    
     def processingdf(self, name_pattern=None, summed_MSMS_counts=None, consecutiveLFQi=None, RatioHLcount=None, RatioVariability=None, custom_columns=None, custom_normalized=None):
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
@@ -3416,3 +3472,205 @@ def align_datasets(df):
     df_01_aligned = df_01_aligned.stack(["Experiment", "Map"])
     
     return df_01_aligned, index_mapping
+
+def format_data_long(df):
+    """
+    
+    """
+    return df_index
+
+
+def format_data_wide(df):
+    """
+    
+    """
+    return df_index
+
+
+def filter_SILAC_countvar(df, RatioHLcount=2, RatioVariability=30):
+    """
+    The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are considered (a set of f.e. 5 SILAC ratios 
+    in case you have 5 fractions / any proteins with missing values were rejected). Proteins were retained with 3 or more quantifications in each 
+    subfraction (=count). Furthermore, proteins with only 2 quantification events in one or more subfraction were retained, if their ratio variability for 
+    ratios obtained with 2 quantification events was below 30% (=var). SILAC ratios were linearly normalized by division through the fraction median. 
+    Subsequently normalization to SILAC loading was performed.Data is annotated based on specified marker set e.g. eLife.
+
+    Args:
+        df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Type
+        RatioHLcount: int, 2
+        RatioVariability: int, 30 
+        df_organellarMarkerSet: df, columns: "Protein ID", "Compartment", no index 
+        fractions: list of fractions e.g. ["01K", "03K", ...]
+
+    Returns:
+        df_stringency_mapfracstacked: dataframe, in which "MAP" and "Fraction" are stacked;
+                                      columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
+        shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] of df_countvarfiltered_stacked
+        shape_dict["Shape after filtering for complete profiles"] of df_stringency_mapfracstacked
+    """
+
+    # Fraction and Map will be stacked
+    df_stack = df_index.stack(["Fraction", "Map"])
+
+    # filtering for sufficient number of quantifications (count in "Ratio H/L count"), taken variability (var in Ratio H/L variability [%]) into account
+    # zip: allows direct comparison of count and var
+    # only if the filtering parameters are fulfilled the data will be introduced into df_countvarfiltered_stacked
+    #default setting: RatioHLcount = 2 ; RatioVariability = 30
+    
+    df_countvarfiltered_stacked = df_stack.loc[[count>RatioHLcount or (count==RatioHLcount and var<RatioVariability) 
+                                    for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack["Ratio H/L count"])]]
+    
+    shape_dict["Shape after Ratio H/L count (>=3)/var (count==2, var<30) filtering"] = df_countvarfiltered_stacked.unstack(["Fraction", "Map"]).shape
+
+    # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
+    # np.median([...]): only entries, that are not NANs are considered
+    df_normsilac_stacked = df_countvarfiltered_stacked["Ratio H/L"]\
+        .unstack(["Fraction", "Map"])\
+        .apply(lambda x: x/np.nanmedian(x), axis=0)\
+        .stack(["Map", "Fraction"])
+
+    df_stringency_mapfracstacked = df_countvarfiltered_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(
+        pd.DataFrame(df_normsilac_stacked, columns=["Ratio H/L"]))
+
+    # dataframe is grouped (Map, id), that allows the filtering for complete profiles
+    df_stringency_mapfracstacked = df_stringency_mapfracstacked.groupby(["Map", "id"]).filter(lambda x: len(x)>=len(self.fractions))
+    
+    shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.unstack(["Fraction", "Map"]).shape
+    
+    # Ratio H/L is converted into Ratio L/H
+    df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1/x)
+    
+    #Annotation with marker genes
+    df_organellarMarkerSet = self.df_organellarMarkerSet
+    
+    df_stringency_mapfracstacked.reset_index(inplace=True)
+    df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
+                                            if c not in ["Ratio H/L count","Ratio H/L variability [%]","Ratio H/L"]], inplace=True)
+    df_stringency_mapfracstacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
+
+    return df_stringency_mapfracstacked
+    """
+    
+    """
+    return df_filtered
+
+
+def filter_LFQ_count(df):
+    """
+    
+    """
+    return df_filtered
+
+
+def filter_singlecolumn(df):
+    """
+    
+    """
+    return df_filtered
+
+
+def transform_data(df, unlog=2, invert=False, log=False):
+    """
+    Perform basic data transformations: invert, logarithmize or unlogarithmize.
+    
+    Arguments:
+        df: pd.DataFrame
+        invert: boolean
+        unlog: number or False
+        log: one of [2, 10, e] or False
+    
+    Returns:
+        df_transformed: pd.DataFrame
+    
+    Doctests for the different transformations:
+    # log data
+    >>> transform_data(pd.DataFrame([[0,1,np.nan,10,-2.5]]), unlog=False, invert=False, log="e")
+         0    1   2         3   4
+    0 -inf  0.0 NaN  2.302585 NaN
+    
+    # shift data to a different log
+    >>> transform_data(pd.DataFrame([[0,1,np.nan,10,-2.5]]), unlog=2, invert=False, log=10)
+         0        1   2       3         4
+    0  0.0  0.30103 NaN  3.0103 -0.752575
+    
+    # invert and log data
+    >>> transform_data(pd.DataFrame([[0,1,np.nan,10,-2.5]]), unlog=False, invert=True, log=2)
+         0    1   2         3   4
+    0  inf  0.0 NaN -3.321928 NaN
+    """
+    if unlog:
+        df_transformed = df.transform(lambda x: unlog**x)
+    else:
+        df_transformed = df.copy()
+    
+    if invert:
+        df_transformed = df_transformed.transform(lambda x: 1/x)
+    
+    if log == 2:
+        df_transformed = df_transformed.transform(lambda x: np.log2(x))
+    elif log == 10:
+        df_transformed = df_transformed.transform(lambda x: np.log10(x))
+    elif log == "e":
+        df_transformed = df_transformed.transform(lambda x: np.log(x))
+    elif not log:
+        pass
+    else:
+        raise ValueError(f"Only numpy logarithms are supported (and reasonable), not {log}.")
+    
+    return df_transformed
+
+
+def normalize_samples(df, method="sum"):
+    """
+    Normalization of samples by different methods.
+    
+    sum: Normalize all samples to have same (average) sum (assuming equal sample loading). Useful for raw intensities.
+    median: Normalize all samples to have a median of 1. Useful for SILAC samples assuming equal channel loading.
+    
+    Arguments:
+        df: pd.DataFrame
+        method: str, one of [sum, median]
+    
+    Returns:
+        df_transformed: pd.DataFrame
+    
+    Doctests for each method:
+    >>> normalize_samples(pd.DataFrame([[1,1,1,0],[1,2,3,4],[0,1,2,np.nan]]),method="sum")
+         0    1         2    3
+    0  2.0  1.0  0.666667  0.0
+    1  2.0  2.0  2.000000  4.0
+    2  0.0  1.0  1.333333  NaN
+    >>> normalize_samples(pd.DataFrame([[1,1,1,0],[1,2,3,4],[0,1,2,np.nan]]),method="median")
+         0    1    2    3
+    0  1.0  1.0  0.5  0.0
+    1  1.0  2.0  1.5  2.0
+    2  0.0  1.0  1.0  NaN
+    """
+    
+    if method == "sum":
+        ## Normalize data by ensuring all columns have the same average sum.
+        sums = df.sum(axis=0)
+        targetsum = np.mean(sums)
+        df_transformed = df/sums*targetsum
+    elif method == "median":
+        df_transformed = df/df.apply(np.nanmedian, axis=0)
+    else:
+        raise ValueError(f"Unknown method for sample normalization: {method}")
+    
+    return df_transformed
+
+
+def weigh_yields(df):
+    """
+    
+    """
+    if len(df) == 0:
+        raise ValueError
+    return df_transformed
+
+
+def normalize_sum1(df):
+    """
+    
+    """
+    return df_01_stacked
