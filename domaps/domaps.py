@@ -39,6 +39,58 @@ class SpatialDataSet:
         "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*|variability|count)[^ ]+|^Ratio H/L variability.... .+|^Ratio H/L count .+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR]otein.[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
     }
     
+    defaultsettings = dict(
+        SILAC=dict(
+            sets=["SILAC_ratios", "SILAC_counts", "SILAC_variability"],
+            input_invert=True,
+            input_logged=False,
+            input_samplenormalization="median",
+            quality_filter="SILAC_countvar",
+            RatioCount=2,
+            RatioVariability=30
+        ),
+        LFQ=dict(
+            sets=["LFQ_intensities", "MSMS_counts"],
+            input_invert=False,
+            input_logged=False,
+            input_samplenormalization=False,
+            quality_filter="msms_count",
+            average_MSMS_counts=2,
+            consecutive=4
+        ),
+        Intensities=dict(
+            sets=["Intensities", "MSMS_counts"],
+            input_invert=False,
+            input_logged=False,
+            input_samplenormalization="sum",
+            quality_filter="msms_count",
+            average_MSMS_counts=2,
+            consecutive=4
+        ),
+        MaxQuant_proteinGroups=dict(
+            original_protein_ids="Majority protein IDs",
+            genes="Gene [nN]ames",
+            SILAC_ratios="Ratio H/L (?!normalized|type|is.*|variability|count).+",
+            SILAC_counts="Ratio H/L count .+",
+            SILAC_variability="Ratio H/L variability.... .+",
+            LFQ_intensities="LFQ intensity .+",
+            MSMS_counts="MS/MS count .+",
+            Intensities="Intensity .+",
+            categorical_filters=["Potential contaminant", "Only identified by site", "Reverse"]
+        ),
+        MaxQuant_peptides=None,
+        Spectronaut_proteins_long=dict(
+            original_protein_ids="PG.ProteinGroups",
+            genes="PG.Genes",
+            samples="R.Condition",
+            LFQ_intensities="PG.Quantity",
+            MSMS_counts="PG.RunEvidenceCount",
+            Intensities="PG.Quantity"
+        ),
+        Spectronaut_proteins_wide=None,
+        DIANN_proteins=None,
+    )
+    
     acquisition_set_dict = {
         "LFQ6 - Spectronaut" : ["LFQ intensity", "MS/MS count"],
         "LFQ5 - Spectronaut" : ["LFQ intensity", "MS/MS count"],
@@ -76,11 +128,21 @@ class SpatialDataSet:
     df_organellarMarkerSet = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
                                        usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
 
-    def __init__(self, filename, expname, acquisition, comment, name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)", reannotate_genes=False, **kwargs):
+    def __init__(
+        self,
+        filename,
+        expname,
+        acquisition,
+        #source,
+        comment,
+        name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)",
+        reannotate_genes=False,
+        **kwargs):
         
         self.filename = filename
         self.expname = expname
         self.acquisition = acquisition
+        #self.source = source
         self.name_pattern = name_pattern
         self.comment = comment
         self.imported_columns = self.regex["imported_columns"]
@@ -219,7 +281,7 @@ class SpatialDataSet:
         quality_filter="LFQ_count",
         input_logged=False,
         input_inverted=False,
-        normalize=False,
+        input_samplenormalization=False,
         yields=[]):
         """
         
@@ -236,8 +298,8 @@ class SpatialDataSet:
         ## Filter data quality as applicable
         if quality_filter == "SILAC_countvar":
             df_filtered = filter_SILAC_countvar(df_index)
-        elif quality_filter == "LFQ_count":
-            df_filtered = filter_LFQ_count(df_index)
+        elif quality_filter == "msms_count":
+            df_filtered = filter_msms_count(df_index)
         elif quality_filter == "singlecolumn":
             df_filtered = filter_singlecolumn(df_index)
         elif quality_filter == None:
@@ -253,7 +315,7 @@ class SpatialDataSet:
                                             log = False)
         else:
             df_transformed = df_filtered
-        if normalize:
+        if input_samplenormalization:
             df_transformed = normalize_samples(df_transformed,
                                                method=self.input_samplenormalization)
         if len(yields) == 0:
@@ -3555,7 +3617,7 @@ def filter_SILAC_countvar(df, RatioHLcount=2, RatioVariability=30):
     return df_filtered
 
 
-def filter_LFQ_count(df):
+def filter_msms_count(df):
     """
     
     """
