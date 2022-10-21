@@ -40,55 +40,59 @@ class SpatialDataSet:
     }
     
     defaultsettings = dict(
-        SILAC=dict(
-            sets=["SILAC_ratios", "SILAC_counts", "SILAC_variability"],
-            input_invert=True,
-            input_logged=False,
-            input_samplenormalization="median",
-            quality_filter="SILAC_countvar",
-            RatioCount=2,
-            RatioVariability=30
+        aqusition_modes=dict(
+            SILAC=dict(
+                sets=["SILAC_ratios", "SILAC_counts", "SILAC_variability"],
+                input_invert=True,
+                input_logged=False,
+                input_samplenormalization="median",
+                quality_filter="SILAC_countvar",
+                RatioCount=2,
+                RatioVariability=30
+            ),
+            LFQ=dict(
+                sets=["LFQ_intensities", "MSMS_counts"],
+                input_invert=False,
+                input_logged=False,
+                input_samplenormalization=False,
+                quality_filter="msms_count",
+                average_MSMS_counts=2,
+                consecutive=4
+            ),
+            Intensities=dict(
+                sets=["Intensities", "MSMS_counts"],
+                input_invert=False,
+                input_logged=False,
+                input_samplenormalization="sum",
+                quality_filter="msms_count",
+                average_MSMS_counts=2,
+                consecutive=4
+            )
         ),
-        LFQ=dict(
-            sets=["LFQ_intensities", "MSMS_counts"],
-            input_invert=False,
-            input_logged=False,
-            input_samplenormalization=False,
-            quality_filter="msms_count",
-            average_MSMS_counts=2,
-            consecutive=4
-        ),
-        Intensities=dict(
-            sets=["Intensities", "MSMS_counts"],
-            input_invert=False,
-            input_logged=False,
-            input_samplenormalization="sum",
-            quality_filter="msms_count",
-            average_MSMS_counts=2,
-            consecutive=4
-        ),
-        MaxQuant_proteinGroups=dict(
-            original_protein_ids="Majority protein IDs",
-            genes="Gene [nN]ames",
-            SILAC_ratios="Ratio H/L (?!normalized|type|is.*|variability|count).+",
-            SILAC_counts="Ratio H/L count .+",
-            SILAC_variability="Ratio H/L variability.... .+",
-            LFQ_intensities="LFQ intensity .+",
-            MSMS_counts="MS/MS count .+",
-            Intensities="Intensity .+",
-            categorical_filters=["Potential contaminant", "Only identified by site", "Reverse"]
-        ),
-        MaxQuant_peptides=None,
-        Spectronaut_proteins_long=dict(
-            original_protein_ids="PG.ProteinGroups",
-            genes="PG.Genes",
-            samples="R.Condition",
-            LFQ_intensities="PG.Quantity",
-            MSMS_counts="PG.RunEvidenceCount",
-            Intensities="PG.Quantity"
-        ),
-        Spectronaut_proteins_wide=None,
-        DIANN_proteins=None,
+        sources=dict(
+            MaxQuant_proteinGroups=dict(
+                original_protein_ids="Majority protein IDs",
+                genes="Gene [nN]ames",
+                SILAC_ratios="Ratio H/L (?!normalized|type|is.*|variability|count).+",
+                SILAC_counts="Ratio H/L count .+",
+                SILAC_variability="Ratio H/L variability.... .+",
+                LFQ_intensities="LFQ intensity .+",
+                MSMS_counts="MS/MS count .+",
+                Intensities="Intensity .+",
+                categorical_filters=["Potential contaminant", "Only identified by site", "Reverse"]
+            ),
+            MaxQuant_peptides=None,
+            Spectronaut_proteins_long=dict(
+                original_protein_ids="PG.ProteinGroups",
+                genes="PG.Genes",
+                samples="R.Condition",
+                LFQ_intensities="PG.Quantity",
+                MSMS_counts="PG.RunEvidenceCount",
+                Intensities="PG.Quantity"
+            ),
+            Spectronaut_proteins_wide=None,
+            DIANN_proteins=None,
+        )
     )
     
     acquisition_set_dict = {
@@ -3549,7 +3553,11 @@ def format_data_wide(df):
     return df_index
 
 
-def filter_SILAC_countvar(df, RatioHLcount=2, RatioVariability=30):
+def filter_SILAC_countvar(
+    df,
+    RatioCount: int = 2,
+    RatioVariability: float = 30,
+    sets: dict = dict(ratio="Ratio", count="Ratio count", variability="Ratio variability")):
     """
     The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are considered (a set of f.e. 5 SILAC ratios 
     in case you have 5 fractions / any proteins with missing values were rejected). Proteins were retained with 3 or more quantifications in each 
@@ -3558,62 +3566,58 @@ def filter_SILAC_countvar(df, RatioHLcount=2, RatioVariability=30):
     Subsequently normalization to SILAC loading was performed.Data is annotated based on specified marker set e.g. eLife.
 
     Args:
-        df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Type
-        RatioHLcount: int, 2
-        RatioVariability: int, 30 
-        df_organellarMarkerSet: df, columns: "Protein ID", "Compartment", no index 
-        fractions: list of fractions e.g. ["01K", "03K", ...]
+        df: pd.DataFrame with column names as defined by sets on column level "Set" and a column or index level "Fraction".
+        RatioCount: int, 2; Minimum ratio count
+        RatioVariability: float, 30; If ratio count is exactly its set value, additionaly check ratio variability <= this value.
+        sets: dictionary, dict(ratio="Ratio", count="Ratio count", variability="Ratio variability")
 
     Returns:
-        df_stringency_mapfracstacked: dataframe, in which "MAP" and "Fraction" are stacked;
-                                      columns "Ratio H/L count", "Ratio H/L variability [%]", and "Ratio H/L" stored as single level indices
-        shape_dict["Shape after Ratio H/L count (>=3)/var (count>=2, var<30) filtering"] of df_countvarfiltered_stacked
-        shape_dict["Shape after filtering for complete profiles"] of df_stringency_mapfracstacked
-    """
-
-    # Fraction and Map will be stacked
-    df_stack = df_index.stack(["Fraction", "Map"])
-
-    # filtering for sufficient number of quantifications (count in "Ratio H/L count"), taken variability (var in Ratio H/L variability [%]) into account
-    # zip: allows direct comparison of count and var
-    # only if the filtering parameters are fulfilled the data will be introduced into df_countvarfiltered_stacked
-    #default setting: RatioHLcount = 2 ; RatioVariability = 30
+        df_filtered: pd.DataFrame, same as original data frame, but only with data for complete profiles remaining after filtering
     
-    df_countvarfiltered_stacked = df_stack.loc[[count>RatioHLcount or (count==RatioHLcount and var<RatioVariability) 
-                                    for var, count in zip(df_stack["Ratio H/L variability [%]"], df_stack["Ratio H/L count"])]]
-    
-    shape_dict["Shape after Ratio H/L count (>=3)/var (count==2, var<30) filtering"] = df_countvarfiltered_stacked.unstack(["Fraction", "Map"]).shape
-
-    # "Ratio H/L":normalization to SILAC loading, each individual experiment (FractionXMap) will be divided by its median
-    # np.median([...]): only entries, that are not NANs are considered
-    df_normsilac_stacked = df_countvarfiltered_stacked["Ratio H/L"]\
-        .unstack(["Fraction", "Map"])\
-        .apply(lambda x: x/np.nanmedian(x), axis=0)\
-        .stack(["Map", "Fraction"])
-
-    df_stringency_mapfracstacked = df_countvarfiltered_stacked[["Ratio H/L count", "Ratio H/L variability [%]"]].join(
-        pd.DataFrame(df_normsilac_stacked, columns=["Ratio H/L"]))
-
-    # dataframe is grouped (Map, id), that allows the filtering for complete profiles
-    df_stringency_mapfracstacked = df_stringency_mapfracstacked.groupby(["Map", "id"]).filter(lambda x: len(x)>=len(self.fractions))
-    
-    shape_dict["Shape after filtering for complete profiles"]=df_stringency_mapfracstacked.unstack(["Fraction", "Map"]).shape
-    
-    # Ratio H/L is converted into Ratio L/H
-    df_stringency_mapfracstacked["Ratio H/L"] = df_stringency_mapfracstacked["Ratio H/L"].transform(lambda x: 1/x)
-    
-    #Annotation with marker genes
-    df_organellarMarkerSet = self.df_organellarMarkerSet
-    
-    df_stringency_mapfracstacked.reset_index(inplace=True)
-    df_stringency_mapfracstacked.set_index([c for c in df_stringency_mapfracstacked.columns
-                                            if c not in ["Ratio H/L count","Ratio H/L variability [%]","Ratio H/L"]], inplace=True)
-    df_stringency_mapfracstacked.rename(index={np.nan:"undefined"}, level="Compartment", inplace=True)
-
-    return df_stringency_mapfracstacked
+    >>> filter_SILAC_countvar(pd.DataFrame([[1,0, 3,2, 3,15], # no bad values
+    ...                                     [2,0, 3,2, 5,40], # second value 2 counts, but high variability
+    ...                                     [3,0, 1,2, 5,5]], # first value only one count
+    ...                       index=pd.Index(["a","b","c"],name="id"),
+    ...                       columns=pd.MultiIndex.from_arrays([["Ratio","Ratio","Ratio count","Ratio count","Ratio variability","Ratio variability"],
+    ...                                                          ["F1","F2","F1","F2","F1","F2"]], names=["Set", "Fraction"])))
+    Set      Ratio      Ratio count      Ratio variability      
+    Fraction    F1   F2          F1   F2                F1    F2
+    id                                                          
+    a          1.0  0.0         3.0  2.0               3.0  15.0
     """
     
-    """
+    ## Fetch column levels and assert presence of the required sets and fraction annotations
+    column_levels = df.columns.names
+    # All sets present
+    if "Set" not in column_levels:
+        raise KeyError("Column level 'Set' is missing.")
+    else:
+        if any([v not in df.columns.get_level_values("Set") for v in sets.values()]):
+            raise KeyError(f"One of {', '.join(sets.values())} is not in the sets required for filtering SILAC data by counts and variability.")
+    # Fraction annotation present
+    if "Fraction" not in column_levels:
+        if "Fraction" not in df.index.names:
+            raise KeyError("Column or index level 'Fraction' is missing.")
+    
+    ## Convert to long dataframe
+    if len(column_levels) > 1:
+        df_stack = df.stack([el for el in column_levels if el != "Set"])
+    else:
+        df_stack = df.copy()
+    
+    ## FILTER DATA
+    # count and variability
+    df_stack_filtered = df_stack.loc[
+        [count>RatioCount or (count==RatioCount and var<=RatioVariability)
+         for var, count in zip(df_stack[sets["variability"]], df_stack[sets["count"]])]]
+    # complete profiles
+    df_profiles = df_stack_filtered.unstack("Fraction").dropna().stack("Fraction")
+    
+    # Return to input format
+    df_filtered = df_profiles.unstack([el for el in column_levels if el != "Set"])\
+                             .reorder_levels(column_levels, axis=1)\
+                             .sort_index(axis=1, key=natsort_index_keys)
+    
     return df_filtered
 
 
