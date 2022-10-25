@@ -301,7 +301,7 @@ class SpatialDataSet:
         
         ## Filter data quality as applicable
         if quality_filter == "SILAC_countvar":
-            df_filtered = filter_SILAC_countvar(df_index)
+            df_filtered = filter_SILAC_countvar(df_index, RatioCount=self.settings["RatioCount"], RatioVariability=self.settings["RatioVariability"])
         elif quality_filter == "msms_count":
             df_filtered = filter_msms_count(df_index)
         elif quality_filter == "singlecolumn":
@@ -3557,7 +3557,7 @@ def filter_SILAC_countvar(
     df,
     RatioCount: int = 2,
     RatioVariability: float = 30,
-    sets: dict = dict(ratio="Ratio", count="Ratio count", variability="Ratio variability")):
+    sets: dict = dict(count="Ratio count", variability="Ratio variability")):
     """
     The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are considered (a set of f.e. 5 SILAC ratios 
     in case you have 5 fractions / any proteins with missing values were rejected). Proteins were retained with 3 or more quantifications in each 
@@ -3574,12 +3574,15 @@ def filter_SILAC_countvar(
     Returns:
         df_filtered: pd.DataFrame, same as original data frame, but only with data for complete profiles remaining after filtering
     
+    Doctest for expected input
     >>> filter_SILAC_countvar(pd.DataFrame([[1,0, 3,2, 3,15], # no bad values
     ...                                     [2,0, 3,2, 5,40], # second value 2 counts, but high variability
     ...                                     [3,0, 1,2, 5,5]], # first value only one count
-    ...                       index=pd.Index(["a","b","c"],name="id"),
-    ...                       columns=pd.MultiIndex.from_arrays([["Ratio","Ratio","Ratio count","Ratio count","Ratio variability","Ratio variability"],
-    ...                                                          ["F1","F2","F1","F2","F1","F2"]], names=["Set", "Fraction"])))
+    ...                                    index=pd.Index(["a","b","c"],name="id"),
+    ...                                    columns=pd.MultiIndex.from_arrays(
+    ...                                        [["Ratio","Ratio","Ratio count","Ratio count","Ratio variability","Ratio variability"],
+    ...                                         ["F1","F2","F1","F2","F1","F2"]],
+    ...                                        names=["Set", "Fraction"])))
     Set      Ratio      Ratio count      Ratio variability      
     Fraction    F1   F2          F1   F2                F1    F2
     id                                                          
@@ -3621,12 +3624,143 @@ def filter_SILAC_countvar(
     return df_filtered
 
 
-def filter_msms_count(df):
+def filter_msms_count(
+    df,
+    average_MSMS_counts: int = 2,
+    sets: dict = dict(msms="MS/MS count")):
+    """
+    Filter proteomic profiling data for average ms/ms counts per profile.
+    
+    If summed MS/MS counts are fewer than (number of fraction) * (required average) profiles and all associated data are removed.
+
+    Args:
+        df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Typ
+        self:
+            df_organellarMarkerSet: df, columns: "Protein ID", "Compartment", no index
+            fractions: list of fractions e.g. ["01K", "03K", ...]
+            summed_MSMS_counts: int, 2
+            consecutiveLFQi: int, 4
+
+    Returns:
+        df_stringency_mapfracstacked: dataframe, in which "Map" and "Fraction" is stacked; "LFQ intensity" and "MS/MS count" define a 
+                                      single-level column index
+        
+        self:
+            shape_dict["Shape after MS/MS value filtering"] of df_mscount_mapstacked
+            shape_dict["Shape after consecutive value filtering"] of df_stringency_mapfracstacked
+    
+    Doctest for expected input:
+    >>> filter_msms_count(pd.DataFrame([[1,2,1, 5,2,3], # msms sum = 10 > 6
+    ...                                 [2,0,1, 5,np.nan,1], # msms sum = 6 = 6
+    ...                                 [1,1,1, 1,1,1]], # msms sum = 3 < 6 -> remove
+    ...                                index=pd.Index(["a","b","c"],name="id"),
+    ...                                columns=pd.MultiIndex.from_arrays([["LFQ","LFQ","LFQ","MS/MS count","MS/MS count","MS/MS count"],
+    ...                                                                  ["F1","F2","F3","F1","F2","F3"]], names=["Set", "Fraction"])))
+    Set      LFQ       MS/MS count          
+    Fraction  F1 F2 F3          F1   F2   F3
+    id                                      
+    a          1  2  1         5.0  2.0  3.0
+    b          2  0  1         5.0  NaN  1.0
     """
     
-    """
+    ## Fetch column levels and assert presence of the required sets and fraction annotations
+    column_levels = df.columns.names
+    # All sets present
+    if "Set" not in column_levels:
+        raise KeyError("Column level 'Set' is missing.")
+    else:
+        if any([v not in df.columns.get_level_values("Set") for v in sets.values()]):
+            raise KeyError(f"One of {', '.join(sets.values())} is not in the sets required for filtering abundances by MS/MS counts.")
+    # Fraction annotation present
+    if "Fraction" not in column_levels:
+        if "Fraction" not in df.index.names:
+            raise KeyError("Column or index level 'Fraction' is missing.")
+    
+    ## Convert to profile dataframe
+    if len(column_levels) > 1:
+        df_profiles = df.stack([el for el in column_levels if el != "Set"]).unstack("Fraction")
+    else:
+        df_profiles = df.unstack("Fraction")
+    
+    # calculate minimal number of MS/MS counts per profile from number of fractions and required average
+    minms = len(set(df_profiles.columns.get_level_values("Fraction"))) * average_MSMS_counts
+    
+    # FILTER DATA
+    if minms > 0:
+        df_filtered = df_profiles.loc[df_profiles[sets["msms"]].apply(np.nansum, axis=1) >= minms]
+    else:
+        df_filtered = df_profiles.copy()
+    
+    # Return to input format
+    df_filtered = df_filtered.stack("Fraction")\
+                             .unstack([el for el in column_levels if el != "Set"])\
+                             .reorder_levels(column_levels, axis=1)\
+                             .sort_index(axis=1, key=natsort_index_keys)
+    
     return df_filtered
 
+
+def filter_consecutive(
+    df,
+    consecutive: int = 4,
+    fraction_order: list = [],
+    sets: dict = dict(abundance="LFQ intensity")):
+    """
+    >>> filter_consecutive(pd.DataFrame([[1,2,1,5,2,3], # complete profile
+    ...                                  [0,0,1,5,3,1], # partial profile
+    ...                                  [1,1,2,np.nan,1,1], # fragmented profile with nan
+    ...                                  [1,1,0,0,1,1]], # fragmented profile
+    ...                                 index=pd.Index(["a","b","c","d"],name="id"),
+    ...                                 columns=pd.MultiIndex.from_arrays([["LFQ","LFQ","LFQ","LFQ","LFQ","LFQ"],
+    ...                                                                   ["F1","F2","F3","F4","F5","F6"]], names=["Set", "Fraction"])), sets=dict(abundance="LFQ"))
+    Set       LFQ                         
+    Fraction   F1   F2   F3   F4   F5   F6
+    id                                    
+    a         1.0  2.0  1.0  5.0  2.0  3.0
+    b         NaN  NaN  1.0  5.0  3.0  1.0
+    """
+    
+    ## Fetch column levels and assert presence of the required sets and fraction annotations
+    column_levels = df.columns.names
+    # All sets present
+    if "Set" not in column_levels:
+        raise KeyError("Column level 'Set' is missing.")
+    else:
+        if any([v not in df.columns.get_level_values("Set") for v in sets.values()]):
+            raise KeyError(f"One of {', '.join(sets.values())} is not in the sets required for filtering for consecutive values.")
+    # Fraction annotation present
+    if "Fraction" not in column_levels:
+        if "Fraction" not in df.index.names:
+            raise KeyError("Column or index level 'Fraction' is missing.")
+    
+    ## Convert to profile dataframe
+    if len(column_levels) > 1:
+        df_profiles = df.stack([el for el in column_levels if el != "Set"]).unstack("Fraction")
+    else:
+        df_profiles = df.unstack("Fraction")
+    
+    ## Make sure fractions are in the correct order:
+    if len(fraction_order) == 0:
+        df_profiles.sort_index(level="Fraction", axis=1, key=natsort_index_keys, inplace=True)
+    else:
+        df_profiles = df_profiles.reindex(fraction_order, level="Fraction", axis=1)
+    
+    ## Replace 0 with np.nan
+    df_profiles = df_profiles.replace({0: np.nan})
+    
+    ## FILTER DATA
+    df_filtered = df_profiles.loc[
+        df_profiles[sets["abundance"]]\
+        .apply(lambda x: np.isfinite(x), axis=0)\
+        .apply(lambda x: sum(x) >= consecutive and any(x.rolling(window=consecutive).sum() >= consecutive), axis=1)]
+
+    # Return to input format
+    df_filtered = df_filtered.stack("Fraction")\
+                             .unstack([el for el in column_levels if el != "Set"])\
+                             .reorder_levels(column_levels, axis=1)\
+                             .sort_index(axis=1, key=natsort_index_keys)
+    
+    return df_filtered
 
 def filter_singlecolumn(df):
     """
