@@ -3568,8 +3568,11 @@ def format_data_long(
     samples: str,
     name_pattern: str,
     sets: dict,
-    index_cols:list = []):
+    index_cols:list = [],
+    fractions:dict = dict()):
     """
+    This formats proteomic input data in long format to be compatible with the SpatialDataset class.
+    
     >>> format_data_long(pd.DataFrame([["foo", "lorem", "rep1_F1", 100, 4],
     ...                                ["bar;bar-1", "ipsum", "rep1_F1", 200, 1],
     ...                                ["foo", "lorem", "rep2_F1", 50, 0],
@@ -3590,6 +3593,26 @@ def format_data_long(
     foo                  lorem      foo                 100.0  0.0  ...         0.0  6.0
     <BLANKLINE>
     [2 rows x 8 columns]
+    
+    Use fractions parameter to relabel fractions
+    >>> format_data_long(pd.DataFrame([["foo", "lorem", "rep1_F1", 100],
+    ...                                ["bar;bar-1", "ipsum", "rep1_F1", 200],
+    ...                                ["foo", "lorem", "rep1_F3", 50],
+    ...                                ["bar;bar-1", "ipsum", "rep1_F3", 30.1],
+    ...                                ["foo", "lorem", "rep1_F2", 0],
+    ...                                ["bar;bar-1", "ipsum", "rep1_F2", np.nan]],
+    ...                               columns=["PG.ProteinGroups", "PG.Genes", "R.Condition", "PG.Quantity"]
+    ...                               ),
+    ...                  original_protein_ids="PG.ProteinGroups", genes="PG.Genes",
+    ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
+    ...                  sets={"LFQ intensity": "PG.Quantity"},
+    ...                  fractions={"F1": None, "F2": "F2", "F3": "F1"}) # Drop F1, relabel F3 as F1, leave F2 as is
+    Set                                         LFQ intensity      
+    Map                                                  rep1      
+    Fraction                                               F2    F1
+    Original Protein IDs Gene names Protein IDs                    
+    bar;bar-1            ipsum      bar                   NaN  30.1
+    foo                  lorem      foo                   0.0  50.0
     """
     
     ## Rename columns
@@ -3628,6 +3651,17 @@ def format_data_long(
     ## Shorten Protein IDs
     df_index.set_index(pd.Index([split_ids(el) for el in df_index.index.get_level_values("Original Protein IDs")], name="Protein IDs"),
                        append=True, inplace=True)
+    
+    ## Rename and potentially delete fractions
+    # empty dictionary: leave as is
+    if len(fractions) == 0:
+        pass
+    else:
+        for k,v in fractions.items():
+            if v == None:
+                df_index.drop(k, axis=1, inplace=True, level="Fraction")
+            elif k != v:
+                df_index.rename(columns={k: v}, inplace=True)
     
     return df_index
 
