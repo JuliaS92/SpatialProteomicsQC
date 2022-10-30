@@ -300,7 +300,16 @@ class SpatialDataSet:
         
         ## Format data based on input columns
         if input_format == "long":
-            df_index = format_data_long(self.df_original)
+            df_index = format_data_long(
+                df=self.df_original,
+                #original_protein_ids: str,
+                #genes: str,
+                #samples: str,
+                #name_pattern: str,
+                #sets: dict,
+                #index_cols:list = [],
+                #fractions:dict = dict()
+            )
         elif input_format == "wide":
             df_index = format_data_wide(self.df_original)
         else:
@@ -320,6 +329,7 @@ class SpatialDataSet:
             df_filtered = df_index.copy()
         elif all([el in ["SILAC_countvar", "msms_count", "consecutive", "singlecolumn"] for el in quality_filter]):
             df_filtered = df_index.copy()
+            # TODO: somehow include the categorical filters
             if "SILAC_countvar" in quality_filter:
                 df_filtered = filter_SILAC_countvar(df_filtered, RatioCount=self.settings["RatioCount"], RatioVariability=self.settings["RatioVariability"])
             if "msms_count" in quality_filter:
@@ -3561,6 +3571,32 @@ def align_datasets(df):
     
     return df_01_aligned, index_mapping
 
+
+def relabel_fractions(
+    df: pd.DataFrame,
+    fractions: dict = dict()):
+    """
+    Relabel (and remove) fractions according to a dictionary.
+    
+    Old fraction labels are keys, new fraction labels are values. If the value is None the fraction is dropped.
+    
+    """
+    
+    df_fractions = df.copy()
+    
+    ## Rename and potentially delete fractions
+    # empty dictionary: leave as is
+    if len(fractions) == 0:
+        pass
+    else:
+        for k,v in fractions.items():
+            if v == None:
+                df_fractions.drop(k, axis=1, inplace=True, level="Fraction")
+            elif k != v:
+                df_fractions.rename(columns={k: v}, inplace=True)
+    return df_fractions
+
+
 def format_data_long(
     df: pd.DataFrame,
     original_protein_ids: str,
@@ -3619,7 +3655,7 @@ def format_data_long(
     df_index = df.rename(columns={original_protein_ids: "Original Protein IDs",
                                   genes: "Gene names",
                                   samples: "Samples",
-                                  **{v:k for k,v in sets.items()}})
+                                  **{v:k for k,v in sets.items()}}, errors="raise")
     
     ## Set index columns and column name "Set"
     df_index.set_index(["Original Protein IDs", "Gene names", "Samples"]+index_cols, inplace=True)
@@ -3649,29 +3685,85 @@ def format_data_long(
     #    df_index = df_index.unstack(["Map", "Fraction"])
     
     ## Shorten Protein IDs
+    if "Protein IDs" in df_index.index.names:
+        df_index.index.rename("Protein IDs loaded", level="Protein IDs", inplace=True)
     df_index.set_index(pd.Index([split_ids(el) for el in df_index.index.get_level_values("Original Protein IDs")], name="Protein IDs"),
                        append=True, inplace=True)
     
-    ## Rename and potentially delete fractions
-    # empty dictionary: leave as is
+    ## Relabel and remove fractions
     if len(fractions) == 0:
         pass
     else:
-        for k,v in fractions.items():
-            if v == None:
-                df_index.drop(k, axis=1, inplace=True, level="Fraction")
-            elif k != v:
-                df_index.rename(columns={k: v}, inplace=True)
+        df_index = relabel_fractions(df_index, fractions)
     
     return df_index
 
 
-def format_data_wide(df):
+def format_data_wide(
+    df: pd.DataFrame,
+    original_protein_ids: str,
+    genes: str,
+    name_pattern: str,
+    sets: dict,
+    index_cols:list = [],
+    fractions:dict = dict()):
+    """
+    >>> format_data_wide(pd.DataFrame([["foo", "lorem", 20,np.nan,20,10, 2,0,4,3, None],
+    ...                                ["bar;bar-1", "ipsum", 0,40,20,40, np.nan,10,5,3, None]],
+    ...                               columns=["Majority Protein IDs", "Gene Names",
+    ...                                        "LFQ intensity 1_F1","LFQ intensity 1_F2","LFQ intensity 2_F1","LFQ intensity 2_F2",
+    ...                                        "MS/MS counts 1_F1","MS/MS counts 1_F2","MS/MS counts 2_F1","MS/MS counts 2_F2", "Potential contaminant"]),
+    ...                      original_protein_ids="Majority Protein IDs", genes="Gene Names",
+    ...                      name_pattern=".* (?P<rep>.*)_(?P<frac>.*)",
+    ...                      sets={"LFQ intensity": "LFQ intensity .*", "MS/MS count": "MS/MS counts .*"},
+    ...                      index_cols=["Potential contaminant"])
+    Set                                                               LFQ intensity  ... MS/MS count
+    Map                                                                           1  ...           2
+    Fraction                                                                     F1  ...          F2
+    Original Protein IDs Gene names Potential contaminant Protein IDs                ...            
+    foo                  lorem      NaN                   foo                    20  ...           3
+    bar;bar-1            ipsum      NaN                   bar                     0  ...           3
+    <BLANKLINE>
+    [2 rows x 8 columns]
     """
     
-    """
+    ## Rename columns
+    df_index = df.rename(columns={original_protein_ids: "Original Protein IDs",
+                                  genes: "Gene names"}, errors="raise")
+    
+    ## Set index columns and column name "Set"
+    df_index.set_index(["Original Protein IDs", "Gene names"]+index_cols, inplace=True)
+    
+    ## Catch any additional columns, which are not accounted for
+    if any([not re.match("|".join(sets.values()), col) for col in df_index.columns]):
+        raise ValueError(f"Additional unknown column(s) {', '.join([col for col in df_index.columns if not re.match('|'.join(sets.values()), col)])} present. Please specify what these are or remove them from the uploaded file.")
+    
+    # multindex will be generated, by extracting the information about the Map, Fraction and Type from each individual column name
+    multiindex = pd.MultiIndex.from_arrays(
+        arrays=[
+            [[k for k,v in sets.items() if re.match(v,col)][0] for col in df_index.columns],
+            [re.match(name_pattern, col).group("rep") for col in df_index.columns] if not "<cond>" in name_pattern
+             else ["_".join(re.match(name_pattern, col).group("cond", "rep")) for col in df_index.columns],
+            [re.match(name_pattern, col).group("frac") for col in df_index.columns],
+        ],
+        names=["Set", "Map", "Fraction"]
+    )
+    
+    df_index.columns = multiindex
+    
+    ## Shorten Protein IDs
+    if "Protein IDs" in df_index.index.names:
+        df_index.index.rename("Protein IDs loaded", level="Protein IDs", inplace=True)
+    df_index.set_index(pd.Index([split_ids(el) for el in df_index.index.get_level_values("Original Protein IDs")], name="Protein IDs"),
+                       append=True, inplace=True)
+    
+    ## Relabel and remove fractions
+    if len(fractions) == 0:
+        pass
+    else:
+        df_index = relabel_fractions(df_index, fractions)
+    
     return df_index
-
 
 def filter_SILAC_countvar(
     df,
