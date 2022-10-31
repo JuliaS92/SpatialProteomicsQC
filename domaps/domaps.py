@@ -3974,10 +3974,34 @@ def filter_consecutive(
     
     return df_filtered
 
-def filter_singlecolumn(df):
+def filter_singlecolumn_keep(
+    df,
+    column:str,
+    operator:str = "!=",
+    value="'+'"):
+    """
+    >>> filter_singlecolumn_keep(pd.DataFrame([[1,2],[3,4],[5,6]],
+    ...                                   columns=pd.MultiIndex.from_tuples([("Intensity", "F1"), ("Intensity", "F2")], names=["Set", "Fraction"]),
+    ...                                   index=pd.MultiIndex.from_tuples([("foo", "lorem", np.nan), ("bar", "ipsum", ""), ("baz", "dolor", "+")], names=["Protein IDs", "Gene names", "Reverse"])),
+    ...                      column="Reverse")
+    Set                            Intensity   
+    Fraction                              F1 F2
+    Protein IDs Gene names Reverse             
+    foo         lorem      NaN             1  2
+    bar         ipsum                      3  4
+    
+    >>> filter_singlecolumn_keep(pd.DataFrame([[1,2],[3,4],[5,6]],
+    ...                                   columns=pd.MultiIndex.from_tuples([("Intensity", "F1"), ("Intensity", "F2")], names=["Set", "Fraction"]),
+    ...                                   index=pd.MultiIndex.from_tuples([("foo", "lorem", np.nan), ("bar", "ipsum", 0.5), ("baz", "dolor", 1)], names=["Protein IDs", "Gene names", "Score"])),
+    ...                      column="Score", operator=">=", value=1)
+    Set                          Intensity   
+    Fraction                            F1 F2
+    Protein IDs Gene names Score             
+    baz         dolor      1.0           5  6
     """
     
-    """
+    df_filtered = df.query(f"`{column}` {operator} {value}")
+    
     return df_filtered
 
 
