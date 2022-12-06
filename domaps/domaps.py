@@ -40,7 +40,7 @@ class SpatialDataSet:
     }
     
     defaultsettings = dict(
-        aqusition_modes=dict(
+        acquisition_modes=dict(
             SILAC=dict(
                 sets=["Ratio", "Ratio count", "Ratio variability"],
                 input_invert=True,
@@ -51,15 +51,15 @@ class SpatialDataSet:
                 RatioVariability=30
             ),
             LFQ=dict(
-                sets=["LFQ intensitie", "MS/MS count"],
+                sets=["LFQ intensity", "MS/MS count"],
                 input_invert=False,
                 input_logged=False,
-                input_samplenormalization=False,
+                input_samplenormalization=None,
                 quality_filter=["msms_count", "consecutive"],
                 average_MSMS_counts=2,
                 consecutive=4
             ),
-            Intensities=dict(
+            Intensity=dict(
                 sets=["Intensity", "MS/MS count"],
                 input_invert=False,
                 input_logged=False,
@@ -67,13 +67,18 @@ class SpatialDataSet:
                 quality_filter=["msms_count", "consecutive"],
                 average_MSMS_counts=2,
                 consecutive=4
+            ),
+            custom=dict(
+                sets=["Abundance"],
+                quality_filter=["msms_count", "consecutive"],
+                average_MSMS_counts=2,
+                consecutive=4
             )
         ),
         sources=dict(
-            MaxQuant_proteinGroups=dict(
-                format="wide",
+            MaxQuant_proteins_pivot=dict(
                 original_protein_ids="Majority protein IDs",
-                genes="Gene [nN]ames",
+                genes="Gene names",
                 sets={
                     "Ratio": "Ratio H/L (?!normalized|type|is.*|variability|count).+",
                     "Ratio count": "Ratio H/L count .+",
@@ -82,11 +87,14 @@ class SpatialDataSet:
                     "MS/MS count": "MS/MS count .+",
                     "Intensity": "Intensity .+",
                 },
-                categorical_filters=["Potential contaminant", "Only identified by site", "Reverse"]
+                column_filters={
+                    "Potential contaminant": ["!=", "'+'"],
+                    "Only identified by site": ["!=", "'+'"],
+                    "Reverse": ["!=", "'+'"]
+                }
             ),
-            MaxQuant_peptides=None,
+            MaxQuant_peptides_pivot=None,
             Spectronaut_proteins_long=dict(
-                format="long",
                 original_protein_ids="PG.ProteinGroups",
                 genes="PG.Genes",
                 samples="R.Condition",
@@ -96,8 +104,8 @@ class SpatialDataSet:
                     "Intensity": "PG.Quantity"
                 }
             ),
-            Spectronaut_proteins_wide=None,
-            DIANN_proteins=None,
+            Spectronaut_proteins_pivot=None,
+            DIANN_proteins_pivot=None,
         )
     )
     
@@ -147,6 +155,7 @@ class SpatialDataSet:
         comment,
         name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)",
         reannotate_genes=False,
+        legacy=True,
         **kwargs):
         
         self.filename = filename
@@ -156,6 +165,7 @@ class SpatialDataSet:
         self.name_pattern = name_pattern
         self.comment = comment
         self.imported_columns = self.regex["imported_columns"]
+        self.legacy = legacy
         
         self.fractions, self.map_names = [], []
         self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
@@ -215,6 +225,46 @@ class SpatialDataSet:
         
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
+    
+    def from_settings(settings, legacy=True):
+        settings["legacy"] = legacy
+        if legacy:
+            if any([el not in settings.keys() for el in ["filename", "expname", "comment",
+                                                        "source", "acquisition",
+                                                        "name_pattern", "reannotate", "reannotation_source",
+                                                        "organelles"]]):
+                raise ValueError("Settings are not sufficient to configure in legacy mode.")
+            if settings["source"] == "MaxQuant":
+                if settings["acquisition"] == "LFQ":
+                    source = "LFQ6 - MQ"
+                elif settings["acquisition"] == "SILAC":
+                    source = "SILAC - MQ"
+                else:
+                    raise ValueError(f"No legacy configuration for {settings['source']} and {settings['acquisition']}.")
+            elif settings["source"] == "Spectronaut":
+                if settings["acquisition"] == "LFQ":
+                    source = "LFQ6 - Spectronaut"
+                else:
+                    raise ValueError(f"No legacy configuration for {settings['source']} and {settings['acquisition']}.")
+            else:
+                raise ValueError(f"No legacy configuration for {settings['source']}.")
+            
+            if 'average_MSMS_counts' in settings.keys():
+                settings['summed_MSMS_counts'] = settings['average_MSMS_counts']
+            
+            if 'consecutive' in settings.keys():
+                settings['consecutiveLFQi'] = settings['consecutive']
+            
+            ds = SpatialDataSet(acquisition = source,
+                                reannotate_genes = bool(settings["reannotate"]),
+                                reannotation_source = parse_reannotation_source(settings['reannotate'], settings['reannotation_source']),
+                                organism = settings["organelles"],
+                                **{k:v for k,v in settings.items() if k not in [
+                                    "acquisition", "reannotation_source",
+                                    "reannotate", "organism"]})
+        else:
+            ds = SpatialDataSet(**settings)
+        return ds
     
     
     def run_pipeline(self, content=None, progressbar=None):
@@ -287,7 +337,7 @@ class SpatialDataSet:
     
     def process_input(
         self,
-        input_format="wide",
+        orientation="wide",
         quality_filter="LFQ_count",
         input_logged=False,
         input_inverted=False,
@@ -299,7 +349,7 @@ class SpatialDataSet:
         """
         
         ## Format data based on input columns
-        if input_format == "long":
+        if orientation == "long":
             df_index = format_data_long(
                 df=self.df_original,
                 #original_protein_ids: str,
@@ -310,7 +360,7 @@ class SpatialDataSet:
                 #index_cols:list = [],
                 #fractions:dict = dict()
             )
-        elif input_format == "wide":
+        elif orientation == "wide":
             df_index = format_data_wide(self.df_original)
         else:
             raise ValueError("Unknown input format")
@@ -3347,7 +3397,31 @@ def reframe_df_01_fromJson_for_Perseus(json_dict):
     df.columns = ["_".join(col) for col in df.columns.values]
     
     return df
-   
+
+
+def parse_reannotation_source(mode, source):
+    reannotation_source = {}
+    reannotation_source['source'] = mode
+    reannotate = bool(mode)
+    if mode == "fasta_headers":
+        if "\n" in source:
+            idmapping = [el for el in source.split("\n")]
+        else:
+            idmapping = [el.decode('UTF-8').strip() for el in pkg_resources.resource_stream(
+                "domaps", f'annotations/idmapping/{source}.txt').readlines()]
+        reannotation_source["idmapping"] = idmapping
+    elif mode == "tsv":
+        if "\n" in source:
+            idmapping = pd.read_csv(StringIO(source), sep='\t',
+                                    usecols=["Entry", "Gene names  (primary )"])
+        else:
+            idmapping = pd.read_csv(pkg_resources.resource_stream(
+                "domaps", f'annotations/idmapping/{source}.tab'), sep='\t',
+                                    usecols=["Entry", "Gene names  (primary )"])
+        reannotation_source["idmapping"] = idmapping
+    return reannotation_source
+
+
 def reannotate_genes_uniprot(proteingroups, source="uniprot", idmapping=[]):
     """
     Annotate protein groups with gene names from a specified source for uniprot annotations.
@@ -4109,4 +4183,7 @@ def normalize_sum1(df):
     """
     
     """
+    
+    
+    
     return df_01_stacked
