@@ -14,6 +14,9 @@ import natsort
 class ValidationError(Exception):
     pass
 
+def help_button(text="help text displayed on hover"):
+    return pn.pane.HTML(f'<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALoAAAC6ABUywAuAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANRSURBVDiNnZRNaF1VEMd/M+e+vCdJm7RNq0JNaZJ2U8QUIQuFriIWPyjFutGCuNGS6Eohbly50bgQJGkrrqUFK8VKUdOFS9FC1YgLm0+agiWJkMQ8SN69d8bFue/58lFBDwyHe878/zP3zPxHuM86MrbWZ+IvismAmT8CdAJLqjLvwW+YyOez59p+2QkrWw+6R1ePCjLiOac8dzAHJ5oUpoIEQQJXPbHhmXPtk/cl7RlbO+m5X/bM28kczx1yx5tIRYAQSUkESeQvTfTs1GDrtW2k3eerz5Lal55a8NTxzCFz3BysKbKCaIMQKQlS0lxK+vz0YOvXDdLu0dWjmNz0mu32muOp4alzojvhicMlDnYopUSYWcz57Id15lesmRBpEaRFV7ScPz71ese0Rmb50DPf7WlBWHO8Znx6dhcv9Vc4sEt5IMCrT1b47u0O+g8GvFb4FQl45u1eK40ASO+F6nGr2S3fMGzD8A1rAE4eKzF+a500Bdw5dCBh/N1OJu9lnPp4uZ4hUla0rEhZ3ctyPHG3M54XRcniW3oWM7j+4zqexmJhztzdlIm5lGNdCZ4aqII6EhxPHHIXzXkhEZMBzGKVrah2gzg+g6cO7lTKSs9Dgck/sljIUBCaI/X2M3lKzfwQEQPWtOfEAAVxxZ3zQ3vY3x5479JqvLctuGhdCbCn0dzUL4ooFvcTj5Z5/7W97N8beOWDJW7+voFUtPBrxoFDZwL8ifBwo2OF2OEioHH/6M19LC7nnH5jgYWqoxX9x2cTDhAWVVXmG0rRpj0UyilF4K9zKQtVj99Ropv9C1KB+cTVx1HpJwiigoeoFHJBLEpo9HqVOwtZzLAIJIWi6jhC/DNRvpUjY2t9eeY/7dSnnlrsgrx4Z4kZRjXpzn1akj6dHGr7WQJXt2g5AqIjt0cf5NJb+9CKNs6kpfArso54vTI72DahAJ7YsCSyskXLSEvM4PvplN/u5UilyKilbpuIl4OEdzZPqYvVZ9iwa/97SiXy3PRQ2zfb5mnvhbWnLfXLnnnHf5qnQV+eGmr9aschDdD7yXKP10ojbnbac5d/mfxO0C8SDcO3ByszzRzbSOvr8MW1x9T8DDkDQJc7nSIsAXdQbpjIldnBtomdsH8DjIPo5+eBi9cAAAAASUVORK5CYII=" title="{text}" />', sizing_mode="stretch_both")
+
 
 def wrapcallback_return(callback):
     def wrapper(*args, **kwargs):
@@ -49,7 +52,7 @@ def get_settings(objects):
 class FileInput(Viewer):
     
     value = param.ClassSelector(class_=bytes)
-    filename = param.String()
+    filename = param.String(default="")
     accept = param.String(default=".*")
     width = param.Integer(default=200)
     disabled = param.Boolean(default=False)
@@ -97,7 +100,7 @@ class SelectOrFile(Viewer):
     title = param.String(doc="Will be placed above selector widget", default="Select option or upload file")
     width = param.Integer(default=265)
     setting = param.String(doc="Name of the setting being selected", default="SelectOrUpload")
-    disabled = param.Boolean()
+    disabled = param.Boolean(default=False)
     
     def __init__(self, **params):
         self._value = pn.widgets.Select()
@@ -278,7 +281,7 @@ class ConfigureMSMScountFilter(Viewer):
         self._layout = pn.Card(
             header=self.title,
             collapsible=False,
-            objects=[self._toggle,
+            objects=[pn.Row(self._toggle, help_button("This filter will replace any profiles with NaN, if the average MS/MS count per profile point is < the specified value. The regular expression specifies which columns contain those counts. If for example peptide counts are preferred, simply change the regular expression.")),
                      pn.Row(self._count),
                      pn.Row(self._regex_count)
                      ]
@@ -415,15 +418,16 @@ class ConfigureFileContent(Viewer):
     acquisition = param.Selector(default="LFQ")
     level = param.Selector(default="proteins")
     orientation = param.Selector(default="pivot")
-    column_ids = param.String()
-    column_genes = param.String()
-    column_samples = param.String()
-    column_mainset = param.String()
+    column_ids = param.String(default="")
+    column_genes = param.String(default="")
+    column_samples = param.String(default="")
+    column_mainset = param.String(default="")
     name_pattern = param.String(default=None)
-    columns = param.List()
-    usecols = param.String()
+    columns_annotation = param.List(default=[])
+    columns = param.List(default=[])
+    usecols = param.String(default="")
     width = param.Integer(default=540)
-    disabled = param.Boolean()
+    disabled = param.Boolean(default=False)
     
     def __init__(self, **params):
         self.file = FileInput()
@@ -442,16 +446,17 @@ class ConfigureFileContent(Viewer):
         self._orientation = pn.widgets.Select(
             options=["long", "pivot"], name="Data orientation"
         )
-        self._column_custom_ids = pn.widgets.Select(name="Protein ids")
-        self._column_custom_genes = pn.widgets.Select(name="Gene symbols")
-        self._column_custom_samples = pn.widgets.Select(name="Sample names")
-        self._column_custom_mainset_long = pn.widgets.Select(name="Main dataset")
+        self._column_custom_ids = pn.widgets.Select(name="Protein ids", value="")
+        self._column_custom_genes = pn.widgets.Select(name="Gene symbols", value="")
+        self._column_custom_samples = pn.widgets.Select(name="Sample names", value="")
+        self._column_custom_mainset_long = pn.widgets.Select(name="Main dataset", value="")
         self._column_ids = pn.widgets.TextInput(name="Protein ids", disabled=True)
-        self._column_genes = pn.widgets.TextInput(name="Gene symbols", disabled=True)
-        self._column_samples = pn.widgets.TextInput(name="Sample names", disabled=True)
-        self._column_mainset_long = pn.widgets.TextInput(name="Main dataset", disabled=True)
-        self._column_mainset_pivot = pn.widgets.TextInput(name="Main dataset")
-        self._name_pattern = pn.widgets.TextInput(name="Sample name pattern")
+        self._column_genes = pn.widgets.TextInput(name="Gene symbols", disabled=True, value="")
+        self._column_samples = pn.widgets.TextInput(name="Sample names", disabled=True, value="")
+        self._column_mainset_long = pn.widgets.TextInput(name="Main dataset", disabled=True, value="")
+        self._column_mainset_pivot = pn.widgets.TextInput(name="Main dataset", value="")
+        self._columns_annotation = pn.widgets.MultiSelect(name="Additional columns to load", value=[])
+        self._name_pattern = pn.widgets.TextInput(name="Sample name pattern", value="")
         self._pattern_presets = pn.widgets.Select(name="preset patterns",
                                    options=[".* (?P<rep>.*)_(?P<frac>.*)",
                                             ".* (?P<frac>.*)_(?P<rep>.*)",
@@ -481,7 +486,8 @@ class ConfigureFileContent(Viewer):
             pn.Card(
                 objects=[
                     pn.Row(self._column_ids, self._column_genes, self._column_mainset_long),
-                    pn.Row(self._name_pattern, self._pattern_presets, self._column_samples)
+                    pn.Row(self._name_pattern, self._pattern_presets, self._column_samples),
+                    self._columns_annotation
                 ],
                 header=pn.pane.Markdown("**Column configuration**", width=self.width)),
             pn.Card(self.fraction_ordering, header=pn.pane.Markdown("**Fractions**"))
@@ -490,20 +496,21 @@ class ConfigureFileContent(Viewer):
             pn.Card(
                 objects=[
                     pn.Row(self._column_ids, self._column_genes, self._column_mainset_pivot),
-                    pn.Row(self._name_pattern, self._pattern_presets)
+                    pn.Row(self._name_pattern, self._pattern_presets),
+                    self._columns_annotation
                 ],
                 header=pn.pane.Markdown("**Column configuration**", width=self.width)),
             pn.Card(self.fraction_ordering, header=pn.pane.Markdown("**Fractions**", width=self.width))
         )
+        self._sync_width()
         self._sync_layout()
         self._sync_fileupload()
         
     def __panel__(self):
         return self._layout
     
-    @param.depends('source', 'acquisition', 'level', 'orientation',
-                   'width', watch=True)
-    def _sync_layout(self):
+    @param.depends('width', watch=True)
+    def _sync_width(self):
         self._layout.width = self.width
         self.file.width = self.width//2-20
         self.experiment_name.width = self.width//2-20
@@ -528,15 +535,33 @@ class ConfigureFileContent(Viewer):
         self._column_samples.width = self.width//3-20
         self._name_pattern.width = self.width//3-20
         self._pattern_presets.width = self.width//3-20
+        self._columns_annotation.width= self.width//2-20
+    
+    @param.depends('acquisition', 'level', 'orientation',
+                   'source', watch=True)
+    def _sync_layout(self):
         if self.name_pattern is None:
             self._pattern_presets.param.trigger('value')
         else:
             self._name_pattern.value = self.name_pattern
-        self._source.value = self.source
-        self._acquisition.value = self.acquisition
-        self._level.value = self.level
-        self._orientation.value = self.orientation
-        self._source.param.trigger('value')
+        set_source_default = False
+        set_acquisition_default = False
+        if self._source.value != self.source:
+            self._source.value = self.source
+            set_source_default = True
+        if self._level.value != self.level:
+            self._level.value = self.level
+            set_source_default = True
+        if self._orientation.value != self.orientation:
+            self._orientation.value = self.orientation
+            set_source_default = True
+        if self._acquisition.value != self.acquisition:
+            self._acquisition.value = self.acquisition
+            set_acquisition_default = True
+        if set_source_default:
+            self._source.param.trigger('value')
+        elif set_acquisition_default:
+            self._acquisition.param.trigger('value')
     
     def _sync_dependent_layout(self):
         self._sync_pattern()
@@ -567,6 +592,7 @@ class ConfigureFileContent(Viewer):
         self._column_custom_genes.options = self.columns
         self._column_custom_mainset_long.options = self.columns
         self._column_custom_samples.options = self.columns
+        self._columns_annotation.options = self.columns
     
     @param.depends('_source.value', watch=True)
     def _sync_source(self):
@@ -593,7 +619,7 @@ class ConfigureFileContent(Viewer):
     @param.depends('_acquisition.value', watch=True)
     def _sync_acquisition(self):
         self.acquisition = self._acquisition.value
-        self._set_defaults()
+        self._set_defaults_acquisition()
     
     def _set_defaults(self):
         source = "_".join([self.source, self.level, self.orientation])
@@ -615,29 +641,21 @@ class ConfigureFileContent(Viewer):
                 self._dependent_layout_long[0][0][1] = self._column_custom_genes
                 self._dependent_layout_pivot[0][0][1] = self._column_custom_genes
                 self._column_custom_genes.param.trigger('value')
-            if self.orientation == "pivot":
-                try:
-                    self._column_mainset_pivot.value = source["sets"]\
-                    [SpatialDataSet.defaultsettings["acquisition_modes"][self.acquisition]["sets"][0]]
-                    self._column_mainset_pivot.disabled = True
-                except:
-                    self._column_mainset_pivot.disabled = False
-                    self._column_mainset_pivot.param.trigger('value')
-            elif self.orientation == "long":
+            if self.orientation == "long":
                 try:
                     self._column_samples.value = source["samples"]
                     self._dependent_layout_long[0][1][2] = self._column_samples
                 except:
                     self._dependent_layout_long[0][1][2] = self._column_custom_samples
                     self._column_custom_samples.param.trigger('value')
-                try:
-                    self._column_mainset_long.value = source["sets"]\
-                    [SpatialDataSet.defaultsettings["acquisition_modes"][self.acquisition]["sets"][0]]
-                    self._dependent_layout_long[0][0][2] = self._column_mainset_long
-                except:
-                    self._dependent_layout_long[0][0][2] = self._column_custom_mainset_long
-                    self._column_custom_mainset_long.param.trigger('value')
-                    
+            try:
+                self._columns_annotation.value = source["annotation_columns"]
+                self._dependent_layout_long[0][2] = self._columns_annotation
+                self._dependent_layout_pivot[0][2] = self._columns_annotation
+            except:
+                self._dependent_layout_long[0][2] = self._columns_annotation
+                self._dependent_layout_pivot[0][2] = self._columns_annotation
+        
         else:
             self._dependent_layout_long[0][0][0] = self._column_custom_ids
             self._dependent_layout_pivot[0][0][0] = self._column_custom_ids
@@ -648,10 +666,43 @@ class ConfigureFileContent(Viewer):
             self._column_mainset_pivot.disabled = False
             self._dependent_layout_long[0][1][2] = self._column_custom_samples
             self._column_custom_samples.param.trigger('value')
+            self._dependent_layout_long[0][2] = self._columns_annotation
+            self._dependent_layout_pivot[0][2] = self._columns_annotation
+        
+        self._set_defaults_acquisition()
+        self._sync_dependent_layout()
+    
+    
+    def _set_defaults_acquisition(self):
+        source = "_".join([self.source, self.level, self.orientation])
+        if source in SpatialDataSet.defaultsettings["sources"].keys():
+            source = SpatialDataSet.defaultsettings["sources"][source]
+            if self.orientation == "pivot":
+                try:
+                    self._column_mainset_pivot.value = source["sets"]\
+                    [SpatialDataSet.defaultsettings["acquisition_modes"][self.acquisition]["sets"][0]]
+                    self._column_mainset_pivot.disabled = True
+                except:
+                    self._column_mainset_pivot.disabled = False
+                    self._column_mainset_pivot.param.trigger('value')
+            elif self.orientation == "long":
+                try:
+                    self._column_mainset_long.value = source["sets"]\
+                    [SpatialDataSet.defaultsettings["acquisition_modes"][self.acquisition]["sets"][0]]
+                    self._dependent_layout_long[0][0][2] = self._column_mainset_long
+                except:
+                    self._dependent_layout_long[0][0][2] = self._column_custom_mainset_long
+                    self._column_custom_mainset_long.param.trigger('value')
+        else:
             self._dependent_layout_long[0][0][2] = self._column_custom_mainset_long
             self._column_custom_mainset_long.param.trigger('value')
         
         self._sync_dependent_layout()
+    
+    @param.depends('columns_annotation', watch=True)
+    def _sync_widget_columns_annotation(self):
+        if self._columns_annotation.value != self.columns_annotation:
+            self._columns_annotation.value = self.columns_annotation
         
     @param.depends('_column_ids.value', watch=True)
     def _sync_column_ids(self):
@@ -694,6 +745,10 @@ class ConfigureFileContent(Viewer):
     @param.depends('_column_custom_samples.value', watch=True)
     def _sync_column_custom_samples(self):
         self._column_samples.value = self._column_custom_samples.value
+    
+    @param.depends('_columns_annotation.value', watch=True)
+    def _sync_columns_annotation(self):
+        self.columns_annotation = self._columns_annotation.value
     
     @param.depends('_pattern_presets.value', watch=True)
     def _sync_preset(self):
@@ -749,7 +804,7 @@ class ConfigureFileContent(Viewer):
                    self._column_custom_ids, self._column_custom_genes,
                    self._column_custom_samples, self._column_custom_mainset_long,
                    self._column_mainset_pivot, self._name_pattern, self._pattern_presets,
-                   self.fraction_ordering]:
+                   self.fraction_ordering, self._columns_annotation]:
             el.disabled = state
     
     def get_settings(self):
@@ -769,6 +824,7 @@ class ConfigureFileContent(Viewer):
         settings["name_pattern"] = self.name_pattern
         settings["fractions"] = self.fraction_ordering.get_ordered_labels()
         settings["fraction_mapping"] = self.fraction_ordering.get_mapping()
+        settings["columns_annotation"] = self.columns_annotation
         if self.orientation == "long":
             settings["samples"] = self.column_samples
         return settings
@@ -780,7 +836,7 @@ class OrderedMapper(Viewer):
     labels = param.List(default=[])
     order = param.List(default=[])
     name = param.String(doc="Name shown above input list", default="Input list")
-    disabled = param.Boolean()
+    disabled = param.Boolean(default=False)
     
     def __init__(self, **params):
         super().__init__(**params)
@@ -801,7 +857,7 @@ class OrderedMapper(Viewer):
         gs[0,1:4] = pn.pane.Markdown(self.name, margin=0)
         gs[0,4:7] = pn.pane.Markdown("Label (empty to delete)", margin=0)
         for i,el in enumerate(self.options):
-            gs[i+1,0] = pn.widgets.Select(options=[str(j) for j in self.order],
+            gs[i+1,0] = pn.widgets.Select(options=[str(j+1) for j in range(len(self.order))],
                                           value=str(self.order[i]), margin=0)
             gs[i+1,1:4] = pn.pane.Markdown(str(el), margin=0)
             gs[i+1,4:7] = pn.widgets.TextInput(value=self.labels[i], width=100, margin=0)
@@ -827,7 +883,10 @@ class OrderedMapper(Viewer):
     def set_ordered_mapping(self, ordered, mapping):
         labels = [mapping[k] if mapping[k] != None else "" for k in self.options]
         self.labels = labels
-        order = [i+1 if l == "" else ordered.index(l)+1 for i,l in enumerate(labels)]
+        order = [0 if l == "" else ordered.index(l)+1 for l in labels]
+        for i,el in enumerate(order):
+            if el == 0:
+                order[i] = max(order)+1
         self.order = order
 
 
@@ -1011,11 +1070,11 @@ class ConfigureDataTransformations(Viewer):
     unlog = param.Selector(default = False)
     invert = param.Boolean(default = False)
     samplenormalization = param.Selector(default = None)
-    yields = param.List()
-    fractions = param.List()
+    yields = param.List(default=[])
+    fractions = param.List(default=[])
     title = param.String(default="**Data Transformations**")
     width = param.Integer(default=540)
-    disabled = param.Boolean()
+    disabled = param.Boolean(default=False)
     
     def __init__(self, **params):
         self._unlog_chk = pn.widgets.Checkbox(name="log-transformed with base:")
@@ -1127,7 +1186,7 @@ class ConfigureColumnFilter(Viewer):
     columns = param.List(default=[])
     width = param.Integer(default=540)
     settings = param.ClassSelector(class_=dict)
-    disabled = param.Boolean()
+    disabled = param.Boolean(default=False)
     
     def __init__(self, **params):
         self._column = pn.widgets.Select()
@@ -1406,7 +1465,7 @@ class ConfigureSingleFile(Viewer):
     
     def get_settings(self):
         settings = get_settings([self._content, self._ann, self._transform,
-                                     self._SILAC, self._MSMS, self._cons, self._col])
+                                 self._SILAC, self._MSMS, self._cons, self._col])
         settings["comment"] = self._comment.value
         # the following line will update the interface once with the settings.
         # It should not influence the widgets besides the order sof the fractions, which will still not change the outcome.
@@ -1429,7 +1488,8 @@ class ConfigureSingleFile(Viewer):
                                           column_genes= settings['genes'],
                                           column_mainset= settings['sets'][
                                               SpatialDataSet.defaultsettings["acquisition_modes"][self._content.acquisition]["sets"][0]
-                                          ]
+                                          ],
+                                          columns_annotation = [] if "columns_annotation" not in settings.keys() else settings['columns_annotation']
                                          )
             if settings['orientation'] == "long":
                 self._content.param.set_param(column_samples= settings['samples'])
