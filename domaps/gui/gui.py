@@ -1180,7 +1180,7 @@ class ConfigureDataTransformations(Viewer):
 
 class ConfigureColumnFilter(Viewer):
     
-    column = param.String(default=None)
+    column = param.String(default="")
     operator = param.String(default="!=")
     value = param.String(default="")
     columns = param.List(default=[])
@@ -1192,7 +1192,6 @@ class ConfigureColumnFilter(Viewer):
         self._column = pn.widgets.Select()
         self._operator = pn.widgets.Select(options=[">",">=","<","<=", "==","!="], width=60)
         self._value = pn.widgets.TextInput()
-        self.delete = pn.widgets.Checkbox(value=False)
         super().__init__(**params)
         self._layout = pn.Row(self._column, self._operator, self._value)
         self._sync_layout()
@@ -1205,27 +1204,31 @@ class ConfigureColumnFilter(Viewer):
         self._layout.width = self.width
         self._column.width = (self.width-80)//2-20
         self._value.width = (self.width-80)//2-20
-        cv = self.column
-        self._column.options = self.columns
-        if cv is not None:
-            self._column.value = cv
-        self._value.value = self.value
+        #cv = self.column
+        #self._column.options = self.columns
+        #if cv is not "":
+        #    self._column.value = cv
+        self._value.param.set_param(value=self.value)
         self._operator.value = self.operator
+        self._column.param.set_param(options=self.columns, value=self.column)
     
     @param.depends('_column.value', watch=True)
     def _sync_column(self):
-        self.column = self._column.value
-        self.get_settings()
+        if self.column != self._column.value:
+            self.column = self._column.value
+            self.get_settings()
     
     @param.depends('_value.value', watch=True)
     def _sync_value(self):
-        self.value = self._value.value
-        self.get_settings()
+        if self.value != self._value.value:
+            self.value = self._value.value
+            self.get_settings()
     
     @param.depends('_operator.value', watch=True)
     def _sync_operator(self):
-        self.operator = self._operator.value
-        self.get_settings()
+        if self.operator != self._operator.value:
+            self.operator = self._operator.value
+            self.get_settings()
     
     @param.depends('disabled', watch=True)
     def _disable(self):
