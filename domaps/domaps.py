@@ -92,7 +92,8 @@ class SpatialDataSet:
                     "Potential contaminant": ["!=", "'+'"],
                     "Only identified by site": ["!=", "'+'"],
                     "Reverse": ["!=", "'+'"]
-                }
+                },
+                annotation_columns=["Protein names", "Q-value", "Score", "id"]
             ),
             MaxQuant_peptides_pivot=None,
             Spectronaut_proteins_long=dict(
@@ -218,6 +219,8 @@ class SpatialDataSet:
             self.average_MSMS_counts = average_MSMS_counts
             self.consecutive = consecutive
             self.mainset = self.defaultsettings["acquisition_modes"][acquisition]["sets"][0]
+        
+        self.transformed_mainset = self.mainset
         
         #self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
         self.organism = organism
@@ -371,25 +374,29 @@ class SpatialDataSet:
         
         """
         
+        processing_steps = []
+        
         orientation = self.orientation
-        mainset = [el for el in self.kwargs["sets"].keys()][0]
         
         ## Format data based on input columns
         if self.orientation == "long":
             df_index = format_data_long(
                 df=self.df_original,
                 name_pattern=self.name_pattern,
+                index_cols=self.kwargs["columns_annotation"]+[k for k in self.kwargs["column_filters"].keys()],
                 **{k:v for k,v in self.kwargs.items()
                 if k in inspect.getfullargspec(format_data_long).args}
             )
+            processing_steps.append("Formatting long data")
         elif self.orientation == "pivot":
             df_index = format_data_pivot(
                 df=self.df_original,
                 name_pattern=self.name_pattern,
-                index_cols=[k for k in self.kwargs["column_filters"].keys()],
+                index_cols=self.kwargs["columns_annotation"]+[k for k in self.kwargs["column_filters"].keys()],
                 **{k:v for k,v in self.kwargs.items()
                 if k in inspect.getfullargspec(format_data_pivot).args}
             )
+            processing_steps.append("Formatting pivot data")
         else:
             raise ValueError("Unknown input format")
         
@@ -404,6 +411,7 @@ class SpatialDataSet:
                     **self.reannotation_source
                 )
             )
+            processing_steps.append("Reannotating genes")
         
         self.df_index = df_index
         
@@ -412,46 +420,95 @@ class SpatialDataSet:
         df_index = df_index.join(self.df_organellarMarkerSet.set_index("Protein ID"), how="left", on="Protein IDs").set_index("Compartment", append=True)
         df_index.columns = pd.MultiIndex.from_tuples(df_index.columns, names=["Set", "Map", "Fraction"])
         df_index.rename(index={np.nan : "undefined"}, level="Compartment", inplace=True)
+        processing_steps.append("Annotating marker proteins")
         
         ## Filter data quality as applicable
         if len(self.kwargs["quality_filter"]) == 0:
             df_filtered = df_index.copy()
         elif all([el in ["SILAC_countvar", "msms_count", "consecutive"] for el in self.kwargs["quality_filter"]]):
             df_filtered = df_index.copy()
-            # TODO: somehow include the categorical filters
+            for k,v in self.kwargs["column_filters"].items():
+                df_filtered = filter_singlecolumn_keep(
+                    df_filtered,
+                    column=k, operator=v[0], value=v[1])
+                processing_steps.append(f"Filtering {k}")
             if "SILAC_countvar" in self.kwargs["quality_filter"]:
                 df_filtered = filter_SILAC_countvar(df_filtered, self.RatioCount, self.RatioVariability)
+                processing_steps.append("Filtering SILAC countvar")
             if "msms_count" in self.kwargs["quality_filter"]:
                 df_filtered = filter_msms_count(df_filtered, self.average_MSMS_counts)
+                processing_steps.append("Filtering MSMS count")
             if "consecutive" in self.kwargs["quality_filter"]:
-                df_filtered = filter_consecutive(df_filtered, self.consecutive)
+                df_filtered = filter_consecutive(df_filtered, self.consecutive, sets=dict(abundance=self.mainset))
+                processing_steps.append("Filtering consecutive values")
         else:
             raise ValueError("Unknown quality filter")
         
         ## Run data tranformations
-        if self.kwargs["input_invert"] or self.kwargs["input_logged"]:
-            df_transformed = transform_data(df_filtered[[mainset]],
-                                            invert = self.kwargs["input_invert"],
+        if self.kwargs["input_logged"]:
+            df_transformed = transform_data(df_filtered[[self.mainset]],
+                                            invert = False,
                                             unlog = self.kwargs["input_logged"],
                                             log = False)
+            processing_steps.append("Unlogging input data")
         else:
-            df_transformed = df_filtered[[mainset]].copy()
+            df_transformed = df_filtered[[self.mainset]].copy()
         if self.kwargs["input_samplenormalization"]:
             df_transformed = normalize_samples(df_transformed,
                                                method=self.kwargs["input_samplenormalization"])
+            df_transformed.rename({self.transformed_mainset: "Normalized "+self.transformed_mainset}, axis=1, inplace=True)
+            self.transformed_mainset = "Normalized "+self.transformed_mainset
+            processing_steps.append(f"Normalizing samples by {self.kwargs['input_samplenormalization']}")
+        if self.kwargs["input_invert"]:
+            df_transformed = transform_data(df_transformed,
+                                            invert = self.kwargs["input_invert"],
+                                            unlog = False,
+                                            log = False)
+            df_transformed.rename({self.transformed_mainset: "Inverted "+self.transformed_mainset}, axis=1, inplace=True)
+            self.transformed_mainset = "Inverted "+self.transformed_mainset
+            processing_steps.append("Inverting data")
         
         #if len(self.kwargs["yields"]) != 0:
         #    df_transformed = domaps.weigh_yields(df_transformed)
         
-        df_transformed = df_filtered.drop(mainset, axis=1).join(df_transformed)
+        df_transformed = df_filtered.drop(self.mainset, axis=1).join(df_transformed)
+        
+        if self.acquisition == "SILAC":
+            # complete profiles
+            df_transformed = filter_consecutive(df_transformed, len(self.fractions), sets=dict(abundance=self.transformed_mainset))
+            processing_steps.append("Filtering for complete ratio profiles")
+        if self.acquisition == "LFQ":
+            df_transformed = df_transformed.stack("Map").replace(np.NaN, 0).unstack("Map")
         
         ## Normalize profiles
-        df_01_stacked = normalize_sum1(df_transformed, sets={"abundance": mainset}).stack("Fraction")
+        df_01_stacked = normalize_sum1(df_transformed, sets={"abundance": self.transformed_mainset}).stack("Fraction")
+        processing_steps.append("Normalizing to % profiles")
         
         ## Store dataset versions
         self.df_index = df_index
         self.df_filtered = df_filtered
+        df_log_stacked = df_01_stacked.drop("normalized profile", axis=1)
+        df_log_stacked = df_log_stacked.drop(self.transformed_mainset, axis=1).join(df_log_stacked[[self.transformed_mainset]].replace(0, np.nan).transform(np.log2).rename({self.transformed_mainset: "log profile"}, axis=1))
+        self.df_log_stacked = df_log_stacked
         self.df_01_stacked = df_01_stacked
+        
+        # format and reduce 0-1 normalized data for comparison with other experiments
+        df_01_comparison = df_01_stacked[["normalized profile"]].copy()
+        df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
+        df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
+        df_01_comparison = df_01_comparison.reset_index(level=["Gene names", "Original Protein IDs", "Protein IDs", "Compartment"]).reset_index(drop=True)
+        
+        # poopulate analysis summary dictionary with (meta)data
+        self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()
+        #self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy()
+        # add more settings here
+        analysis_parameters = {"acquisition" : self.acquisition, 
+                               "filename" : self.filename,
+                               "comment" : self.comment,
+                               "organism" : self.organism,
+                               "processing steps": "\n".join(processing_steps)
+                              }
+        self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
         
         return df_01_stacked
     
@@ -3472,8 +3529,8 @@ def generate_usecols_regex(settings):
         columns.append(k)
     
     # index columns
-    if "index_columns" in settings.keys():
-        columns += settings["index_columns"]
+    if "columns_annotation" in settings.keys():
+        columns += settings["columns_annotation"]
     
     columns = set(columns)
     return "^"+"$|^".join(columns)+"$"
@@ -3843,17 +3900,17 @@ def format_data_pivot(
     ...                                 ["bar;bar-1", "ipsum", 0,40,20,40, np.nan,10,5,3, None]],
     ...                                columns=["Majority Protein IDs", "Gene Names",
     ...                                         "LFQ intensity 1_F1","LFQ intensity 1_F2","LFQ intensity 2_F1","LFQ intensity 2_F2",
-    ...                                         "MS/MS counts 1_F1","MS/MS counts 1_F2","MS/MS counts 2_F1","MS/MS counts 2_F2", "Potential contaminant"]),
+    ...                                         "MS/MS counts 1_F1","MS/MS counts 1_F2","MS/MS counts 2_F1","MS/MS counts 2_F2", "Reverse"]),
     ...                       original_protein_ids="Majority Protein IDs", genes="Gene Names",
     ...                       name_pattern=".* (?P<rep>.*)_(?P<frac>.*)",
     ...                       sets={"LFQ intensity": "LFQ intensity .*", "MS/MS count": "MS/MS counts .*"},
-    ...                       index_cols=["Potential contaminant"])
-    Set                                                               LFQ intensity  ... MS/MS count
-    Map                                                                           1  ...           2
-    Fraction                                                                     F1  ...          F2
-    Original Protein IDs Gene names Potential contaminant Protein IDs                ...            
-    foo                  lorem      NaN                   foo                    20  ...           3
-    bar;bar-1            ipsum      NaN                   bar                     0  ...           3
+    ...                       index_cols=["Reverse"])
+    Set                                                 LFQ intensity  ... MS/MS count
+    Map                                                             1  ...           2
+    Fraction                                                       F1  ...          F2
+    Original Protein IDs Gene names Reverse Protein IDs                ...            
+    foo                  lorem      NaN     foo                  20.0  ...         3.0
+    bar;bar-1            ipsum      NaN     bar                   NaN  ...         3.0
     <BLANKLINE>
     [2 rows x 8 columns]
     """
@@ -3881,6 +3938,8 @@ def format_data_pivot(
     )
     
     df_index.columns = multiindex
+    #### TODO change this in the old and in the new code to only affect the main column set. This mostly affects SILAC data, where ratio variabilities of 0 would be voided, thereby affecting the normalization
+    df_index.replace({0: np.nan}, inplace=True)
     
     ## Shorten Protein IDs
     if "Protein IDs" in df_index.index.names:
@@ -3902,8 +3961,7 @@ def filter_SILAC_countvar(
     RatioVariability: float = 30,
     sets: dict = dict(count="Ratio count", variability="Ratio variability")):
     """
-    The multiindex dataframe is subjected to stringency filtering. Only Proteins with complete profiles are considered (a set of f.e. 5 SILAC ratios 
-    in case you have 5 fractions / any proteins with missing values were rejected). Proteins were retained with 3 or more quantifications in each 
+    The multiindex dataframe is subjected to stringency filtering. Proteins were retained with 3 or more quantifications in each 
     subfraction (=count). Furthermore, proteins with only 2 quantification events in one or more subfraction were retained, if their ratio variability for 
     ratios obtained with 2 quantification events was below 30% (=var). SILAC ratios were linearly normalized by division through the fraction median. 
     Subsequently normalization to SILAC loading was performed.Data is annotated based on specified marker set e.g. eLife.
@@ -3930,6 +3988,8 @@ def filter_SILAC_countvar(
     Fraction    F1   F2          F1   F2                F1    F2
     id                                                          
     a          1.0  0.0         3.0  2.0               3.0  15.0
+    b          2.0  NaN         3.0  NaN               5.0   NaN
+    c          NaN  0.0         NaN  2.0               NaN   5.0
     """
     
     ## Fetch column levels and assert presence of the required sets and fraction annotations
@@ -3954,13 +4014,11 @@ def filter_SILAC_countvar(
     ## FILTER DATA
     # count and variability
     df_stack_filtered = df_stack.loc[
-        [count>RatioCount or (count==RatioCount and var<=RatioVariability)
+        [count>RatioCount or (count==RatioCount and var<RatioVariability)
          for var, count in zip(df_stack[sets["variability"]], df_stack[sets["count"]])]]
-    # complete profiles
-    df_profiles = df_stack_filtered.unstack("Fraction").dropna().stack("Fraction")
     
     # Return to input format
-    df_filtered = df_profiles.unstack([el for el in column_levels if el != "Set"])\
+    df_filtered = df_stack_filtered.unstack([el for el in column_levels if el != "Set"])\
                              .reorder_levels(column_levels, axis=1)\
                              .sort_index(axis=1, key=natsort_index_keys)
     
@@ -4125,13 +4183,20 @@ def filter_singlecolumn_keep(
     ...                                   columns=pd.MultiIndex.from_tuples([("Intensity", "F1"), ("Intensity", "F2")], names=["Set", "Fraction"]),
     ...                                   index=pd.MultiIndex.from_tuples([("foo", "lorem", np.nan), ("bar", "ipsum", 0.5), ("baz", "dolor", 1)], names=["Protein IDs", "Gene names", "Score"])),
     ...                      column="Score", operator=">=", value=1)
-    Set                          Intensity   
-    Fraction                            F1 F2
-    Protein IDs Gene names Score             
-    baz         dolor      1.0           5  6
+    Set                    Intensity   
+    Fraction                      F1 F2
+    Protein IDs Gene names             
+    baz         dolor              5  6
     """
     
     df_filtered = df.query(f"`{column}` {operator} {value}")
+    if column in df_filtered.columns:
+        if len(set(df_filtered[column])) == 1:
+            df_filtered.drop(column, axis=1, inplace=True)
+    else:
+        if len(set(df_filtered.index.get_level_values(column))) == 1:
+            df_filtered.reset_index(column, drop=True, inplace=True)
+        
     
     return df_filtered
 
