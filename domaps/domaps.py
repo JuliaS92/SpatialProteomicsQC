@@ -236,7 +236,7 @@ class SpatialDataSet:
             if complexes+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes"):
                 marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(complexes)))
             else:
-                marker_table = pd.read_csv(StringIO(complexes))
+                marker_table = pd.read_csv(BytesIO(complexes))
             self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
             if organelles+".csv" in pkg_resources.resource_listdir(__name__, "annotations/organellemarkers"):
                 df_organellarMarkerSet = pd.read_csv(
@@ -244,7 +244,7 @@ class SpatialDataSet:
                                                  usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
             else:
                 df_organellarMarkerSet = pd.read_csv(
-                                                 StringIO(organelles),
+                                                 BytesIO(organelles),
                                                  usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
             self.df_organellarMarkerSet = df_organellarMarkerSet
             
@@ -500,13 +500,16 @@ class SpatialDataSet:
         
         # poopulate analysis summary dictionary with (meta)data
         self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()
+        self.analysis_summary_dict["organelles"] = self.df_organellarMarkerSet.to_json()
+        self.analysis_summary_dict["complexes"] = self.markerproteins
         #self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy()
         # add more settings here
         analysis_parameters = {"acquisition" : self.acquisition, 
                                "filename" : self.filename,
                                "comment" : self.comment,
                                "organism" : self.organism,
-                               "processing steps": "\n".join(processing_steps)
+                               "processing steps": "\n".join(processing_steps),
+                               "legacy": self.legacy,
                               }
         self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
         
@@ -1035,7 +1038,7 @@ class SpatialDataSet:
             
             # Run stringency filtering and normalization
             df_stringency_mapfracstacked = stringency_silac(df_index)
-            self.df_stringencyFiltered = df_stringency_mapfracstacked
+            self.df_filtered = df_stringency_mapfracstacked
             self.df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
             self.df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
             
@@ -1078,7 +1081,7 @@ class SpatialDataSet:
             self.map_names = map_names
             
             df_stringency_mapfracstacked = stringency_lfq(df_index)
-            self.df_stringencyFiltered = df_stringency_mapfracstacked
+            self.df_filtered = df_stringency_mapfracstacked
             self.df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
             self.df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
             
@@ -2030,7 +2033,7 @@ class SpatialDataSetComparison:
     #cache_stored_SVM = True
 
 
-    def __init__(self, ref_exp="Exp2", **kwargs): #clusters_for_ranking=["Proteasome", "Lysosome"]
+    def __init__(self, ref_exp=None, **kwargs): #clusters_for_ranking=["Proteasome", "Lysosome"]
         
         #self.clusters_for_ranking = clusters_for_ranking
         self.ref_exp = ref_exp
@@ -2140,6 +2143,8 @@ class SpatialDataSetComparison:
     
         self.analysis_parameters_total = {}
         self.exp_names = list(json_dict.keys())
+        if self.ref_exp == None:
+            self.ref_exp = self.exp_names[0]
         
         df_01_combined = pd.DataFrame()
         for exp_name in json_dict.keys():
@@ -2202,9 +2207,14 @@ class SpatialDataSetComparison:
             df_01_combined.drop("Protein IDs", axis=1, inplace=True)
         else:
             raise KeyError("No Protein IDs were found while loading the json file")
+        
             
         df_01_combined.columns = pd.MultiIndex.from_tuples([el.split("?")[1::] for el in df_01_combined.columns], names=["Map", "Fraction"])
-        df_01_combined = df_01_combined.stack("Map").dropna().unstack("Map")
+        #df_01_combined = df_01_combined.stack("Map").dropna().unstack("Map")
+        if len(df_01_combined) == 0:
+            raise ValueError("Merged dataframe is empty. This is most likely due to unequal naming of fractions.")
+        if len(set(df_01_combined.index.get_level_values("Experiment"))) != len(self.exp_names):
+            raise ValueError("At least one of the datsets was removed completely, likely because it is lacking one of the fractions in the other experiments.")
         df_01_filtered_combined, id_alignment = align_datasets(df_01_combined)
         self.id_alignment = id_alignment
         index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_filtered_combined.index.get_level_values("Map")
@@ -2217,13 +2227,17 @@ class SpatialDataSetComparison:
         
         self.df_quantity_pr_pg_combined = df_quantity_pr_pg_combined
         
-        try:
-            organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"]['organism']
-        except:
-            organism = "Homo sapiens - Uniprot"
         
-        marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
-        self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
+        if "legacy" in json_dict[self.ref_exp]["Analysis parameters"].keys():
+            self.markerproteins = json_dict[self.ref_exp]["complexes"]
+        else:
+            try:
+                organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"]['organism']
+            except:
+                organism = "Homo sapiens - Uniprot"
+            
+            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
+            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
         
         self.clusters_for_ranking = self.markerproteins.keys()        
            
@@ -2511,6 +2525,8 @@ class SpatialDataSetComparison:
                 continue
             dists_cluster = self.calc_cluster_distances(df_cluster)
             df_distances = df_distances.append(dists_cluster)
+        if len(df_distances) == 0:
+            raise ValueError("Could not calculate biological precision, because no complexes could be extracted")
         df_distances = df_distances.stack(["Experiment", "Map"]).reset_index()\
             .sort_values(["Experiment","Gene names"]).rename({0: "distance"}, axis=1)
         df_distances.insert(0, "Exp_Map", ["_".join([e,m]) for e,m in zip(df_distances["Experiment"], df_distances["Map"])])
@@ -3501,7 +3517,7 @@ def parse_reannotation_source(mode, source):
         reannotation_source["idmapping"] = idmapping
     elif mode == "tsv":
         if "\n" in source:
-            idmapping = pd.read_csv(StringIO(source), sep='\t',
+            idmapping = pd.read_csv(BytesIO(source), sep='\t',
                                     usecols=["Entry", "Gene names  (primary )"])
         else:
             idmapping = pd.read_csv(pkg_resources.resource_stream(
