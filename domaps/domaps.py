@@ -2477,7 +2477,7 @@ class SpatialDataSetComparison:
         if len(drop_experiments) > 0:
             df_cluster.drop([el for el in df_cluster.columns.get_level_values("Experiment") if el not in experiments],
                             level="Experiment", axis=1, inplace=True)
-        df_cluster.dropna(inplace=True)
+        df_cluster = df_cluster.dropna(axis=1, how="all").dropna()
         if len(df_cluster) == 0:
             return df_cluster
         df_cluster.set_index(pd.Index(np.repeat(cluster, len(df_cluster)), name="Cluster"), append=True, inplace=True)
@@ -3069,7 +3069,7 @@ class SpatialDataSetComparison:
         return im_t, im_i, figure_UpSetPlot_total, figure_UpSetPlot_int
     
     
-    def calculate_global_scatter(self, metric, consolidation):
+    def calculate_global_scatter(self, metric="manhattan distance to average profile", consolidation="average"):
         """
         A distribution plot of the profile scatter in each experiment is generated, with variable distance metric and consolidation of replicates.
         
@@ -3114,7 +3114,7 @@ class SpatialDataSetComparison:
         # Calculate and consolidate distances
         distances = pd.DataFrame()
         for exp in self.exp_names:
-            df_m = df.xs(exp, level="Experiment", axis=0).unstack("Map").dropna().stack("Map")
+            df_m = df.xs(exp, level="Experiment", axis=0).unstack("Map").dropna(axis=1, how="all").dropna().stack("Map")
             maps = list(set(df_m.index.get_level_values("Map")))
             
             # this if clause switches between pairwise comparisons of profiles (else) and comparisons to an average/median profile
@@ -3862,6 +3862,7 @@ def format_data_long(
                                   **{v:k for k,v in sets.items()}}, errors="raise")
     
     ## Set index columns and column name "Set"
+    df_index.dropna(subset=["Original Protein IDs"], inplace=True)
     df_index.set_index(["Original Protein IDs", "Gene names", "Samples"]+index_cols, inplace=True)
     df_index.columns.names=["Set"]
     
@@ -3936,6 +3937,7 @@ def format_data_pivot(
                                   genes: "Gene names"}, errors="raise")
     
     ## Set index columns and column name "Set"
+    df_index.dropna(subset=["Original Protein IDs"], inplace=True, axis=0)
     df_index.set_index(["Original Protein IDs", "Gene names"]+index_cols, inplace=True)
     
     ## Catch any additional columns, which are not accounted for
