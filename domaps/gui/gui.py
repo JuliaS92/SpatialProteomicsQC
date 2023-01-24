@@ -14,8 +14,8 @@ import natsort
 class ValidationError(Exception):
     pass
 
-def help_button(text="help text displayed on hover"):
-    return pn.pane.HTML(f'<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALoAAAC6ABUywAuAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANRSURBVDiNnZRNaF1VEMd/M+e+vCdJm7RNq0JNaZJ2U8QUIQuFriIWPyjFutGCuNGS6Eohbly50bgQJGkrrqUFK8VKUdOFS9FC1YgLm0+agiWJkMQ8SN69d8bFue/58lFBDwyHe878/zP3zPxHuM86MrbWZ+IvismAmT8CdAJLqjLvwW+YyOez59p+2QkrWw+6R1ePCjLiOac8dzAHJ5oUpoIEQQJXPbHhmXPtk/cl7RlbO+m5X/bM28kczx1yx5tIRYAQSUkESeQvTfTs1GDrtW2k3eerz5Lal55a8NTxzCFz3BysKbKCaIMQKQlS0lxK+vz0YOvXDdLu0dWjmNz0mu32muOp4alzojvhicMlDnYopUSYWcz57Id15lesmRBpEaRFV7ScPz71ese0Rmb50DPf7WlBWHO8Znx6dhcv9Vc4sEt5IMCrT1b47u0O+g8GvFb4FQl45u1eK40ASO+F6nGr2S3fMGzD8A1rAE4eKzF+a500Bdw5dCBh/N1OJu9lnPp4uZ4hUla0rEhZ3ctyPHG3M54XRcniW3oWM7j+4zqexmJhztzdlIm5lGNdCZ4aqII6EhxPHHIXzXkhEZMBzGKVrah2gzg+g6cO7lTKSs9Dgck/sljIUBCaI/X2M3lKzfwQEQPWtOfEAAVxxZ3zQ3vY3x5479JqvLctuGhdCbCn0dzUL4ooFvcTj5Z5/7W97N8beOWDJW7+voFUtPBrxoFDZwL8ifBwo2OF2OEioHH/6M19LC7nnH5jgYWqoxX9x2cTDhAWVVXmG0rRpj0UyilF4K9zKQtVj99Ropv9C1KB+cTVx1HpJwiigoeoFHJBLEpo9HqVOwtZzLAIJIWi6jhC/DNRvpUjY2t9eeY/7dSnnlrsgrx4Z4kZRjXpzn1akj6dHGr7WQJXt2g5AqIjt0cf5NJb+9CKNs6kpfArso54vTI72DahAJ7YsCSyskXLSEvM4PvplN/u5UilyKilbpuIl4OEdzZPqYvVZ9iwa/97SiXy3PRQ2zfb5mnvhbWnLfXLnnnHf5qnQV+eGmr9aschDdD7yXKP10ojbnbac5d/mfxO0C8SDcO3ByszzRzbSOvr8MW1x9T8DDkDQJc7nSIsAXdQbpjIldnBtomdsH8DjIPo5+eBi9cAAAAASUVORK5CYII=" title="{text}" />', sizing_mode="stretch_both")
+def help_icon(text="help text displayed on hover", sizing_mode="stretch_both", **kwargs):
+    return pn.pane.HTML(f'<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALoAAAC6ABUywAuAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANRSURBVDiNnZRNaF1VEMd/M+e+vCdJm7RNq0JNaZJ2U8QUIQuFriIWPyjFutGCuNGS6Eohbly50bgQJGkrrqUFK8VKUdOFS9FC1YgLm0+agiWJkMQ8SN69d8bFue/58lFBDwyHe878/zP3zPxHuM86MrbWZ+IvismAmT8CdAJLqjLvwW+YyOez59p+2QkrWw+6R1ePCjLiOac8dzAHJ5oUpoIEQQJXPbHhmXPtk/cl7RlbO+m5X/bM28kczx1yx5tIRYAQSUkESeQvTfTs1GDrtW2k3eerz5Lal55a8NTxzCFz3BysKbKCaIMQKQlS0lxK+vz0YOvXDdLu0dWjmNz0mu32muOp4alzojvhicMlDnYopUSYWcz57Id15lesmRBpEaRFV7ScPz71ese0Rmb50DPf7WlBWHO8Znx6dhcv9Vc4sEt5IMCrT1b47u0O+g8GvFb4FQl45u1eK40ASO+F6nGr2S3fMGzD8A1rAE4eKzF+a500Bdw5dCBh/N1OJu9lnPp4uZ4hUla0rEhZ3ctyPHG3M54XRcniW3oWM7j+4zqexmJhztzdlIm5lGNdCZ4aqII6EhxPHHIXzXkhEZMBzGKVrah2gzg+g6cO7lTKSs9Dgck/sljIUBCaI/X2M3lKzfwQEQPWtOfEAAVxxZ3zQ3vY3x5479JqvLctuGhdCbCn0dzUL4ooFvcTj5Z5/7W97N8beOWDJW7+voFUtPBrxoFDZwL8ifBwo2OF2OEioHH/6M19LC7nnH5jgYWqoxX9x2cTDhAWVVXmG0rRpj0UyilF4K9zKQtVj99Ropv9C1KB+cTVx1HpJwiigoeoFHJBLEpo9HqVOwtZzLAIJIWi6jhC/DNRvpUjY2t9eeY/7dSnnlrsgrx4Z4kZRjXpzn1akj6dHGr7WQJXt2g5AqIjt0cf5NJb+9CKNs6kpfArso54vTI72DahAJ7YsCSyskXLSEvM4PvplN/u5UilyKilbpuIl4OEdzZPqYvVZ9iwa/97SiXy3PRQ2zfb5mnvhbWnLfXLnnnHf5qnQV+eGmr9aschDdD7yXKP10ojbnbac5d/mfxO0C8SDcO3ByszzRzbSOvr8MW1x9T8DDkDQJc7nSIsAXdQbpjIldnBtomdsH8DjIPo5+eBi9cAAAAASUVORK5CYII=" title="{text}" />', sizing_mode=sizing_mode, **kwargs)
 
 
 def wrapcallback_return(callback):
@@ -95,7 +95,7 @@ class SelectOrFile(Viewer):
     value = param.Selector(doc="Value selected from dropdown list", default=None)
     options = param.List(doc="List of options", default=["upload custom file"])
     custom_option = param.String(default="upload custom file")
-    custom_file = param.ClassSelector(class_=bytes, doc="Alternative custom upload", default=None)
+    custom_file = param.String(default=None)
     accept = param.String(default="*")
     title = param.String(doc="Will be placed above selector widget", default="Select option or upload file")
     width = param.Integer(default=265)
@@ -106,33 +106,53 @@ class SelectOrFile(Viewer):
         self._value = pn.widgets.Select()
         self._file = pn.widgets.FileInput()
         super().__init__(**params)
-        self._layout = pn.Column(self._value, pn.Row())
-        self._sync_widgets()
+        self._layout = pn.Column(self._value, self._custom)
+        self._sync_layout()
+        self._sync_options()
+        self._sync_value()
         
     def __panel__(self):
         return self._layout
     
-    @param.depends('value', 'options', 'custom_option', 'accept', 'title', 'width', watch=True)
-    def _sync_widgets(self):
+    @param.depends('width', 'title', 'accept', watch=True)
+    def _sync_layout(self):
         self._layout.width = self.width
-        value = self.value
-        self._value.options = self.options if self.custom_option in self.options else self.options+[self.custom_option]
-        self._value.value = value
         self._value.name = self.title
         self._file.accept = self.accept
     
-    @param.depends('_value.value', watch=True)
+    @param.depends('options', 'custom_option', watch=True)
+    def _sync_options(self):
+        value = self.value
+        self._value.options = self.options if self.custom_option in self.options else self.options+[self.custom_option]
+        if value not in self._value.options:
+            self.custom_file = value
+            self._file.filename = "loaded"
+            self._value.value = self.custom_option
+        else:
+            self._value.value = value
+    
+    @param.depends('value', watch=True)
     def _sync_value(self):
+        value = self.value
+        if value not in self._value.options:
+            self.custom_file = value
+            self._file.filename = "loaded"
+            self._value.value = self.custom_option
+        else:
+            self._value.value = value
+    
+    @param.depends('_value.value')
+    def _custom(self):
         self.value = self._value.value
         if self.value == self.custom_option:
-            self._layout[1] = self._file
+            return self._file
         else:
-            self._layout[1] = pn.Row()
+            return pn.Row()
     
     @param.depends('_file.value', watch=True)
     def _sync_custom_file(self):
         if self._file.value is not None:
-            self.custom_file = self._file.value
+            self.custom_file = self._file.value.decode("utf-8")
             self._file.value = None # delete reduntant copy from memory
     
     @param.depends('disabled', watch=True)
@@ -175,32 +195,37 @@ class ConfigureSILACFilter(Viewer):
         self._layout = pn.Card(
             header=self.title,
             collapsible=False,
-            objects=[self._toggle,
+            objects=[pn.Row(self._toggle, help_icon("This is a filter intended for SILAC or other ratios, for which a variability and a count of quant events is available (e.g. MaxQuant output). Any ratios with a count > the specification are kept regardless of the variability, while ratios with exactly = the specified count are only kept if the variability is below the specified threshold.")),
                      pn.Row(self._count, self._variability),
                      pn.Row(self._regex_count, self._regex_variability)
                      ]
         )
+        self._sync_layout()
         self._sync_widgets()
     
     def __panel__(self):
         return self._layout
     
+    @param.depends('width', 'title', watch=True)
+    def _sync_layout(self):
+        self._layout.width = self.width
+        self._layout.header = pn.pane.Markdown(self.title, width=self.width)
+        self._toggle.width = self.width-20-45
+        self._count.width = self.width//2-20
+        self._variability.width = self.width//2-20
+        self._regex_count.width = self.width//2-20
+        self._regex_variability.width = self.width//2-20
+    
     @param.depends('toggle',
                    'value_count', 'value_variability',
                    'regex_count', 'regex_variability',
-                   'width', 'title', watch=True)
+                   watch=True)
     def _sync_widgets(self):
-        self._layout.width = self.width
-        self._layout.header = pn.pane.Markdown(self.title, width=self.width)
         self._toggle.value = self.toggle
         self._count.value = self.value_count
         self._variability.value = self.value_variability
-        self._count.width = self.width//2-20
-        self._variability.width = self.width//2-20
         self._regex_count.value = self.regex_count
         self._regex_variability.value = self.regex_variability
-        self._regex_count.width = self.width//2-20
-        self._regex_variability.width = self.width//2-20
     
     @param.depends('_toggle.value',
                    watch=True)
@@ -281,28 +306,30 @@ class ConfigureMSMScountFilter(Viewer):
         self._layout = pn.Card(
             header=self.title,
             collapsible=False,
-            objects=[pn.Row(self._toggle, help_button("This filter will replace any profiles with NaN, if the average MS/MS count per profile point is < the specified value. The regular expression specifies which columns contain those counts. If for example peptide counts are preferred, simply change the regular expression.")),
+            objects=[pn.Row(self._toggle, help_icon("This filter will replace any profiles with NaN, if the average MS/MS count per profile point is < the specified value. The regular expression specifies which columns contain those counts. If for example peptide counts are preferred, simply change the regular expression.")),
                      pn.Row(self._count),
                      pn.Row(self._regex_count)
                      ]
         )
+        self._sync_layout()
         self._sync_widgets()
     
     def __panel__(self):
         return self._layout
     
-    @param.depends('toggle',
-                   'value_count',
-                   'regex_count',
-                   'width', 'title', watch=True)
-    def _sync_widgets(self):
+    @param.depends('width', 'title', watch=True)
+    def _sync_layout(self):
         self._layout.width = self.width
         self._layout.header = pn.pane.Markdown(self.title, width=self.width)
+        self._toggle.width = self.width-20-45
+        self._count.width = self.width-20
+        self._regex_count.width = self.width-20
+        
+    @param.depends('toggle', 'value_count', 'regex_count', watch=True)
+    def _sync_widgets(self):
         self._toggle.value = self.toggle
         self._count.value = self.value_count
-        self._count.width = self.width-20
         self._regex_count.value = self.regex_count
-        self._regex_count.width = self.width-20
     
     @param.depends('_toggle.value',
                    watch=True)
@@ -365,24 +392,28 @@ class ConfigureConsecutiveFilter(Viewer):
         self._layout = pn.Card(
             header=self.title,
             collapsible=False,
-            objects=[self._toggle,
+            objects=[pn.Row(self._toggle, help_icon("As flexible filter for data completeness, specify how many consecutive non-zero values a profile must contain to be considered reasonably quantified. Any profiles with less will be removed and not included in any quality control measures.")),
                      pn.Row(self._count)
                     ]
         )
+        self._sync_layout()
         self._sync_widgets()
     
     def __panel__(self):
         return self._layout
     
-    @param.depends('toggle',
-                   'value_count',
-                   'width', 'title', watch=True)
-    def _sync_widgets(self):
+    @param.depends('width', 'title', watch=True)
+    def _sync_layout(self):
         self._layout.width = self.width
         self._layout.header = pn.pane.Markdown(self.title, width=self.width)
+        self._toggle.width = self.width-20-45
+        self._count.width = self.width-20
+        
+    @param.depends('toggle',
+                   'value_count', watch=True)
+    def _sync_widgets(self):
         self._toggle.value = self.toggle
         self._count.value = self.value_count
-        self._count.width = self.width-20
     
     @param.depends('_toggle.value',
                    watch=True)
@@ -422,10 +453,9 @@ class ConfigureFileContent(Viewer):
     column_genes = param.String(default="")
     column_samples = param.String(default="")
     column_mainset = param.String(default="")
-    name_pattern = param.String(default=None)
+    name_pattern = param.String(default=".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)")
     columns_annotation = param.List(default=[])
     columns = param.List(default=[])
-    usecols = param.String(default="")
     width = param.Integer(default=540)
     disabled = param.Boolean(default=False)
     
@@ -454,7 +484,7 @@ class ConfigureFileContent(Viewer):
         self._column_genes = pn.widgets.TextInput(name="Gene symbols", disabled=True, value="")
         self._column_samples = pn.widgets.TextInput(name="Sample names", disabled=True, value="")
         self._column_mainset_long = pn.widgets.TextInput(name="Main dataset", disabled=True, value="")
-        self._column_mainset_pivot = pn.widgets.TextInput(name="Main dataset", value="")
+        self._column_mainset_pivot = pn.widgets.TextInput(name="Main dataset regex", disabled=True, value="")
         self._columns_annotation = pn.widgets.MultiSelect(name="Additional columns to load", value=[])
         self._name_pattern = pn.widgets.TextInput(name="Sample name pattern", value="")
         self._pattern_presets = pn.widgets.Select(name="preset patterns",
@@ -474,7 +504,8 @@ class ConfigureFileContent(Viewer):
                     pn.Column(pn.Row(self._source,
                                      self._acquisition,
                                      self._orientation,
-                                     #self._level
+                                     #self._level,
+                                     help_icon("These selections determine, which options you have available for filtering and how the data is handled internally. For many combinations settings like column names and regular expressions are fixed by default. If you want to modify them you need to change the source to 'custom' instead. Orientation refers to how the data is arranged in the uploaded file.")
                                     )
                              )
                 ],
@@ -486,25 +517,26 @@ class ConfigureFileContent(Viewer):
             pn.Card(
                 objects=[
                     pn.Row(self._column_ids, self._column_genes, self._column_mainset_long),
-                    pn.Row(self._name_pattern, self._pattern_presets, self._column_samples),
+                    pn.Row(self._name_pattern, self._pattern_presets, self._column_samples, help_icon("Correct specification of this regular expression is crucial to ensure correct processing of the profiles. Open the fractions card below to control that fractions are labelled and ordered correctly.")),
                     self._columns_annotation
                 ],
                 header=pn.pane.Markdown("**Column configuration**", width=self.width)),
-            pn.Card(self.fraction_ordering, header=pn.pane.Markdown("**Fractions**"))
+            pn.Card(self.fraction_ordering, header=pn.pane.Markdown("**Fractions**"), collapsed=True)
         )
         self._dependent_layout_pivot = pn.Column(
             pn.Card(
                 objects=[
                     pn.Row(self._column_ids, self._column_genes, self._column_mainset_pivot),
-                    pn.Row(self._name_pattern, self._pattern_presets),
+                    pn.Row(self._name_pattern, self._pattern_presets, help_icon("Correct specification of this regular expression is crucial to ensure correct processing of the profiles. Open the fractions card below to control that fractions are labelled and ordered correctly.")),
                     self._columns_annotation
                 ],
                 header=pn.pane.Markdown("**Column configuration**", width=self.width)),
-            pn.Card(self.fraction_ordering, header=pn.pane.Markdown("**Fractions**", width=self.width))
+            pn.Card(self.fraction_ordering, header=pn.pane.Markdown("**Fractions**", width=self.width), collapsed=True)
         )
         self._sync_width()
         self._sync_layout()
         self._sync_fileupload()
+        self._sync_widgets_values()
         
     def __panel__(self):
         return self._layout
@@ -514,10 +546,10 @@ class ConfigureFileContent(Viewer):
         self._layout.width = self.width
         self.file.width = self.width//2-20
         self.experiment_name.width = self.width//2-20
-        self._source.width = self.width//4+20
-        self._acquisition.width = self.width//4-20
-        self._level.width = self.width//4-40
-        self._orientation.width = self.width//4-40
+        self._source.width = self.width//4+20-11
+        self._acquisition.width = self.width//4-20-11
+        self._level.width = self.width//4-40-11
+        self._orientation.width = self.width//4-40-11
         self._dependent_layout_long.width = self.width
         self._dependent_layout_pivot.width = self.width
         self._dependent_layout_long[0].width = self.width
@@ -532,9 +564,9 @@ class ConfigureFileContent(Viewer):
         self._column_genes.width = self.width//3-20
         self._column_mainset_long.width = self.width//3-20
         self._column_mainset_pivot.width = self.width//3-20
-        self._column_samples.width = self.width//3-20
-        self._name_pattern.width = self.width//3-20
-        self._pattern_presets.width = self.width//3-20
+        self._column_samples.width = self.width//3-20-15
+        self._name_pattern.width = self.width//3-20-15
+        self._pattern_presets.width = self.width//3-20-15
         self._columns_annotation.width= self.width//2-20
     
     @param.depends('acquisition', 'level', 'orientation',
@@ -580,7 +612,7 @@ class ConfigureFileContent(Viewer):
                 df_head = pd.read_csv(BytesIO(self.file.value), nrows=5)
             if len(df_head.columns) < 2:
                 df_head = pd.read_excel(BytesIO(self.file.value), nrows=5)                
-            self._layout[1] = pn.widgets.DataFrame(df_head, width=self.width-10, disabled=True)
+            self._layout[1] = pn.Column("Data preview:", pn.widgets.DataFrame(df_head, width=self.width-10, disabled=True))
             self.columns = [el for el in df_head.columns]
             self._layout[3] = self._dependent_layout_long if self.orientation == "long"\
                               else self._dependent_layout_pivot
@@ -670,7 +702,6 @@ class ConfigureFileContent(Viewer):
             self._dependent_layout_pivot[0][2] = self._columns_annotation
         
         self._set_defaults_acquisition()
-        self._sync_dependent_layout()
     
     
     def _set_defaults_acquisition(self):
@@ -699,10 +730,30 @@ class ConfigureFileContent(Viewer):
         
         self._sync_dependent_layout()
     
-    @param.depends('columns_annotation', watch=True)
-    def _sync_widget_columns_annotation(self):
+    @param.depends('columns_annotation', 'column_ids', 'column_genes', 'column_samples', 'column_mainset', 'name_pattern', watch=True)
+    def _sync_widgets_values(self):
         if self._columns_annotation.value != self.columns_annotation:
             self._columns_annotation.value = self.columns_annotation
+        try:
+            self._column_custom_ids.value = self.column_ids
+        except:
+            pass
+        try:
+            self._column_custom_genes.value = self.column_genes
+        except:
+            pass
+        try:
+            self._column_custom_samples.value = self.column_samples
+        except:
+            pass
+        if self.orientation == "long":
+            try:
+                self._column_custom_mainset_long.value = self.column_mainset
+            except:
+                pass
+        else:
+            self._column_mainset_pivot.value = self.column_mainset
+        self._name_pattern.value = self.name_pattern
         
     @param.depends('_column_ids.value', watch=True)
     def _sync_column_ids(self):
@@ -749,6 +800,10 @@ class ConfigureFileContent(Viewer):
     @param.depends('_columns_annotation.value', watch=True)
     def _sync_columns_annotation(self):
         self.columns_annotation = self._columns_annotation.value
+    
+    @param.depends('experiment_name.value', watch=True)
+    def _sync_name_color(self):
+        self.experiment_name.background = 'salmon' if self.experiment_name.value == "" else None
     
     @param.depends('_pattern_presets.value', watch=True)
     def _sync_preset(self):
@@ -809,6 +864,8 @@ class ConfigureFileContent(Viewer):
     
     def get_settings(self):
         settings = dict()
+        if self.experiment_name.value == "":
+            raise ValueError("Please give the experiment a name")
         settings["filename"] = self.file.filename
         settings["expname"] = self.experiment_name.value
         settings["source"] = self.source
@@ -840,7 +897,7 @@ class OrderedMapper(Viewer):
     
     def __init__(self, **params):
         super().__init__(**params)
-        self.layout = pn.Row(None)
+        self.layout = pn.Row(None, help_icon("Reorder and rename as required. Every order number can only be present once, emptying the label will lead to deletion."))
         self._sync_options()
     
     def __panel__(self):
@@ -881,7 +938,7 @@ class OrderedMapper(Viewer):
         return {o: el.value if el.value != "" else None for o,el in zip(self.options, self.layout[0][1:,4])}
     
     def set_ordered_mapping(self, ordered, mapping):
-        labels = [mapping[k] if mapping[k] != None else "" for k in self.options]
+        labels = ["" if k not in mapping.keys() else mapping[k] if mapping[k] != None else "" for k in self.options]
         self.labels = labels
         order = [0 if l == "" else ordered.index(l)+1 for l in labels]
         for i,el in enumerate(order):
@@ -890,16 +947,16 @@ class OrderedMapper(Viewer):
         self.order = order
 
 
-class ConfigureAnnotations(Viewer):
     
+class ConfigureAnnotations(Viewer):
     organism = param.String(doc="Organism of uploaded data", default="Homo sapiens")
     organelles = param.String(doc="Filename from package ressources or string input from file",
-                              default="Homo sapiens - Uniprot")
+                              default="")
     complexes = param.String(doc="Filename from package ressources or string input from file",
-                           default="Homo sapiens - Uniprot")
+                           default="")
     gene_mode = param.String(default="don't reannotate")
     gene_source = param.String(doc="Filename from package ressources or string input from file",
-                               default="Homo sapiens - uniprot reference_swissprot")
+                               default="")
     custom_option = param.String(default=SelectOrFile.custom_option)
     title = param.String(default="**Protein Annotations**")
     disabled = param.Boolean(default=False)
@@ -913,7 +970,7 @@ class ConfigureAnnotations(Viewer):
                      "Arabidopsis thaliana",
                      "other"
                     ],
-            name="Select organism",
+            name="Select organism"
         )
         self._organelles_options = [
             el.split(".")[0]
@@ -931,8 +988,10 @@ class ConfigureAnnotations(Viewer):
             el.split(".")[0]
             for el in pkg_resources.resource_listdir("domaps", "annotations/idmapping")
             if el.endswith(".tab")]
-        self._organelles = SelectOrFile(accept=".csv", setting="organelles", title="Organelle markers")
-        self._complexes = SelectOrFile(accept=".csv", setting="complexes", title="Protein complexes")
+        self._organelles = SelectOrFile(accept=".csv", setting="organelles",
+                                        title="Organelle markers", options=self._organelles_options)
+        self._complexes = SelectOrFile(accept=".csv", setting="complexes",
+                                       title="Protein complexes", options=self._complexes_options)
         self._gene_mode = pn.widgets.Select(
             options=["don't reannotate",
                      "from uniprot fasta headers",
@@ -946,63 +1005,92 @@ class ConfigureAnnotations(Viewer):
         super().__init__(**params)
         self._layout = pn.Card(
             objects=[
-                self._organism,
+                pn.Row(self._organism, help_icon("The tool uses marker proteins for organelles/subcellular locations and members of stable protein complexes for benchmarking. You can either use predefined lists curated by the authors, or upload your own .csv files (check the abouts page for details). Additionally you can decide to reannotate gene symbols from a selected source. If you want to use the gene symbols from the uniprot fasta headers, you need to reduce the file to headers only.")),
                 pn.Row(self._organelles, self._complexes),
-                pn.Row(self._gene_mode, self._gene_source)
-            ]
+                pn.Row(self._gene_mode, self._update_gene_source)
+            ],
+            collapsed=False
         )
-        self._sync_widgets()
+        self._sync_layout()
+        self._organism.param.trigger('value')
+        self._sync_values()
+        
+        
         
     def __panel__(self):
         return self._layout
     
-    @param.depends('organism',
-                   'gene_mode', 'gene_source',
-                   'title', 'width', watch=True)
-    def _sync_widgets(self):
+    @param.depends('custom_option', 'width', 'title', watch=True)
+    def _sync_layout(self):
         self._layout.width = self.width
         self._layout.header = pn.pane.Markdown(self.title, width=self.width)
-        self._organelles.custom_option = self.custom_option
-        self._complexes.custom_option = self.custom_option
-        self._gene_source.custom_option = self.custom_option
-        self._organism.width = self.width-20
-        self._organism.value = self.organism
-        self._organism.param.trigger('value')
+        self._organism.width = self.width-20-45
         self._organelles.width = self.width//2
         self._complexes.width = self.width//2
         self._gene_mode.width = self.width//2-20
         self._gene_source.width = self.width//2
+        self._organelles.custom_option = self.custom_option
+        self._complexes.custom_option = self.custom_option
+        self._gene_source.custom_option = self.custom_option
+        
+    
+    @param.depends('organism', watch=True)
+    def _sync_widgets(self):
+        self._organism.value = self.organism
+    
+    @param.depends('organelles', 'complexes', 'gene_mode', 'gene_source', watch=True)
+    def _sync_values(self):
+        self._organelles.value = self.organelles
+        self._complexes.value = self.complexes
+        self._gene_mode.value = self.gene_mode
+        self._gene_source.value = self.gene_source
     
     @param.depends('_organism.value', watch=True)
     def _sync_organism(self):
         self.organism = self._organism.value
-        ov = self.organelles
+        ov, cv = self.organelles, self.complexes
         self._organelles.options = [el for el in self._organelles_options if el.startswith(self.organism)]
-        self._organelles.value = ov if ov in self._organelles_options else self._organelles.custom_option
-        self._organelles.param.trigger('value')
-        cv = self.complexes
         self._complexes.options = [el for el in self._complexes_options if el.startswith(self.organism)]
-        self._complexes.value = cv if cv in self._complexes_options else self._complexes.custom_option
-        self._complexes.param.trigger('value')
-        self._gene_mode.param.trigger('value')
+        if ov == "" or (ov not in self._organelles.options and ov in self._organelles_options):
+            try:
+                self._organelles.value = self._organelles.options[0]
+            except:
+                pass
+        else:
+            self._organelles.value = ov
+        if cv == "" or (cv not in self._complexes.options and cv in self._complexes_options):
+            try:
+                self._complexes.value = self._complexes.options[0]
+            except:
+                pass
+        else:
+            self._complexes.value = gv
+        self._gene_mode.param.trigger("value")
     
-    @param.depends('_gene_mode.value', watch=True)
-    def _sync_gene_mode(self):
+    @param.depends('_gene_mode.value')
+    def _update_gene_source(self):
         self.gene_mode = self._gene_mode.value
         if self.gene_mode == "from uniprot fasta headers": #fasta_headers
-            gv = self.gene_source
-            self._gene_source.options = [el for el in self._fasta_options if el.startswith(self.organism)]
-            self._gene_source.accept = ".txt"
-            self._gene_source.value = gv if gv in self._fasta_options else self._gene_source.custom_option
-            self._layout[2] = pn.Row(self._gene_mode, self._gene_source)
+            mode = "fasta"
         elif self.gene_mode == "from uniprot tab download": #tsv
-            gv = self.gene_source
-            self._gene_source.options = [el for el in self._tab_options if el.startswith(self.organism)]
-            self._gene_source.accept = ".tab"
-            self._gene_source.value = gv if gv in self._tab_options else self._gene_source.custom_option
-            self._layout[2] = pn.Row(self._gene_mode, self._gene_source)
+            mode = "tab"
         else:
-            self._layout[2] = pn.Row(self._gene_mode)
+            return pn.Column()
+        
+        gv = self.gene_source
+        opts = [el for el in self._fasta_options if el.startswith(self.organism)] if mode == "fasta" else\
+               [el for el in self._tab_options if el.startswith(self.organism)]
+        self._gene_source.options = opts
+        self._gene_source.accept = ".txt" if mode == "fasta" else ".tab"
+        
+        if gv == "" or (gv not in opts and (gv in self._fasta_options or gv in self._tab_options)):
+            try:
+                self._gene_source.value = self._gene_source.options[0]
+            except:
+                pass
+        else:
+            self._gene_source.value = gv
+        return self._gene_source
     
     @param.depends('_organelles.value', '_organelles.custom_file', watch=True)
     def _sync_organelles(self):
@@ -1013,8 +1101,8 @@ class ConfigureAnnotations(Viewer):
                 if self._organelles.custom_file is None:
                     self.organelles = ""
                 else:
-                    self.organelles = self._organelles.custom_file.decode("utf-8")
-        self._layout[1][0] = self._organelles
+                    self.organelles = self._organelles.custom_file
+        #self._layout[1][0] = self._organelles
     
     @param.depends('_complexes.value', '_complexes.custom_file', watch=True)
     def _sync_complexes(self):
@@ -1025,19 +1113,20 @@ class ConfigureAnnotations(Viewer):
                 if self._complexes.custom_file is None:
                     self.complexes = ""
                 else:
-                    self.complexes = self._complexes.custom_file.decode("utf-8")
-        self._layout[1][1] = self._complexes
+                    self.complexes = self._complexes.custom_file
+        #self._layout[1][1] = self._complexes
     
     @param.depends('_gene_source.value', '_gene_source.custom_file', watch=True)
     def _sync_genes(self):
         if self._gene_source.value != self.gene_source:
-            if self._gene_source.value in self._fasta_options or self._gene_source in self._tab_options:
+            if self._gene_source.value in self._fasta_options or self._gene_source.value in self._tab_options:
                 self.gene_source = self._gene_source.value
             else:
                 if self._gene_source.custom_file is None:
                     self.gene_source = ""
                 else:
-                    self.gene_source = self._gene_source.custom_file.decode("utf-8")
+                    self.gene_source = self._gene_source.custom_file
+        #self._layout[2][1] = self._gene_source
     
     @param.depends('disabled',
                    watch=True)
@@ -1077,36 +1166,42 @@ class ConfigureDataTransformations(Viewer):
     disabled = param.Boolean(default=False)
     
     def __init__(self, **params):
-        self._unlog_chk = pn.widgets.Checkbox(name="log-transformed with base:")
+        self._unlog_chk = pn.widgets.Checkbox(name="Data was previously log-transformed with base:")
         self._unlog_base = pn.widgets.Select(options=[2,10,"e"], margin=0)
-        self._invert_chk = pn.widgets.Checkbox(name="inverted")
+        self._invert_chk = pn.widgets.Checkbox(name="Data needs to be inverted to represent biological profiles.")
         self._weigh_yields = pn.widgets.Checkbox(name="Weigh fractions (will be applied before 0-1 normalization)")
         self._sample_norm = pn.widgets.Select(options=[None, "sum", "median"], margin=0)
         super().__init__(**params)
         self._layout = pn.Card(
-            pn.Row("Data is", self._invert_chk, self._unlog_chk, self._unlog_base),
+            pn.Row(self._invert_chk, help_icon("These transformations will be done after indexing and filtering. Inverting the data is meant e.g. for SILAC ratios. Undoing a log transformation is only required if data has been previously processed with a different tool.")),
+            pn.Row(self._unlog_chk, self._unlog_base),
             pn.Row("Sample normalization:", self._sample_norm),
             #self._weigh_yields, TODO: Implement yield weighing and uncomment this line afterwards
-            pn.Row()
+            pn.Row(),
+            collapsed=True
         )
         if len(self.yields) != 0:
             if len(self.fractions) != len(self.yields):
                 raise ValidationError("Fractions and yields must have the same length.")
             self._weigh_yields.value = True
         self._sync_layout()
+        self._sync_widgets()
     
     def __panel__(self):
         return self._layout
     
-    @param.depends('unlog', 'invert', 'samplenormalization', 'yields', 'fractions', 'title', 'width', watch=True)
+    @param.depends('title', 'width', watch=True)
     def _sync_layout(self):
         self._layout.width = self.width
         self._layout.header = pn.pane.Markdown(self.title, width=self.width)
-        self._unlog_chk.width = 165
+        self._unlog_chk.width = 300
         self._unlog_base.width = 50
-        self._invert_chk.width = 50
+        self._invert_chk.width = self.width-20-45
         self._sample_norm.width = 120
         self._weigh_yields.width = self.width-20
+    
+    @param.depends('unlog', 'invert', 'samplenormalization', 'yields', 'fractions', watch=True)
+    def _sync_widgets(self):
         self._invert_chk.value = self.invert
         self._unlog_chk.value = True if self.unlog != False else False
         self._unlog_base.value = self.unlog if self.unlog != False else None
@@ -1251,26 +1346,31 @@ class ConfigureColumnFilters(Viewer):
     disabled = param.Boolean(default=False)
     
     def __init__(self, **params):
-        self.btn_add = pn.widgets.Button(name="+", width=30, button_type="success")
+        self.btn_add = pn.widgets.Button(name="+", width=32, button_type="success")
         self.btn_add.on_click(self.add_filter)
         super().__init__(**params)
         self._layout = pn.Card(pn.Row(
-            "Add filters to only keep entries matching the conditions.\nOnly one filter per column", self.btn_add))
+            "Add filters to only keep entries matching the conditions.\nOnly one filter per column", help_icon("This is intended to e.g. remove contaminants, that are flagged in a separate column, or to filter for scores/aggregated quality measures on a global level. If the column only contains a single level after filtering, it is removed from the output.", width=30), self.btn_add),
+            collapsed=True)
         self._sync_layout()
+        self._sync_filters()
     
     def __panel__(self):
         return self._layout
     
-    @param.depends('value', 'columns', watch=True)
+    @param.depends('width', 'title', watch=True)
     def _sync_layout(self):
         self._layout.width = self.width
-        self._layout[0][0].width = self.width-60
+        self._layout[0][0].width = self.width-92
         self._layout.header = pn.pane.Markdown(self.title, width=self.width)
+    
+    @param.depends('value', 'columns', watch=True)
+    def _sync_filters(self):
         self._layout.objects = [pn.Row(self._layout[0])]
         for i,k in enumerate(self.value.keys()):
-            x = pn.widgets.Button(name="X", width=30, button_type="danger")
-            def delete(event):
-                self._layout[i+1] = pn.Row()
+            x = pn.widgets.Button(name="X", width=32, button_type="danger")
+            def delete(event, index=i):
+                self._layout[index+1] = pn.Row()
             y = self.value[k][1]
             if y.startswith("'") and y.endswith("'"):
                 y = y[1:-1]
@@ -1325,6 +1425,7 @@ class ConfigureColumnFilters(Viewer):
 class ConfigureSingleFile(Viewer):
     
     settings = param.ClassSelector(class_=dict, default={})
+    width = param.Integer(default=540)
     disabled = param.Boolean(default=False)
     
     def __init__(self, **params):
@@ -1338,20 +1439,44 @@ class ConfigureSingleFile(Viewer):
         self._comment = pn.widgets.TextInput(name="Comment", value="", width=540, height=70)
         self._error_output = pn.Row(pn.pane.Markdown())
         self._btn_save = pn.widgets.FileDownload(callback=self.save_settings, filename="domqc_settings.json",
-                                                 name="Save settings", button_type="primary", width=150, disabled=True)
-        self._btn_load = FileInput(width=90, disabled=True)
-        self._btn_run = pn.widgets.Button(name="Run processing", button_type="success", width=150, disabled=True)
+                                                 name="Save settings", button_type="primary", width=150, disabled=True, align="end")
+        self._btn_load = FileInput(width=110, disabled=True, align="end", height=30)
+        self._btn_run = pn.widgets.Button(name="Run processing", button_type="success", width=150, disabled=True, align="end")
         super().__init__(**params)
         self._layout = pn.Column(
             self._content, 
             self._file_loaded,
-            pn.Row(self._btn_save, pn.Column("Load settings", self._btn_load), self._btn_run),
+            pn.Row(self._btn_save, pn.Column(pn.pane.Markdown("Load settings", height=40), self._btn_load), self._btn_run),
             self._error_output
             )
+        self._layout_loaded = pn.Column(
+            self._transform, 
+            self._ann, 
+            self._select_acquisition,
+            self._col,
+            self._comment
+        )
+        self._sync_layout()
         self._set_defaults()
     
     def __panel__(self):
         return self._layout
+    
+    @param.depends('width', watch=True)
+    def _sync_layout(self):
+        self._layout.width = self.width
+        self._content.width = self.width
+        self._ann.width = self.width
+        self._transform.width = self.width
+        self._SILAC.width = self.width
+        self._MSMS.width = self.width//2-5
+        self._cons.width = self.width//2-5
+        self._col.width = self.width
+        self._comment.width = self.width-10
+        self._error_output.width = self.width
+        self._btn_save.width = self.width//2-75
+        self._btn_load.width = 90
+        self._btn_run.width = self.width//2-75
     
     @param.depends('_content.file.value')
     def _file_loaded(self):
@@ -1363,13 +1488,7 @@ class ConfigureSingleFile(Viewer):
             self._btn_load.disabled=False
             self._btn_save.disabled=False
             self._btn_run.disabled=False
-            return pn.Column(
-                self._transform, 
-                self._ann, 
-                self._select_acquisition,
-                self._col,
-                self._comment
-            )
+            return self._layout_loaded
         else:
             return "Load file for further configuration"
     
@@ -1381,19 +1500,19 @@ class ConfigureSingleFile(Viewer):
     def _select_acquisition(self):
         self._set_defaults()
         filters = SpatialDataSet.defaultsettings["acquisition_modes"][self._content.acquisition]["quality_filter"]
-        layout = pn.Column(pn.Row(), pn.Row())
         if "SILAC_countvar" in filters:
-            layout[0].append(self._SILAC)
+            layout = self._SILAC
             self._SILAC.toggle = True
         else:
             self._SILAC.toggle = False
+            layout = pn.Row()
         if "msms_count" in filters:
-            layout[1].append(self._MSMS)
+            layout.append(self._MSMS)
             self._MSMS.toggle = True
         else:
             self._MSMS.toggle = False
         if "consecutive" in filters:
-            layout[1].append(self._cons)
+            layout.append(self._cons)
             self._cons.toggle = True
         else:
             self._cons.toggle = False
@@ -1508,7 +1627,16 @@ class ConfigureSingleFile(Viewer):
         except Exception as ex:
             self._error_output[0] = pn.Column(settings, traceback.format_exc())
             return
-            
+        
+        try:
+            # transformations
+            self._transform.param.set_param(invert=settings['input_invert'],
+                                            unlog=settings['input_logged'],
+                                            samplenormalization=settings['input_samplenormalization'])
+        except Exception as ex:
+            self._error_output[0] = pn.Column(settings, traceback.format_exc())
+            return
+        
         try:
             # annotations
             self._ann.param.set_param(organism=settings["organism"],
@@ -1545,15 +1673,6 @@ class ConfigureSingleFile(Viewer):
             else:
                 self._cons.param.set_param(toggle=False)
             self._col.param.set_param(value=settings["column_filters"])
-        except Exception as ex:
-            self._error_output[0] = pn.Column(settings, traceback.format_exc())
-            return
-        
-        try:
-            # transformations
-            self._transform.param.set_param(invert=settings['input_invert'],
-                                            unlog=settings['input_logged'],
-                                            samplenormalization=settings['input_samplenormalization'])
         except Exception as ex:
             self._error_output[0] = pn.Column(settings, traceback.format_exc())
             return
