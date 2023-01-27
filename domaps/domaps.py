@@ -8,7 +8,7 @@ import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import re
 import traceback
-from io import BytesIO
+from io import BytesIO, StringIO
 from sklearn.decomposition import PCA
 from sklearn.metrics import pairwise as pw
 import json
@@ -236,7 +236,7 @@ class SpatialDataSet:
             if complexes+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes"):
                 marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(complexes)))
             else:
-                marker_table = pd.read_csv(BytesIO(complexes))
+                marker_table = pd.read_csv(StringIO(complexes))
             self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
             if organelles+".csv" in pkg_resources.resource_listdir(__name__, "annotations/organellemarkers"):
                 df_organellarMarkerSet = pd.read_csv(
@@ -244,7 +244,7 @@ class SpatialDataSet:
                                                  usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
             else:
                 df_organellarMarkerSet = pd.read_csv(
-                                                 BytesIO(organelles),
+                                                 StringIO(organelles),
                                                  usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
             self.df_organellarMarkerSet = df_organellarMarkerSet
             
@@ -423,15 +423,15 @@ class SpatialDataSet:
         processing_steps.append("Annotating marker proteins")
         
         ## Filter data quality as applicable
+        df_filtered = df_index.copy()
+        for k,v in self.kwargs["column_filters"].items():
+            df_filtered = filter_singlecolumn_keep(
+                df_filtered,
+                column=k, operator=v[0], value=v[1])
+            processing_steps.append(f"Filtering {k}")
         if len(self.kwargs["quality_filter"]) == 0:
-            df_filtered = df_index.copy()
+            processing_steps.append("No further quality filters applied.")
         elif all([el in ["SILAC_countvar", "msms_count", "consecutive"] for el in self.kwargs["quality_filter"]]):
-            df_filtered = df_index.copy()
-            for k,v in self.kwargs["column_filters"].items():
-                df_filtered = filter_singlecolumn_keep(
-                    df_filtered,
-                    column=k, operator=v[0], value=v[1])
-                processing_steps.append(f"Filtering {k}")
             if "SILAC_countvar" in self.kwargs["quality_filter"]:
                 df_filtered = filter_SILAC_countvar(df_filtered, self.RatioCount, self.RatioVariability)
                 processing_steps.append("Filtering SILAC countvar")
@@ -3517,7 +3517,7 @@ def parse_reannotation_source(mode, source):
         reannotation_source["idmapping"] = idmapping
     elif mode == "tsv":
         if "\n" in source:
-            idmapping = pd.read_csv(BytesIO(source), sep='\t',
+            idmapping = pd.read_csv(StringIO(source), sep='\t',
                                     usecols=["Entry", "Gene names  (primary )"])
         else:
             idmapping = pd.read_csv(pkg_resources.resource_stream(
@@ -3853,6 +3853,26 @@ def format_data_long(
     Original Protein IDs Gene names Protein IDs                    
     bar;bar-1            ipsum      bar                   NaN  30.1
     foo                  lorem      foo                   0.0  50.0
+    
+    
+    >>> format_data_long(pd.DataFrame([["foo", "rep1_F1", 100],
+    ...                                ["bar;bar-1", "rep1_F1", 200],
+    ...                                ["foo", "rep1_F3", 50],
+    ...                                ["bar;bar-1", "rep1_F3", 30.1],
+    ...                                ["foo", "rep1_F2", 0],
+    ...                                ["bar;bar-1", "rep1_F2", np.nan]],
+    ...                               columns=["PG.ProteinGroups", "R.Condition", "PG.Quantity"]
+    ...                               ),
+    ...                  original_protein_ids="PG.ProteinGroups", genes="PG.ProteinGroups",
+    ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
+    ...                  sets={"LFQ intensity": "PG.Quantity"},
+    ...                  fraction_mapping={"F1": None, "F2": "F2", "F3": "F1"}) # Drop F1, relabel F3 as F1, leave F2 as is
+    Set                                         LFQ intensity      
+    Map                                                  rep1      
+    Fraction                                               F2    F1
+    Original Protein IDs Gene names Protein IDs                    
+    bar;bar-1            bar;bar-1  bar                   NaN  30.1
+    foo                  foo        foo                   0.0  50.0
     """
     
     ## Rename columns
@@ -3860,6 +3880,8 @@ def format_data_long(
                                   genes: "Gene names",
                                   samples: "Samples",
                                   **{v:k for k,v in sets.items()}}, errors="raise")
+    if genes == original_protein_ids:
+        df_index.insert(0, "Original Protein IDs", df_index["Gene names"])
     
     ## Set index columns and column name "Set"
     df_index.dropna(subset=["Original Protein IDs"], inplace=True)
@@ -3935,6 +3957,8 @@ def format_data_pivot(
     ## Rename columns
     df_index = df.rename(columns={original_protein_ids: "Original Protein IDs",
                                   genes: "Gene names"}, errors="raise")
+    if genes == original_protein_ids:
+        df_index.insert(0, "Original Protein IDs", df_index["Gene names"])
     
     ## Set index columns and column name "Set"
     df_index.dropna(subset=["Original Protein IDs"], inplace=True, axis=0)
