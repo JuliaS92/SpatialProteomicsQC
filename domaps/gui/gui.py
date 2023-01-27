@@ -144,7 +144,7 @@ class SelectOrFile(Viewer):
     @param.depends('_value.value')
     def _custom(self):
         self.value = self._value.value
-        if self.value == self.custom_option:
+        if self._value.value == self.custom_option:
             return self._file
         else:
             return pn.Row()
@@ -725,8 +725,12 @@ class ConfigureFileContent(Viewer):
                     self._dependent_layout_long[0][0][2] = self._column_custom_mainset_long
                     self._column_custom_mainset_long.param.trigger('value')
         else:
-            self._dependent_layout_long[0][0][2] = self._column_custom_mainset_long
-            self._column_custom_mainset_long.param.trigger('value')
+            if self.orientation == "pivot":
+                self._column_mainset_pivot.disabled = False
+                self._column_mainset_pivot.param.trigger('value')
+            elif self.orientation == "long":
+                self._dependent_layout_long[0][0][2] = self._column_custom_mainset_long
+                self._column_custom_mainset_long.param.trigger('value')
         
         self._sync_dependent_layout()
     
@@ -1064,15 +1068,15 @@ class ConfigureAnnotations(Viewer):
             except:
                 pass
         else:
-            self._complexes.value = gv
+            self._complexes.value = cv
         self._gene_mode.param.trigger("value")
     
     @param.depends('_gene_mode.value')
     def _update_gene_source(self):
         self.gene_mode = self._gene_mode.value
-        if self.gene_mode == "from uniprot fasta headers": #fasta_headers
+        if self._gene_mode.value == "from uniprot fasta headers": #fasta_headers
             mode = "fasta"
-        elif self.gene_mode == "from uniprot tab download": #tsv
+        elif self._gene_mode.value == "from uniprot tab download": #tsv
             mode = "tab"
         else:
             return pn.Column()
@@ -1094,38 +1098,35 @@ class ConfigureAnnotations(Viewer):
     
     @param.depends('_organelles.value', '_organelles.custom_file', watch=True)
     def _sync_organelles(self):
-        if self._organelles.value != self.organelles:
-            if self._organelles.value in self._organelles_options:
-                self.organelles = self._organelles.value
+        if self._organelles.value in self._organelles.options:
+            self.organelles = self._organelles.value
+        else:
+            if self._organelles.custom_file is None:
+                self.organelles = ""
             else:
-                if self._organelles.custom_file is None:
-                    self.organelles = ""
-                else:
-                    self.organelles = self._organelles.custom_file
-        #self._layout[1][0] = self._organelles
+                self.organelles = self._organelles.custom_file
+        self._layout[1][0] = self._organelles
     
     @param.depends('_complexes.value', '_complexes.custom_file', watch=True)
     def _sync_complexes(self):
-        if self._complexes.value != self.complexes:
-            if self._complexes.value in self._complexes_options:
-                self.complexes = self._complexes.value
+        if self._complexes.value in self._complexes.options:
+            self.complexes = self._complexes.value
+        else:
+            if self._complexes.custom_file is None:
+                self.complexes = ""
             else:
-                if self._complexes.custom_file is None:
-                    self.complexes = ""
-                else:
-                    self.complexes = self._complexes.custom_file
-        #self._layout[1][1] = self._complexes
+                self.complexes = self._complexes.custom_file
+        self._layout[1][1] = self._complexes
     
     @param.depends('_gene_source.value', '_gene_source.custom_file', watch=True)
     def _sync_genes(self):
-        if self._gene_source.value != self.gene_source:
-            if self._gene_source.value in self._fasta_options or self._gene_source.value in self._tab_options:
-                self.gene_source = self._gene_source.value
+        if self._gene_source.value in self._fasta_options or self._gene_source.value in self._tab_options:
+            self.gene_source = self._gene_source.value
+        else:
+            if self._gene_source.custom_file is None:
+                self.gene_source = ""
             else:
-                if self._gene_source.custom_file is None:
-                    self.gene_source = ""
-                else:
-                    self.gene_source = self._gene_source.custom_file
+                self.gene_source = self._gene_source.custom_file
         #self._layout[2][1] = self._gene_source
     
     @param.depends('disabled',
@@ -1589,6 +1590,8 @@ class ConfigureSingleFile(Viewer):
         settings = get_settings([self._content, self._ann, self._transform,
                                  self._SILAC, self._MSMS, self._cons, self._col])
         settings["comment"] = self._comment.value
+        if "quality_filter" not in settings.keys():
+            settings["quality_filter"] = []
         # the following line will update the interface once with the settings.
         # It should not influence the widgets besides the order sof the fractions, which will still not change the outcome.
         self.settings = settings
