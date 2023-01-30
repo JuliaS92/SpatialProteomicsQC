@@ -190,8 +190,11 @@ class SpatialDataSet:
         
         self.map_names = []
         self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
-        self.reannotate_genes = reannotate_genes
         
+        if "reannotate" in kwargs.keys():
+            reannotate_genes = kwargs["reannotate"]
+        
+        self.reannotate_genes = reannotate_genes
         if reannotate_genes:
             self.reannotation_source = reannotation_source
         
@@ -293,6 +296,7 @@ class SpatialDataSet:
                                     "acquisition", "reannotation_source",
                                     "reannotate", "organism"]})
         else:
+            settings['reannotation_source'] = parse_reannotation_source(settings['reannotate'], settings['reannotation_source'])
             ds = SpatialDataSet(**settings)
             ds.imported_columns = generate_usecols_regex(settings)
         return ds
@@ -404,12 +408,14 @@ class SpatialDataSet:
         
         ## Reannotate genes
         if self.reannotate_genes:
-            df_index.index.set_level_values(
-                "Gene names",
-                reannotate_genes_uniprot(
+            df_index.reset_index("Gene names", inplace=True, drop=True)
+            df_index.set_index(pd.Index(
+                name="Gene names",
+                data=reannotate_genes_uniprot(
                     df_index.index.get_level_values("Protein IDs"),
                     **self.reannotation_source
-                )
+                )),
+                inplace=True, append=True
             )
             processing_steps.append("Reannotating genes")
         
@@ -2226,6 +2232,20 @@ class SpatialDataSetComparison:
         self.df_01_filtered_combined = df_01_filtered_combined
         
         self.df_quantity_pr_pg_combined = df_quantity_pr_pg_combined
+        
+        # find out whether mixed fractions were loaded
+        columns = df_01_filtered_combined.unstack(["Experiment"]).dropna(axis=1, how="all").columns
+        fractions = []
+        for (f,_) in columns:
+            fractions.append(f)
+        fractions = set(fractions)
+        mixed = False
+        for f in fractions:
+            for e in self.exp_names:
+                if (f,e) not in columns:
+                    mixed = True
+                    continue
+        self.mixed = mixed
         
         
         if "legacy" in json_dict[self.ref_exp]["Analysis parameters"].keys():
