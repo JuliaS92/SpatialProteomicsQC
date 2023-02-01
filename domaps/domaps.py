@@ -4353,14 +4353,14 @@ def normalize_samples(df, method="sum"):
     
     return df_transformed
 
-
-def weigh_yields(df):
-    """
-    
-    """
-    if len(df) == 0:
-        raise ValueError
-    return df_transformed
+#Future
+#def weigh_yields(df):
+#    """
+#    
+#    """
+#    if len(df) == 0:
+#        raise ValueError
+#    return df_transformed
 
 
 def normalize_sum1(
