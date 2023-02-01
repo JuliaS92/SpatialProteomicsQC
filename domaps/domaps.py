@@ -3833,6 +3833,8 @@ def format_data_long(
     """
     This formats proteomic input data in long format to be compatible with the SpatialDataset class.
     
+    >>> pd.set_option('display.max_columns', 500)
+    >>> pd.set_option('display.width', 1000)
     >>> format_data_long(pd.DataFrame([["foo", "lorem", "rep1_F1", 100, 4],
     ...                                ["bar;bar-1", "ipsum", "rep1_F1", 200, 1],
     ...                                ["foo", "lorem", "rep2_F1", 50, 0],
@@ -3845,14 +3847,13 @@ def format_data_long(
     ...                  original_protein_ids="PG.ProteinGroups", genes="PG.Genes",
     ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
     ...                  sets={"LFQ intensity": "PG.Quantity", "MS/MS count": "PG.RunEvidenceCount"})
-    Set                                         LFQ intensity       ... MS/MS count     
-    Map                                                  rep1       ...        rep2     
-    Fraction                                               F1   F2  ...          F1   F2
-    Original Protein IDs Gene names Protein IDs                     ...                 
-    bar;bar-1            ipsum      bar                 200.0  NaN  ...        20.0  NaN
-    foo                  lorem      foo                 100.0  0.0  ...         0.0  6.0
-    <BLANKLINE>
-    [2 rows x 8 columns]
+    Set                                         LFQ intensity                          MS/MS count               
+    Map                                                  rep1       rep2                      rep1      rep2     
+    Fraction                                               F1   F2    F1            F2          F1  F2    F1   F2
+    Original Protein IDs Gene names Protein IDs                                                                  
+    bar;bar-1            ipsum      bar                 200.0  NaN  30.1           NaN         1.0 NaN  20.0  NaN
+    foo                  lorem      foo                 100.0  0.0  50.0  2.000000e+10         4.0 NaN   0.0  6.0
+    
     
     Use fractions parameter to relabel fractions
     >>> format_data_long(pd.DataFrame([["foo", "lorem", "rep1_F1", 100],
@@ -3955,6 +3956,8 @@ def format_data_pivot(
     index_cols:list = [],
     fraction_mapping:dict = dict()):
     """
+    >>> pd.set_option('display.max_columns', 500)
+    >>> pd.set_option('display.width', 1000)
     >>> format_data_pivot(pd.DataFrame([["foo", "lorem", 20,np.nan,20,10, 2,0,4,3, None],
     ...                                 ["bar;bar-1", "ipsum", 0,40,20,40, np.nan,10,5,3, None]],
     ...                                columns=["Majority Protein IDs", "Gene Names",
@@ -3964,14 +3967,12 @@ def format_data_pivot(
     ...                       name_pattern=".* (?P<rep>.*)_(?P<frac>.*)",
     ...                       sets={"LFQ intensity": "LFQ intensity .*", "MS/MS count": "MS/MS counts .*"},
     ...                       index_cols=["Reverse"])
-    Set                                                 LFQ intensity  ... MS/MS count
-    Map                                                             1  ...           2
-    Fraction                                                       F1  ...          F2
-    Original Protein IDs Gene names Reverse Protein IDs                ...            
-    foo                  lorem      NaN     foo                  20.0  ...         3.0
-    bar;bar-1            ipsum      NaN     bar                   NaN  ...         3.0
-    <BLANKLINE>
-    [2 rows x 8 columns]
+    Set                                                 LFQ intensity                   MS/MS count                
+    Map                                                             1           2                 1          2     
+    Fraction                                                       F1    F2    F1    F2          F1    F2   F1   F2
+    Original Protein IDs Gene names Reverse Protein IDs                                                            
+    foo                  lorem      NaN     foo                  20.0   NaN  20.0  10.0         2.0   NaN  4.0  3.0
+    bar;bar-1            ipsum      NaN     bar                   NaN  40.0  20.0  40.0         NaN  10.0  5.0  3.0
     """
     
     ## Rename columns
