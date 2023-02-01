@@ -8,7 +8,7 @@ import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import re
 import traceback
-from io import BytesIO
+from io import BytesIO, StringIO
 from sklearn.decomposition import PCA
 from sklearn.metrics import pairwise as pw
 import json
@@ -24,6 +24,7 @@ from scipy.stats import zscore
 import urllib.parse
 import urllib.request
 import bisect
+import inspect
 
 def natsort_index_keys(x):
     order = natsort.natsorted(np.unique(x.values))
@@ -38,6 +39,77 @@ class SpatialDataSet:
     regex = {
         "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*|variability|count)[^ ]+|^Ratio H/L variability.... .+|^Ratio H/L count .+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR]otein.[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
     }
+    
+    defaultsettings = dict(
+        acquisition_modes=dict(
+            SILAC=dict(
+                sets=["Ratio", "Ratio count", "Ratio variability"],
+                input_invert=True,
+                input_logged=False,
+                input_samplenormalization="median",
+                quality_filter=["SILAC_countvar"],
+                RatioCount=2,
+                RatioVariability=30
+            ),
+            LFQ=dict(
+                sets=["LFQ intensity", "MS/MS count"],
+                input_invert=False,
+                input_logged=False,
+                input_samplenormalization=None,
+                quality_filter=["msms_count", "consecutive"],
+                average_MSMS_counts=2,
+                consecutive=4
+            ),
+            Intensity=dict(
+                sets=["Intensity", "MS/MS count"],
+                input_invert=False,
+                input_logged=False,
+                input_samplenormalization="sum",
+                quality_filter=["msms_count", "consecutive"],
+                average_MSMS_counts=2,
+                consecutive=4
+            ),
+            custom=dict(
+                sets=["Abundance"],
+                quality_filter=["msms_count", "consecutive"],
+                average_MSMS_counts=2,
+                consecutive=4
+            )
+        ),
+        sources=dict(
+            MaxQuant_proteins_pivot=dict(
+                original_protein_ids="Majority protein IDs",
+                genes="Gene names",
+                sets={
+                    "Ratio": "Ratio H/L (?!normalized|type|is.*|variability|count).+",
+                    "Ratio count": "Ratio H/L count .+",
+                    "Ratio variability": "Ratio H/L variability.... .+",
+                    "LFQ intensity": "LFQ intensity .+",
+                    "MS/MS count": "MS/MS count .+",
+                    "Intensity": "Intensity .+",
+                },
+                column_filters={
+                    "Potential contaminant": ["!=", "'+'"],
+                    "Only identified by site": ["!=", "'+'"],
+                    "Reverse": ["!=", "'+'"]
+                },
+                annotation_columns=["Protein names", "Q-value", "Score", "id"]
+            ),
+            MaxQuant_peptides_pivot=None,
+            Spectronaut_proteins_long=dict(
+                original_protein_ids="PG.ProteinGroups",
+                genes="PG.Genes",
+                samples="R.Condition",
+                sets={
+                    "LFQ intensity": "PG.Quantity",
+                    "MS/MS count": "PG.RunEvidenceCount",
+                    "Intensity": "PG.Quantity"
+                }
+            ),
+            Spectronaut_proteins_pivot=None,
+            DIANN_proteins_pivot=None,
+        )
+    )
     
     acquisition_set_dict = {
         "LFQ6 - Spectronaut" : ["LFQ intensity", "MS/MS count"],
@@ -76,73 +148,158 @@ class SpatialDataSet:
     df_organellarMarkerSet = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
                                        usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
 
-    def __init__(self, filename, expname, acquisition, comment, name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)", reannotate_genes=False, **kwargs):
+    def __init__(
+        self,
+        filename,
+        expname,
+        acquisition = "LFQ",
+        source = "MaxQuant_proteins_pivot", #future
+        orientation = "pivot", #future
+        comment="",
+        name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)",
+        reannotate_genes=False,
+        reannotation_source={"source": False, "idmapping": None},
+        legacy=True,
+        RatioHLcount=2,
+        RatioCount=2,
+        RatioVariability=30,
+        summed_MSMS_counts=2, #legacy
+        consecutiveLFQi=4, #legacy
+        average_MSMS_counts=2, #future
+        consecutive=4, #future
+        organism="Homo sapiens - Uniprot", #legacy/future
+        organelles="Homo sapiens - Uniprot", #future
+        complexes="Homo sapiens - Uniprot", #future
+        fractions=[],
+        **kwargs):
         
         self.filename = filename
         self.expname = expname
         self.acquisition = acquisition
         self.name_pattern = name_pattern
         self.comment = comment
-        self.imported_columns = self.regex["imported_columns"]
+        self.legacy = legacy
+        self.fractions = fractions
         
-        self.fractions, self.map_names = [], []
+        if legacy == False:
+            self.source = source
+            self.orientation = orientation
+            # self.imported_columns = self.regex["imported_columns"] now in from_settings()
+        else:
+            self.imported_columns = self.regex["imported_columns"]
+        
+        self.map_names = []
         self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
+        
+        if "reannotate" in kwargs.keys():
+            reannotate_genes = kwargs["reannotate"]
+        
         self.reannotate_genes = reannotate_genes
-        
         if reannotate_genes:
-            self.reannotation_source = kwargs["reannotation_source"]
+            self.reannotation_source = reannotation_source
         
-        if acquisition == "SILAC - MQ":
-            if "RatioHLcount" not in kwargs.keys():
-                self.RatioHLcount = 2
+        if acquisition == "SILAC - MQ" or acquisition == "SILAC":
+            if legacy == True:
+                self.RatioHLcount = RatioHLcount
             else:
-                self.RatioHLcount = kwargs["RatioHLcount"]
-                del kwargs["RatioHLcount"]
-            if "RatioVariability" not in kwargs.keys():
-                self.RatioVariability = 30
-            else:
-                self.RatioVariability = kwargs["RatioVariability"]
-                del kwargs["RatioVariability"]
+                self.RatioCount = RatioCount
+            self.RatioVariability = RatioVariability
+            self.mainset = "Ratio" if legacy == False else "Ratio H/L"
         
-        elif acquisition == "Custom":
-            self.custom_columns = kwargs["custom_columns"]
-            self.custom_normalized = kwargs["custom_normalized"]
-            self.imported_columns = "^"+"$|^".join(["$|^".join(el) if type(el) == list else el for el in self.custom_columns.values() if el not in [[], None, ""]])+"$"
+        # depracate
+        #elif acquisition == "Custom":
+        #    self.custom_columns = kwargs["custom_columns"]
+        #    self.custom_normalized = kwargs["custom_normalized"]
+        #    self.imported_columns = "^"+"$|^".join(["$|^".join(el) if type(el) == list else el for el in self.custom_columns.values() if el not in [[], None, ""]])+"$"
             
         #elif acquisition == "LFQ5 - MQ" or acquisition == "LFQ6 - MQ" or acquisition == "LFQ6 - Spectronaut" or acquisition == "LFQ5 - Spectronaut":
-        else:
-            if "summed_MSMS_counts" not in kwargs.keys():
-                self.summed_MSMS_counts = 2
-            else:
-                self.summed_MSMS_counts = kwargs["summed_MSMS_counts"]
-                del kwargs["summed_MSMS_counts"]
-            if "consecutiveLFQi" not in kwargs.keys():
-                self.consecutiveLFQi = 4
-            else:
-                self.consecutiveLFQi = kwargs["consecutiveLFQi"]
-                del kwargs["consecutiveLFQi"]
+        elif "LFQ" in acquisition and legacy == True:
+            self.summed_MSMS_counts = summed_MSMS_counts
+            self.consecutiveLFQi = consecutiveLFQi
+            self.mainset = "LFQ intensity"
+        
+        elif acquisition != "SILAC" and legacy == False:
+            self.average_MSMS_counts = average_MSMS_counts
+            self.consecutive = consecutive
+            self.mainset = self.defaultsettings["acquisition_modes"][acquisition]["sets"][0]
+        
+        self.transformed_mainset = self.mainset
         
         #self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
-        if "organism" not in kwargs.keys():
-            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format("Homo sapiens - Uniprot")))
+        self.organism = organism
+        if legacy == True:
+            assert organism+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes")
+            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
             self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
             df_organellarMarkerSet = pd.read_csv(
-                                                 pkg_resources.resource_stream(__name__,'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
+                                                 pkg_resources.resource_stream(__name__,'annotations/organellemarkers/{}.csv'.format(organism)),
                                                  usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
             self.df_organellarMarkerSet = df_organellarMarkerSet
         else:
-            assert kwargs["organism"]+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes")
-            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(kwargs["organism"])))
+            if complexes+".csv" in pkg_resources.resource_listdir(__name__, "annotations/complexes"):
+                marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(complexes)))
+            else:
+                marker_table = pd.read_csv(StringIO(complexes))
             self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
-            df_organellarMarkerSet = pd.read_csv(
-                                                 pkg_resources.resource_stream(__name__,'annotations/organellemarkers/{}.csv'.format(kwargs["organism"])),
+            if organelles+".csv" in pkg_resources.resource_listdir(__name__, "annotations/organellemarkers"):
+                df_organellarMarkerSet = pd.read_csv(
+                                                 pkg_resources.resource_stream(__name__,'annotations/organellemarkers/{}.csv'.format(organelles)),
+                                                 usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
+            else:
+                df_organellarMarkerSet = pd.read_csv(
+                                                 StringIO(organelles),
                                                  usecols=lambda x: bool(re.match("Compartment|Protein ID", x))).drop_duplicates()
             self.df_organellarMarkerSet = df_organellarMarkerSet
-            self.organism = kwargs["organism"]
-            del kwargs["organism"]
-        
+            
+        self.kwargs = kwargs
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
+    
+    
+    def from_settings(settings, legacy=True):
+        settings["legacy"] = legacy
+        if legacy:
+            if any([el not in settings.keys() for el in ["filename", "expname", "comment",
+                                                        "source", "acquisition",
+                                                        "name_pattern", "reannotate", "reannotation_source",
+                                                        "organelles"]]):
+                raise ValueError("Settings are not sufficient to configure in legacy mode.")
+            if settings["source"] == "MaxQuant":
+                if settings["acquisition"] == "LFQ":
+                    source = "LFQ6 - MQ"
+                elif settings["acquisition"] == "SILAC":
+                    source = "SILAC - MQ"
+                else:
+                    raise ValueError(f"No legacy configuration for {settings['source']} and {settings['acquisition']}.")
+            elif settings["source"] == "Spectronaut":
+                if settings["acquisition"] == "LFQ":
+                    source = "LFQ6 - Spectronaut"
+                else:
+                    raise ValueError(f"No legacy configuration for {settings['source']} and {settings['acquisition']}.")
+            else:
+                raise ValueError(f"No legacy configuration for {settings['source']}.")
+            
+            if 'average_MSMS_counts' in settings.keys():
+                settings['summed_MSMS_counts'] = settings['average_MSMS_counts']
+            
+            if 'consecutive' in settings.keys():
+                settings['consecutiveLFQi'] = settings['consecutive']
+                
+            if 'RatioCount' in settings.keys():
+                settings['RatioHLcount'] = settings['RatioCount']
+            
+            ds = SpatialDataSet(acquisition = source,
+                                reannotate_genes = bool(settings["reannotate"]),
+                                reannotation_source = parse_reannotation_source(settings['reannotate'], settings['reannotation_source']),
+                                organism = settings["organelles"],
+                                **{k:v for k,v in settings.items() if k not in [
+                                    "acquisition", "reannotation_source",
+                                    "reannotate", "organism"]})
+        else:
+            settings['reannotation_source'] = parse_reannotation_source(settings['reannotate'], settings['reannotation_source'])
+            ds = SpatialDataSet(**settings)
+            ds.imported_columns = generate_usecols_regex(settings)
+        return ds
     
     
     def run_pipeline(self, content=None, progressbar=None):
@@ -168,7 +325,10 @@ class SpatialDataSet:
         setprogress("Data Reading ...")
         self.data_reading(content=content)
         setprogress("Data Processing ...")
-        self.processingdf()
+        if self.legacy == True:
+            self.processingdf()
+        else:
+            self.process_input()
         self.quantity_profiles_proteinGroups()
         setprogress("PCA ...")
         self.perform_pca()
@@ -212,7 +372,156 @@ class SpatialDataSet:
 
         return self.df_original
     
-
+    
+    def process_input(self):
+        """
+        
+        """
+        
+        processing_steps = []
+        
+        orientation = self.orientation
+        
+        ## Format data based on input columns
+        if self.orientation == "long":
+            df_index = format_data_long(
+                df=self.df_original,
+                name_pattern=self.name_pattern,
+                index_cols=self.kwargs["columns_annotation"]+[k for k in self.kwargs["column_filters"].keys()],
+                **{k:v for k,v in self.kwargs.items()
+                if k in inspect.getfullargspec(format_data_long).args}
+            )
+            processing_steps.append("Formatting long data")
+        elif self.orientation == "pivot":
+            df_index = format_data_pivot(
+                df=self.df_original,
+                name_pattern=self.name_pattern,
+                index_cols=self.kwargs["columns_annotation"]+[k for k in self.kwargs["column_filters"].keys()],
+                **{k:v for k,v in self.kwargs.items()
+                if k in inspect.getfullargspec(format_data_pivot).args}
+            )
+            processing_steps.append("Formatting pivot data")
+        else:
+            raise ValueError("Unknown input format")
+        
+        self.map_names = df_index.columns.get_level_values("Map").unique()
+        
+        ## Reannotate genes
+        if self.reannotate_genes:
+            df_index.reset_index("Gene names", inplace=True, drop=True)
+            df_index.set_index(pd.Index(
+                name="Gene names",
+                data=reannotate_genes_uniprot(
+                    df_index.index.get_level_values("Protein IDs"),
+                    **self.reannotation_source
+                )),
+                inplace=True, append=True
+            )
+            processing_steps.append("Reannotating genes")
+        
+        self.df_index = df_index
+        
+        ## Annotate marker proteins
+        df_index.columns = df_index.columns.values
+        df_index = df_index.join(self.df_organellarMarkerSet.set_index("Protein ID"), how="left", on="Protein IDs").set_index("Compartment", append=True)
+        df_index.columns = pd.MultiIndex.from_tuples(df_index.columns, names=["Set", "Map", "Fraction"])
+        df_index.rename(index={np.nan : "undefined"}, level="Compartment", inplace=True)
+        processing_steps.append("Annotating marker proteins")
+        
+        ## Filter data quality as applicable
+        df_filtered = df_index.copy()
+        for k,v in self.kwargs["column_filters"].items():
+            df_filtered = filter_singlecolumn_keep(
+                df_filtered,
+                column=k, operator=v[0], value=v[1])
+            processing_steps.append(f"Filtering {k}")
+        if len(self.kwargs["quality_filter"]) == 0:
+            processing_steps.append("No further quality filters applied.")
+        elif all([el in ["SILAC_countvar", "msms_count", "consecutive"] for el in self.kwargs["quality_filter"]]):
+            if "SILAC_countvar" in self.kwargs["quality_filter"]:
+                df_filtered = filter_SILAC_countvar(df_filtered, self.RatioCount, self.RatioVariability)
+                processing_steps.append("Filtering SILAC countvar")
+            if "msms_count" in self.kwargs["quality_filter"]:
+                df_filtered = filter_msms_count(df_filtered, self.average_MSMS_counts)
+                processing_steps.append("Filtering MSMS count")
+            if "consecutive" in self.kwargs["quality_filter"]:
+                df_filtered = filter_consecutive(df_filtered, self.consecutive, sets=dict(abundance=self.mainset))
+                processing_steps.append("Filtering consecutive values")
+        else:
+            raise ValueError("Unknown quality filter")
+        
+        ## Run data tranformations
+        if self.kwargs["input_logged"]:
+            df_transformed = transform_data(df_filtered[[self.mainset]],
+                                            invert = False,
+                                            unlog = self.kwargs["input_logged"],
+                                            log = False)
+            processing_steps.append("Unlogging input data")
+        else:
+            df_transformed = df_filtered[[self.mainset]].copy()
+        if self.kwargs["input_samplenormalization"]:
+            df_transformed = normalize_samples(df_transformed,
+                                               method=self.kwargs["input_samplenormalization"])
+            df_transformed.rename({self.transformed_mainset: "Normalized "+self.transformed_mainset}, axis=1, inplace=True)
+            self.transformed_mainset = "Normalized "+self.transformed_mainset
+            processing_steps.append(f"Normalizing samples by {self.kwargs['input_samplenormalization']}")
+        if self.kwargs["input_invert"]:
+            df_transformed = transform_data(df_transformed,
+                                            invert = self.kwargs["input_invert"],
+                                            unlog = False,
+                                            log = False)
+            df_transformed.rename({self.transformed_mainset: "Inverted "+self.transformed_mainset}, axis=1, inplace=True)
+            self.transformed_mainset = "Inverted "+self.transformed_mainset
+            processing_steps.append("Inverting data")
+        
+        #if len(self.kwargs["yields"]) != 0:
+        #    df_transformed = domaps.weigh_yields(df_transformed)
+        
+        df_transformed = df_filtered.drop(self.mainset, axis=1).join(df_transformed)
+        
+        if self.acquisition == "SILAC":
+            # complete profiles
+            df_transformed = filter_consecutive(df_transformed, len(self.fractions), sets=dict(abundance=self.transformed_mainset))
+            processing_steps.append("Filtering for complete ratio profiles")
+        if self.acquisition == "LFQ":
+            df_transformed = df_transformed.stack("Map").replace(np.NaN, 0).unstack("Map")
+        
+        ## Normalize profiles
+        df_01_stacked = normalize_sum1(df_transformed, sets={"abundance": self.transformed_mainset}).stack("Fraction")
+        processing_steps.append("Normalizing to % profiles")
+        
+        ## Store dataset versions
+        self.df_index = df_index
+        self.df_filtered = df_filtered
+        df_log_stacked = df_01_stacked.drop("normalized profile", axis=1)
+        df_log_stacked = df_log_stacked.drop(self.transformed_mainset, axis=1).join(df_log_stacked[[self.transformed_mainset]].replace(0, np.nan).transform(np.log2).rename({self.transformed_mainset: "log profile"}, axis=1))
+        self.df_log_stacked = df_log_stacked
+        self.df_01_stacked = df_01_stacked
+        
+        # format and reduce 0-1 normalized data for comparison with other experiments
+        df_01_comparison = df_01_stacked[["normalized profile"]].copy()
+        df_01_comparison = df_01_comparison.unstack(["Map", "Fraction"])
+        df_01_comparison.columns = ["?".join(el) for el in df_01_comparison.columns.values]
+        df_01_comparison = df_01_comparison.reset_index(level=["Gene names", "Original Protein IDs", "Protein IDs", "Compartment"]).reset_index(drop=True)
+        
+        # poopulate analysis summary dictionary with (meta)data
+        self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()
+        self.analysis_summary_dict["organelles"] = self.df_organellarMarkerSet.to_json()
+        self.analysis_summary_dict["complexes"] = self.markerproteins
+        #self.analysis_summary_dict["changes in shape after filtering"] = shape_dict.copy()
+        # add more settings here
+        analysis_parameters = {"acquisition" : self.acquisition, 
+                               "filename" : self.filename,
+                               "comment" : self.comment,
+                               "organism" : self.organism,
+                               "processing steps": "\n".join(processing_steps),
+                               "legacy": self.legacy,
+                              }
+        self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
+        
+        return df_01_stacked
+    
+    
     def processingdf(self, name_pattern=None, summed_MSMS_counts=None, consecutiveLFQi=None, RatioHLcount=None, RatioVariability=None, custom_columns=None, custom_normalized=None):
         """
         Analysis of the SILAC/LFQ-MQ/LFQ-Spectronaut data will be performed. The dataframe will be filtered, normalized, and converted into a dataframe, 
@@ -735,7 +1044,7 @@ class SpatialDataSet:
             
             # Run stringency filtering and normalization
             df_stringency_mapfracstacked = stringency_silac(df_index)
-            self.df_stringencyFiltered = df_stringency_mapfracstacked
+            self.df_filtered = df_stringency_mapfracstacked
             self.df_01_stacked = normalization_01_silac(df_stringency_mapfracstacked)
             self.df_log_stacked = logarithmization_silac(df_stringency_mapfracstacked)
             
@@ -778,7 +1087,7 @@ class SpatialDataSet:
             self.map_names = map_names
             
             df_stringency_mapfracstacked = stringency_lfq(df_index)
-            self.df_stringencyFiltered = df_stringency_mapfracstacked
+            self.df_filtered = df_stringency_mapfracstacked
             self.df_log_stacked = logarithmization_lfq(df_stringency_mapfracstacked)
             self.df_01_stacked = normalization_01_lfq(df_stringency_mapfracstacked)
             
@@ -896,16 +1205,9 @@ class SpatialDataSet:
                     or npgf_f_dc = protein groups, filtered, per fraction, % values != nan                        
                     
         """
-    
-        if self.acquisition == "SILAC - MQ":
-            df_index = self.df_index["Ratio H/L"]
-            df_01_stacked = self.df_01_stacked["normalized profile"]
-        elif self.acquisition.startswith("LFQ"):
-            df_index = self.df_index["LFQ intensity"]
-            df_01_stacked = self.df_01_stacked["normalized profile"].replace(0, np.nan)
-        elif self.acquisition == "Custom":
-            df_index = self.df_index["normalized profile"]
-            df_01_stacked = self.df_01_stacked["normalized profile"].replace(0, np.nan)
+        
+        df_01_stacked = self.df_01_stacked["normalized profile"].replace(0, np.nan)
+        df_index = self.df_index[self.mainset]
         
         #unfiltered
         npg_t = df_index.shape[0]
@@ -1120,11 +1422,11 @@ class SpatialDataSet:
 
         markerproteins = self.markerproteins
 
-        if self.acquisition == "SILAC - MQ":
+        if "SILAC" in self.acquisition and self.legacy:
             df_01orlog_fracunstacked = self.df_log_stacked["log profile"].unstack("Fraction").dropna()
             df_01orlog_MapFracUnstacked = self.df_log_stacked["log profile"].unstack(["Fraction", "Map"]).dropna()  
             
-        elif self.acquisition.startswith("LFQ") or self.acquisition == "Custom":
+        else:
             df_01orlog_fracunstacked = self.df_01_stacked["normalized profile"].unstack("Fraction").dropna()
             df_01orlog_MapFracUnstacked = self.df_01_stacked["normalized profile"].unstack(["Fraction", "Map"]).dropna()
             
@@ -1737,7 +2039,7 @@ class SpatialDataSetComparison:
     #cache_stored_SVM = True
 
 
-    def __init__(self, ref_exp="Exp2", **kwargs): #clusters_for_ranking=["Proteasome", "Lysosome"]
+    def __init__(self, ref_exp=None, **kwargs): #clusters_for_ranking=["Proteasome", "Lysosome"]
         
         #self.clusters_for_ranking = clusters_for_ranking
         self.ref_exp = ref_exp
@@ -1847,6 +2149,8 @@ class SpatialDataSetComparison:
     
         self.analysis_parameters_total = {}
         self.exp_names = list(json_dict.keys())
+        if self.ref_exp == None:
+            self.ref_exp = self.exp_names[0]
         
         df_01_combined = pd.DataFrame()
         for exp_name in json_dict.keys():
@@ -1909,9 +2213,14 @@ class SpatialDataSetComparison:
             df_01_combined.drop("Protein IDs", axis=1, inplace=True)
         else:
             raise KeyError("No Protein IDs were found while loading the json file")
+        
             
         df_01_combined.columns = pd.MultiIndex.from_tuples([el.split("?")[1::] for el in df_01_combined.columns], names=["Map", "Fraction"])
-        df_01_combined = df_01_combined.stack("Map").dropna().unstack("Map")
+        #df_01_combined = df_01_combined.stack("Map").dropna().unstack("Map")
+        if len(df_01_combined) == 0:
+            raise ValueError("Merged dataframe is empty. This is most likely due to unequal naming of fractions.")
+        if len(set(df_01_combined.index.get_level_values("Experiment"))) != len(self.exp_names):
+            raise ValueError("At least one of the datsets was removed completely, likely because it is lacking one of the fractions in the other experiments.")
         df_01_filtered_combined, id_alignment = align_datasets(df_01_combined)
         self.id_alignment = id_alignment
         index_ExpMap = df_01_filtered_combined.index.get_level_values("Experiment")+"_"+df_01_filtered_combined.index.get_level_values("Map")
@@ -1924,13 +2233,31 @@ class SpatialDataSetComparison:
         
         self.df_quantity_pr_pg_combined = df_quantity_pr_pg_combined
         
-        try:
-            organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"]['organism']
-        except:
-            organism = "Homo sapiens - Uniprot"
+        # find out whether mixed fractions were loaded
+        columns = df_01_filtered_combined.unstack(["Experiment"]).dropna(axis=1, how="all").columns
+        fractions = []
+        for (f,_) in columns:
+            fractions.append(f)
+        fractions = set(fractions)
+        mixed = False
+        for f in fractions:
+            for e in self.exp_names:
+                if (f,e) not in columns:
+                    mixed = True
+                    continue
+        self.mixed = mixed
         
-        marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
-        self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
+        
+        if "legacy" in json_dict[self.ref_exp]["Analysis parameters"].keys():
+            self.markerproteins = json_dict[self.ref_exp]["complexes"]
+        else:
+            try:
+                organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"]['organism']
+            except:
+                organism = "Homo sapiens - Uniprot"
+            
+            marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
+            self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
         
         self.clusters_for_ranking = self.markerproteins.keys()        
            
@@ -2170,7 +2497,7 @@ class SpatialDataSetComparison:
         if len(drop_experiments) > 0:
             df_cluster.drop([el for el in df_cluster.columns.get_level_values("Experiment") if el not in experiments],
                             level="Experiment", axis=1, inplace=True)
-        df_cluster.dropna(inplace=True)
+        df_cluster = df_cluster.dropna(axis=1, how="all").dropna()
         if len(df_cluster) == 0:
             return df_cluster
         df_cluster.set_index(pd.Index(np.repeat(cluster, len(df_cluster)), name="Cluster"), append=True, inplace=True)
@@ -2218,6 +2545,8 @@ class SpatialDataSetComparison:
                 continue
             dists_cluster = self.calc_cluster_distances(df_cluster)
             df_distances = df_distances.append(dists_cluster)
+        if len(df_distances) == 0:
+            raise ValueError("Could not calculate biological precision, because no complexes could be extracted")
         df_distances = df_distances.stack(["Experiment", "Map"]).reset_index()\
             .sort_values(["Experiment","Gene names"]).rename({0: "distance"}, axis=1)
         df_distances.insert(0, "Exp_Map", ["_".join([e,m]) for e,m in zip(df_distances["Experiment"], df_distances["Map"])])
@@ -2760,7 +3089,7 @@ class SpatialDataSetComparison:
         return im_t, im_i, figure_UpSetPlot_total, figure_UpSetPlot_int
     
     
-    def calculate_global_scatter(self, metric, consolidation):
+    def calculate_global_scatter(self, metric="manhattan distance to average profile", consolidation="average"):
         """
         A distribution plot of the profile scatter in each experiment is generated, with variable distance metric and consolidation of replicates.
         
@@ -2805,7 +3134,7 @@ class SpatialDataSetComparison:
         # Calculate and consolidate distances
         distances = pd.DataFrame()
         for exp in self.exp_names:
-            df_m = df.xs(exp, level="Experiment", axis=0).unstack("Map").dropna().stack("Map")
+            df_m = df.xs(exp, level="Experiment", axis=0).unstack("Map").dropna(axis=1, how="all").dropna().stack("Map")
             maps = list(set(df_m.index.get_level_values("Map")))
             
             # this if clause switches between pairwise comparisons of profiles (else) and comparisons to an average/median profile
@@ -3193,7 +3522,56 @@ def reframe_df_01_fromJson_for_Perseus(json_dict):
     df.columns = ["_".join(col) for col in df.columns.values]
     
     return df
-   
+
+
+def parse_reannotation_source(mode, source):
+    reannotation_source = {}
+    reannotation_source['source'] = mode
+    reannotate = bool(mode)
+    if mode == "fasta_headers":
+        if "\n" in source:
+            idmapping = [el for el in source.split("\n")]
+        else:
+            idmapping = [el.decode('UTF-8').strip() for el in pkg_resources.resource_stream(
+                "domaps", f'annotations/idmapping/{source}.txt').readlines()]
+        reannotation_source["idmapping"] = idmapping
+    elif mode == "tsv":
+        if "\n" in source:
+            idmapping = pd.read_csv(StringIO(source), sep='\t',
+                                    usecols=["Entry", "Gene names  (primary )"])
+        else:
+            idmapping = pd.read_csv(pkg_resources.resource_stream(
+                "domaps", f'annotations/idmapping/{source}.tab'), sep='\t',
+                                    usecols=["Entry", "Gene names  (primary )"])
+        reannotation_source["idmapping"] = idmapping
+    return reannotation_source
+
+
+def generate_usecols_regex(settings):
+    columns = []
+    
+    # sets
+    for v in settings["sets"].values():
+        columns.append(v)
+        
+    # mandatory columns
+    columns.append(settings['original_protein_ids'])
+    columns.append(settings['genes'])
+    if "samples" in settings.keys():
+        columns.append(settings['samples'])
+    
+    # column filters
+    for k in settings["column_filters"].keys():
+        columns.append(k)
+    
+    # index columns
+    if "columns_annotation" in settings.keys():
+        columns += settings["columns_annotation"]
+    
+    columns = set(columns)
+    return "^"+"$|^".join(columns)+"$"
+
+
 def reannotate_genes_uniprot(proteingroups, source="uniprot", idmapping=[]):
     """
     Annotate protein groups with gene names from a specified source for uniprot annotations.
@@ -3416,3 +3794,605 @@ def align_datasets(df):
     df_01_aligned = df_01_aligned.stack(["Experiment", "Map"])
     
     return df_01_aligned, index_mapping
+
+
+def relabel_fractions(
+    df: pd.DataFrame,
+    fraction_mapping: dict = dict()):
+    """
+    Relabel (and remove) fractions according to a dictionary.
+    
+    Old fraction labels are keys, new fraction labels are values. If the value is None the fraction is dropped.
+    
+    """
+    
+    df_fractions = df.copy()
+    
+    ## Rename and potentially delete fractions
+    # empty dictionary: leave as is
+    if len(fraction_mapping) == 0:
+        pass
+    else:
+        for k,v in fraction_mapping.items():
+            if v == None:
+                df_fractions.drop(k, axis=1, inplace=True, level="Fraction")
+            elif k != v:
+                df_fractions.rename(columns={k: v}, inplace=True)
+    return df_fractions
+
+
+def format_data_long(
+    df: pd.DataFrame,
+    original_protein_ids: str,
+    genes: str,
+    samples: str,
+    name_pattern: str,
+    sets: dict,
+    index_cols:list = [],
+    fraction_mapping:dict = dict()):
+    """
+    This formats proteomic input data in long format to be compatible with the SpatialDataset class.
+    
+    >>> pd.set_option('display.max_columns', 500)
+    >>> pd.set_option('display.width', 1000)
+    >>> format_data_long(pd.DataFrame([["foo", "lorem", "rep1_F1", 100, 4],
+    ...                                ["bar;bar-1", "ipsum", "rep1_F1", 200, 1],
+    ...                                ["foo", "lorem", "rep2_F1", 50, 0],
+    ...                                ["bar;bar-1", "ipsum", "rep2_F1", 30.1, 20],
+    ...                                ["foo", "lorem", "rep1_F2", 0, np.nan],
+    ...                                ["bar;bar-1", "ipsum", "rep2_F2", np.nan, np.nan],
+    ...                                ["foo", "lorem", "rep2_F2", 2e10, 6]],
+    ...                               columns=["PG.ProteinGroups", "PG.Genes", "R.Condition", "PG.Quantity", "PG.RunEvidenceCount"]
+    ...                               ),
+    ...                  original_protein_ids="PG.ProteinGroups", genes="PG.Genes",
+    ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
+    ...                  sets={"LFQ intensity": "PG.Quantity", "MS/MS count": "PG.RunEvidenceCount"})
+    Set                                         LFQ intensity                          MS/MS count               
+    Map                                                  rep1       rep2                      rep1      rep2     
+    Fraction                                               F1   F2    F1            F2          F1  F2    F1   F2
+    Original Protein IDs Gene names Protein IDs                                                                  
+    bar;bar-1            ipsum      bar                 200.0  NaN  30.1           NaN         1.0 NaN  20.0  NaN
+    foo                  lorem      foo                 100.0  0.0  50.0  2.000000e+10         4.0 NaN   0.0  6.0
+    
+    
+    Use fractions parameter to relabel fractions
+    >>> format_data_long(pd.DataFrame([["foo", "lorem", "rep1_F1", 100],
+    ...                                ["bar;bar-1", "ipsum", "rep1_F1", 200],
+    ...                                ["foo", "lorem", "rep1_F3", 50],
+    ...                                ["bar;bar-1", "ipsum", "rep1_F3", 30.1],
+    ...                                ["foo", "lorem", "rep1_F2", 0],
+    ...                                ["bar;bar-1", "ipsum", "rep1_F2", np.nan]],
+    ...                               columns=["PG.ProteinGroups", "PG.Genes", "R.Condition", "PG.Quantity"]
+    ...                               ),
+    ...                  original_protein_ids="PG.ProteinGroups", genes="PG.Genes",
+    ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
+    ...                  sets={"LFQ intensity": "PG.Quantity"},
+    ...                  fraction_mapping={"F1": None, "F2": "F2", "F3": "F1"}) # Drop F1, relabel F3 as F1, leave F2 as is
+    Set                                         LFQ intensity      
+    Map                                                  rep1      
+    Fraction                                               F2    F1
+    Original Protein IDs Gene names Protein IDs                    
+    bar;bar-1            ipsum      bar                   NaN  30.1
+    foo                  lorem      foo                   0.0  50.0
+    
+    
+    >>> format_data_long(pd.DataFrame([["foo", "rep1_F1", 100],
+    ...                                ["bar;bar-1", "rep1_F1", 200],
+    ...                                ["foo", "rep1_F3", 50],
+    ...                                ["bar;bar-1", "rep1_F3", 30.1],
+    ...                                ["foo", "rep1_F2", 0],
+    ...                                ["bar;bar-1", "rep1_F2", np.nan]],
+    ...                               columns=["PG.ProteinGroups", "R.Condition", "PG.Quantity"]
+    ...                               ),
+    ...                  original_protein_ids="PG.ProteinGroups", genes="PG.ProteinGroups",
+    ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
+    ...                  sets={"LFQ intensity": "PG.Quantity"},
+    ...                  fraction_mapping={"F1": None, "F2": "F2", "F3": "F1"}) # Drop F1, relabel F3 as F1, leave F2 as is
+    Set                                         LFQ intensity      
+    Map                                                  rep1      
+    Fraction                                               F2    F1
+    Original Protein IDs Gene names Protein IDs                    
+    bar;bar-1            bar;bar-1  bar                   NaN  30.1
+    foo                  foo        foo                   0.0  50.0
+    """
+    
+    ## Rename columns
+    df_index = df.rename(columns={original_protein_ids: "Original Protein IDs",
+                                  genes: "Gene names",
+                                  samples: "Samples",
+                                  **{v:k for k,v in sets.items()}}, errors="raise")
+    if genes == original_protein_ids:
+        df_index.insert(0, "Original Protein IDs", df_index["Gene names"])
+    
+    ## Set index columns and column name "Set"
+    df_index.dropna(subset=["Original Protein IDs"], inplace=True)
+    df_index.set_index(["Original Protein IDs", "Gene names", "Samples"]+index_cols, inplace=True)
+    df_index.columns.names=["Set"]
+    
+    ## Catch any additional columns, which are not accounted for
+    if any([col not in sets.keys() for col in df_index.columns]):
+        raise ValueError(f"Additional unknown column(s) {', '.join([col for col in df_index.columns if col not in sets.keys()])} present. Please specify what these are or remove them from the uploaded file.")
+    
+    ## Unstack samples and apply regex 
+    df_index = df_index.unstack("Samples")
+    df_index.columns = pd.MultiIndex.from_arrays(
+        [df_index.columns.get_level_values("Set"),
+         [re.match(name_pattern, i).group("rep") if not "<cond>" in name_pattern else "_".join(re.match(name_pattern, i).group("cond", "rep"))
+          for i in df_index.columns.get_level_values("Samples")],
+         [re.match(name_pattern, i).group("frac") for i in df_index.columns.get_level_values("Samples")]
+        ],
+        names=["Set", "Map", "Fraction"]
+    )
+    
+    ## Remnant from deprecated code in case this is ever needed: Fractionated data that is not actually aggregated by the search engine
+    # In case fractionated data was used this needs to be catched and aggregated
+    #try:
+    #    df_index = df_index.unstack(["Map", "Fraction"])
+    #except ValueError:
+    #    df_index = df_index.groupby(by=df_index.index.names).agg(np.nansum, axis=0)
+    #    df_index = df_index.unstack(["Map", "Fraction"])
+    
+    ## Shorten Protein IDs
+    if "Protein IDs" in df_index.index.names:
+        df_index.index.rename("Protein IDs loaded", level="Protein IDs", inplace=True)
+    df_index.set_index(pd.Index([split_ids(el) for el in df_index.index.get_level_values("Original Protein IDs")], name="Protein IDs"),
+                       append=True, inplace=True)
+    
+    ## Relabel and remove fractions
+    if len(fraction_mapping) == 0:
+        pass
+    else:
+        df_index = relabel_fractions(df_index, fraction_mapping)
+    
+    return df_index
+
+
+def format_data_pivot(
+    df: pd.DataFrame,
+    original_protein_ids: str,
+    genes: str,
+    name_pattern: str,
+    sets: dict,
+    index_cols:list = [],
+    fraction_mapping:dict = dict()):
+    """
+    >>> pd.set_option('display.max_columns', 500)
+    >>> pd.set_option('display.width', 1000)
+    >>> format_data_pivot(pd.DataFrame([["foo", "lorem", 20,np.nan,20,10, 2,0,4,3, None],
+    ...                                 ["bar;bar-1", "ipsum", 0,40,20,40, np.nan,10,5,3, None]],
+    ...                                columns=["Majority Protein IDs", "Gene Names",
+    ...                                         "LFQ intensity 1_F1","LFQ intensity 1_F2","LFQ intensity 2_F1","LFQ intensity 2_F2",
+    ...                                         "MS/MS counts 1_F1","MS/MS counts 1_F2","MS/MS counts 2_F1","MS/MS counts 2_F2", "Reverse"]),
+    ...                       original_protein_ids="Majority Protein IDs", genes="Gene Names",
+    ...                       name_pattern=".* (?P<rep>.*)_(?P<frac>.*)",
+    ...                       sets={"LFQ intensity": "LFQ intensity .*", "MS/MS count": "MS/MS counts .*"},
+    ...                       index_cols=["Reverse"])
+    Set                                                 LFQ intensity                   MS/MS count                
+    Map                                                             1           2                 1          2     
+    Fraction                                                       F1    F2    F1    F2          F1    F2   F1   F2
+    Original Protein IDs Gene names Reverse Protein IDs                                                            
+    foo                  lorem      NaN     foo                  20.0   NaN  20.0  10.0         2.0   NaN  4.0  3.0
+    bar;bar-1            ipsum      NaN     bar                   NaN  40.0  20.0  40.0         NaN  10.0  5.0  3.0
+    """
+    
+    ## Rename columns
+    df_index = df.rename(columns={original_protein_ids: "Original Protein IDs",
+                                  genes: "Gene names"}, errors="raise")
+    if genes == original_protein_ids:
+        df_index.insert(0, "Original Protein IDs", df_index["Gene names"])
+    
+    ## Set index columns and column name "Set"
+    df_index.dropna(subset=["Original Protein IDs"], inplace=True, axis=0)
+    df_index.set_index(["Original Protein IDs", "Gene names"]+index_cols, inplace=True)
+    
+    ## Catch any additional columns, which are not accounted for
+    if any([not re.match("|".join(sets.values()), col) for col in df_index.columns]):
+        raise ValueError(f"Additional unknown column(s) {', '.join([col for col in df_index.columns if not re.match('|'.join(sets.values()), col)])} present. Please specify what these are or remove them from the uploaded file.")
+    
+    # multindex will be generated, by extracting the information about the Map, Fraction and Type from each individual column name
+    multiindex = pd.MultiIndex.from_arrays(
+        arrays=[
+            [[k for k,v in sets.items() if re.match(v,col)][0] for col in df_index.columns],
+            [re.match(name_pattern, col).group("rep") for col in df_index.columns] if not "<cond>" in name_pattern
+             else ["_".join(re.match(name_pattern, col).group("cond", "rep")) for col in df_index.columns],
+            [re.match(name_pattern, col).group("frac") for col in df_index.columns],
+        ],
+        names=["Set", "Map", "Fraction"]
+    )
+    
+    df_index.columns = multiindex
+    #### TODO change this in the old and in the new code to only affect the main column set. This mostly affects SILAC data, where ratio variabilities of 0 would be voided, thereby affecting the normalization
+    df_index.replace({0: np.nan}, inplace=True)
+    
+    ## Shorten Protein IDs
+    if "Protein IDs" in df_index.index.names:
+        df_index.index.rename("Protein IDs loaded", level="Protein IDs", inplace=True)
+    df_index.set_index(pd.Index([split_ids(el) for el in df_index.index.get_level_values("Original Protein IDs")], name="Protein IDs"),
+                       append=True, inplace=True)
+    
+    ## Relabel and remove fractions
+    if len(fraction_mapping) == 0:
+        pass
+    else:
+        df_index = relabel_fractions(df_index, fraction_mapping)
+    
+    return df_index
+
+def filter_SILAC_countvar(
+    df,
+    RatioCount: int = 2,
+    RatioVariability: float = 30,
+    sets: dict = dict(count="Ratio count", variability="Ratio variability")):
+    """
+    The multiindex dataframe is subjected to stringency filtering. Proteins were retained with 3 or more quantifications in each 
+    subfraction (=count). Furthermore, proteins with only 2 quantification events in one or more subfraction were retained, if their ratio variability for 
+    ratios obtained with 2 quantification events was below 30% (=var). SILAC ratios were linearly normalized by division through the fraction median. 
+    Subsequently normalization to SILAC loading was performed.Data is annotated based on specified marker set e.g. eLife.
+
+    Args:
+        df: pd.DataFrame with column names as defined by sets on column level "Set" and a column or index level "Fraction".
+        RatioCount: int, 2; Minimum ratio count
+        RatioVariability: float, 30; If ratio count is exactly its set value, additionaly check ratio variability <= this value.
+        sets: dictionary, dict(ratio="Ratio", count="Ratio count", variability="Ratio variability")
+
+    Returns:
+        df_filtered: pd.DataFrame, same as original data frame, but only with data for complete profiles remaining after filtering
+    
+    Doctest for expected input
+    >>> filter_SILAC_countvar(pd.DataFrame([[1,0, 3,2, 3,15], # no bad values
+    ...                                     [2,0, 3,2, 5,40], # second value 2 counts, but high variability
+    ...                                     [3,0, 1,2, 5,5]], # first value only one count
+    ...                                    index=pd.Index(["a","b","c"],name="id"),
+    ...                                    columns=pd.MultiIndex.from_arrays(
+    ...                                        [["Ratio","Ratio","Ratio count","Ratio count","Ratio variability","Ratio variability"],
+    ...                                         ["F1","F2","F1","F2","F1","F2"]],
+    ...                                        names=["Set", "Fraction"])))
+    Set      Ratio      Ratio count      Ratio variability      
+    Fraction    F1   F2          F1   F2                F1    F2
+    id                                                          
+    a          1.0  0.0         3.0  2.0               3.0  15.0
+    b          2.0  NaN         3.0  NaN               5.0   NaN
+    c          NaN  0.0         NaN  2.0               NaN   5.0
+    """
+    
+    ## Fetch column levels and assert presence of the required sets and fraction annotations
+    column_levels = df.columns.names
+    # All sets present
+    if "Set" not in column_levels:
+        raise KeyError("Column level 'Set' is missing.")
+    else:
+        if any([v not in df.columns.get_level_values("Set") for v in sets.values()]):
+            raise KeyError(f"One of {', '.join(sets.values())} is not in the sets required for filtering SILAC data by counts and variability.")
+    # Fraction annotation present
+    if "Fraction" not in column_levels:
+        if "Fraction" not in df.index.names:
+            raise KeyError("Column or index level 'Fraction' is missing.")
+    
+    ## Convert to long dataframe
+    if len(column_levels) > 1:
+        df_stack = df.stack([el for el in column_levels if el != "Set"])
+    else:
+        df_stack = df.copy()
+    
+    ## FILTER DATA
+    # count and variability
+    df_stack_filtered = df_stack.loc[
+        [count>RatioCount or (count==RatioCount and var<RatioVariability)
+         for var, count in zip(df_stack[sets["variability"]], df_stack[sets["count"]])]]
+    
+    # Return to input format
+    df_filtered = df_stack_filtered.unstack([el for el in column_levels if el != "Set"])\
+                             .reorder_levels(column_levels, axis=1)\
+                             .sort_index(axis=1, key=natsort_index_keys)
+    
+    return df_filtered
+
+
+def filter_msms_count(
+    df,
+    average_MSMS_counts: int = 2,
+    sets: dict = dict(msms="MS/MS count")):
+    """
+    Filter proteomic profiling data for average ms/ms counts per profile.
+    
+    If summed MS/MS counts are fewer than (number of fraction) * (required average) profiles and all associated data are removed.
+
+    Args:
+        df_index: multiindex dataframe, which contains 3 level labels: MAP, Fraction, Typ
+        self:
+            df_organellarMarkerSet: df, columns: "Protein ID", "Compartment", no index
+            fractions: list of fractions e.g. ["01K", "03K", ...]
+            summed_MSMS_counts: int, 2
+            consecutiveLFQi: int, 4
+
+    Returns:
+        df_stringency_mapfracstacked: dataframe, in which "Map" and "Fraction" is stacked; "LFQ intensity" and "MS/MS count" define a 
+                                      single-level column index
+        
+        self:
+            shape_dict["Shape after MS/MS value filtering"] of df_mscount_mapstacked
+            shape_dict["Shape after consecutive value filtering"] of df_stringency_mapfracstacked
+    
+    Doctest for expected input:
+    >>> filter_msms_count(pd.DataFrame([[1,2,1, 5,2,3], # msms sum = 10 > 6
+    ...                                 [2,0,1, 5,np.nan,1], # msms sum = 6 = 6
+    ...                                 [1,1,1, 1,1,1]], # msms sum = 3 < 6 -> remove
+    ...                                index=pd.Index(["a","b","c"],name="id"),
+    ...                                columns=pd.MultiIndex.from_arrays([["LFQ","LFQ","LFQ","MS/MS count","MS/MS count","MS/MS count"],
+    ...                                                                  ["F1","F2","F3","F1","F2","F3"]], names=["Set", "Fraction"])))
+    Set      LFQ       MS/MS count          
+    Fraction  F1 F2 F3          F1   F2   F3
+    id                                      
+    a          1  2  1         5.0  2.0  3.0
+    b          2  0  1         5.0  NaN  1.0
+    """
+    
+    ## Fetch column levels and assert presence of the required sets and fraction annotations
+    column_levels = df.columns.names
+    # All sets present
+    if "Set" not in column_levels:
+        raise KeyError("Column level 'Set' is missing.")
+    else:
+        if any([v not in df.columns.get_level_values("Set") for v in sets.values()]):
+            raise KeyError(f"One of {', '.join(sets.values())} is not in the sets required for filtering abundances by MS/MS counts.")
+    # Fraction annotation present
+    if "Fraction" not in column_levels:
+        if "Fraction" not in df.index.names:
+            raise KeyError("Column or index level 'Fraction' is missing.")
+    
+    ## Convert to profile dataframe
+    if len(column_levels) > 1:
+        df_profiles = df.stack([el for el in column_levels if el != "Set"]).unstack("Fraction")
+    else:
+        df_profiles = df.unstack("Fraction")
+    
+    # calculate minimal number of MS/MS counts per profile from number of fractions and required average
+    minms = len(set(df_profiles.columns.get_level_values("Fraction"))) * average_MSMS_counts
+    
+    # FILTER DATA
+    if minms > 0:
+        df_filtered = df_profiles.loc[df_profiles[sets["msms"]].apply(np.nansum, axis=1) >= minms]
+    else:
+        df_filtered = df_profiles.copy()
+    
+    # Return to input format
+    df_filtered = df_filtered.stack("Fraction")\
+                             .unstack([el for el in column_levels if el != "Set"])\
+                             .reorder_levels(column_levels, axis=1)\
+                             .sort_index(axis=1, key=natsort_index_keys)
+    
+    return df_filtered
+
+
+def filter_consecutive(
+    df,
+    consecutive: int = 4,
+    fraction_order: list = [],
+    sets: dict = dict(abundance="LFQ intensity")):
+    """
+    >>> filter_consecutive(pd.DataFrame([[1,2,1,5,2,3], # complete profile
+    ...                                  [0,0,1,5,3,1], # partial profile
+    ...                                  [1,1,2,np.nan,1,1], # fragmented profile with nan
+    ...                                  [1,1,0,0,1,1]], # fragmented profile
+    ...                                 index=pd.Index(["a","b","c","d"],name="id"),
+    ...                                 columns=pd.MultiIndex.from_arrays([["LFQ","LFQ","LFQ","LFQ","LFQ","LFQ"],
+    ...                                                                   ["F1","F2","F3","F4","F5","F6"]], names=["Set", "Fraction"])), sets=dict(abundance="LFQ"))
+    Set       LFQ                         
+    Fraction   F1   F2   F3   F4   F5   F6
+    id                                    
+    a         1.0  2.0  1.0  5.0  2.0  3.0
+    b         NaN  NaN  1.0  5.0  3.0  1.0
+    """
+    
+    ## Fetch column levels and assert presence of the required sets and fraction annotations
+    column_levels = df.columns.names
+    # All sets present
+    if "Set" not in column_levels:
+        raise KeyError("Column level 'Set' is missing.")
+    else:
+        if any([v not in df.columns.get_level_values("Set") for v in sets.values()]):
+            raise KeyError(f"One of {', '.join(sets.values())} is not in the sets required for filtering for consecutive values.")
+    # Fraction annotation present
+    if "Fraction" not in column_levels:
+        if "Fraction" not in df.index.names:
+            raise KeyError("Column or index level 'Fraction' is missing.")
+    
+    ## Convert to profile dataframe
+    if len(column_levels) > 1:
+        df_profiles = df.stack([el for el in column_levels if el != "Set"]).unstack("Fraction")
+    else:
+        df_profiles = df.unstack("Fraction")
+    
+    ## Make sure fractions are in the correct order:
+    if len(fraction_order) == 0:
+        df_profiles.sort_index(level="Fraction", axis=1, key=natsort_index_keys, inplace=True)
+    else:
+        df_profiles = df_profiles.reindex(fraction_order, level="Fraction", axis=1)
+    
+    ## Replace 0 with np.nan
+    df_profiles = df_profiles.replace({0: np.nan})
+    
+    ## FILTER DATA
+    df_filtered = df_profiles.loc[
+        df_profiles[sets["abundance"]]\
+        .apply(lambda x: np.isfinite(x), axis=0)\
+        .apply(lambda x: sum(x) >= consecutive and any(x.rolling(window=consecutive).sum() >= consecutive), axis=1)]
+
+    # Return to input format
+    df_filtered = df_filtered.stack("Fraction")\
+                             .unstack([el for el in column_levels if el != "Set"])\
+                             .reorder_levels(column_levels, axis=1)\
+                             .sort_index(axis=1, key=natsort_index_keys)
+    
+    return df_filtered
+
+def filter_singlecolumn_keep(
+    df,
+    column:str,
+    operator:str = "!=",
+    value="'+'"):
+    """
+    >>> filter_singlecolumn_keep(pd.DataFrame([[1,2],[3,4],[5,6]],
+    ...                                   columns=pd.MultiIndex.from_tuples([("Intensity", "F1"), ("Intensity", "F2")], names=["Set", "Fraction"]),
+    ...                                   index=pd.MultiIndex.from_tuples([("foo", "lorem", np.nan), ("bar", "ipsum", ""), ("baz", "dolor", "+")], names=["Protein IDs", "Gene names", "Reverse"])),
+    ...                      column="Reverse")
+    Set                            Intensity   
+    Fraction                              F1 F2
+    Protein IDs Gene names Reverse             
+    foo         lorem      NaN             1  2
+    bar         ipsum                      3  4
+    
+    >>> filter_singlecolumn_keep(pd.DataFrame([[1,2],[3,4],[5,6]],
+    ...                                   columns=pd.MultiIndex.from_tuples([("Intensity", "F1"), ("Intensity", "F2")], names=["Set", "Fraction"]),
+    ...                                   index=pd.MultiIndex.from_tuples([("foo", "lorem", np.nan), ("bar", "ipsum", 0.5), ("baz", "dolor", 1)], names=["Protein IDs", "Gene names", "Score"])),
+    ...                      column="Score", operator=">=", value=1)
+    Set                    Intensity   
+    Fraction                      F1 F2
+    Protein IDs Gene names             
+    baz         dolor              5  6
+    """
+    
+    df_filtered = df.query(f"`{column}` {operator} {value}")
+    if column in df_filtered.columns:
+        if len(set(df_filtered[column])) == 1:
+            df_filtered.drop(column, axis=1, inplace=True)
+    else:
+        if len(set(df_filtered.index.get_level_values(column))) == 1:
+            df_filtered.reset_index(column, drop=True, inplace=True)
+        
+    
+    return df_filtered
+
+
+def transform_data(df, unlog=2, invert=False, log=False):
+    """
+    Perform basic data transformations: invert, logarithmize or unlogarithmize.
+    
+    Arguments:
+        df: pd.DataFrame
+        invert: boolean
+        unlog: number or False
+        log: one of [2, 10, e] or False
+    
+    Returns:
+        df_transformed: pd.DataFrame
+    
+    Doctests for the different transformations:
+    # log data
+    >>> transform_data(pd.DataFrame([[0,1,np.nan,10,-2.5]]), unlog=False, invert=False, log="e")
+         0    1   2         3   4
+    0 -inf  0.0 NaN  2.302585 NaN
+    
+    # shift data to a different log
+    >>> transform_data(pd.DataFrame([[0,1,np.nan,10,-2.5]]), unlog=2, invert=False, log=10)
+         0        1   2       3         4
+    0  0.0  0.30103 NaN  3.0103 -0.752575
+    
+    # invert and log data
+    >>> transform_data(pd.DataFrame([[0,1,np.nan,10,-2.5]]), unlog=False, invert=True, log=2)
+         0    1   2         3   4
+    0  inf  0.0 NaN -3.321928 NaN
+    """
+    if unlog:
+        df_transformed = df.transform(lambda x: unlog**x)
+    else:
+        df_transformed = df.copy()
+    
+    if invert:
+        df_transformed = df_transformed.transform(lambda x: 1/x)
+    
+    if log == 2:
+        df_transformed = df_transformed.transform(lambda x: np.log2(x))
+    elif log == 10:
+        df_transformed = df_transformed.transform(lambda x: np.log10(x))
+    elif log == "e":
+        df_transformed = df_transformed.transform(lambda x: np.log(x))
+    elif not log:
+        pass
+    else:
+        raise ValueError(f"Only numpy logarithms are supported (and reasonable), not {log}.")
+    
+    return df_transformed
+
+
+def normalize_samples(df, method="sum"):
+    """
+    Normalization of samples by different methods.
+    
+    sum: Normalize all samples to have same (average) sum (assuming equal sample loading). Useful for raw intensities.
+    median: Normalize all samples to have a median of 1. Useful for SILAC samples assuming equal channel loading.
+    
+    Arguments:
+        df: pd.DataFrame
+        method: str, one of [sum, median]
+    
+    Returns:
+        df_transformed: pd.DataFrame
+    
+    Doctests for each method:
+    >>> normalize_samples(pd.DataFrame([[1,1,1,0],[1,2,3,4],[0,1,2,np.nan]]),method="sum")
+         0    1         2    3
+    0  2.0  1.0  0.666667  0.0
+    1  2.0  2.0  2.000000  4.0
+    2  0.0  1.0  1.333333  NaN
+    >>> normalize_samples(pd.DataFrame([[1,1,1,0],[1,2,3,4],[0,1,2,np.nan]]),method="median")
+         0    1    2    3
+    0  1.0  1.0  0.5  0.0
+    1  1.0  2.0  1.5  2.0
+    2  0.0  1.0  1.0  NaN
+    """
+    
+    if method == "sum":
+        ## Normalize data by ensuring all columns have the same average sum.
+        sums = df.sum(axis=0)
+        targetsum = np.mean(sums)
+        df_transformed = df/sums*targetsum
+    elif method == "median":
+        df_transformed = df/df.apply(np.nanmedian, axis=0)
+    else:
+        raise ValueError(f"Unknown method for sample normalization: {method}")
+    
+    return df_transformed
+
+#Future
+#def weigh_yields(df):
+#    """
+#    
+#    """
+#    if len(df) == 0:
+#        raise ValueError
+#    return df_transformed
+
+
+def normalize_sum1(
+    df,
+    sets: dict = dict(abundance="LFQ intensity")):
+    """
+    
+    """
+    ## Fetch column levels and assert presence of the required sets and fraction annotations
+    column_levels = df.columns.names
+    # All sets present
+    if "Set" not in column_levels:
+        raise KeyError("Column level 'Set' is missing.")
+    else:
+        if any([v not in df.columns.get_level_values("Set") for v in sets.values()]):
+            raise KeyError(f"One of {', '.join(sets.values())} is not in the sets required for 0/1 normalization.")
+    # Fraction annotation present
+    if "Fraction" not in column_levels:
+        if "Fraction" not in df.index.names:
+            raise KeyError("Column or index level 'Fraction' is missing.")
+    
+    ## Convert to profile dataframe
+    if len(column_levels) > 1:
+        df_profiles = df.stack([el for el in column_levels if el != "Set"]).unstack("Fraction")
+    else:
+        df_profiles = df.unstack("Fraction")
+    
+    df_01norm = df_profiles[[sets["abundance"]]].div(df_profiles[sets["abundance"]].sum(axis=1), axis=0)
+    df_01norm = df_01norm.replace(np.NaN, 0)
+    df_01norm.rename({sets["abundance"]: "normalized profile"}, axis=1, inplace=True)
+    
+    df_01 = df_profiles.join(df_01norm)
+    
+    return df_01

@@ -1,0 +1,48 @@
+{
+    "filename": "Kozik_Dom_Data_short.csv",
+    "expname": "Kozik DOMs",
+    "source": "custom",
+    "acquisition": "SILAC",
+    "level": "proteins",
+    "orientation": "pivot",
+    "original_protein_ids": "Majority protein IDs",
+    "genes": "Gene names",
+    "sets": {
+        "Ratio": "log H/L .*"
+    },
+    "name_pattern": ".* (?P<rep>.*)_(?P<frac>.*)",
+    "fractions": [
+        "4K",
+        "10K",
+        "20K",
+        "40K",
+        "80K"
+    ],
+    "fraction_mapping": {
+        "04K": "4K",
+        "10K": "10K",
+        "20K": "20K",
+        "40K": "40K",
+        "80K": "80K"
+    },
+    "columns_annotation": [
+        "Protein names",
+        "Marker"
+    ],
+    "organism": "Mus musculus",
+    "reannotate": false,
+    "reannotation_source": "",
+    "organelles": "Mus musculus - Uniprot",
+    "complexes": "Mus musculus - Uniprot",
+    "input_invert": true,
+    "input_logged": 2,
+    "input_samplenormalization": "median",
+    "column_filters": {
+        "Min across": [
+            ">=",
+            "2"
+        ]
+    },
+    "comment": "Tests custom/SILAC, data transformations, mouse protein annotations",
+    "quality_filter": []
+}

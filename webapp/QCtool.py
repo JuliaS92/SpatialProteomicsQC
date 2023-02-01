@@ -27,6 +27,8 @@ import pkg_resources
 import time
 import copy
 
+import domaps.gui as gui
+
 try:
     type(domaps)
     print("reloading library")
@@ -150,7 +152,7 @@ app_center = pn.Column(pn.Row(pn.Pane("# QC tool for Spatial Proteomics", width 
 app[0,1:8] = app_center
 
 #### Insert main menu tab object
-app_tabs = pn.Tabs(margin=10, css_classes=["content-width", "main_menu"], dynamic=True)
+app_tabs = pn.Tabs(margin=10, css_classes=["content-width", "main_menu"], dynamic=False)
 app_center.objects[[i.name for i in app_center].index("main_content")] = app_tabs
 
 #### Append individual dashboards
@@ -165,14 +167,14 @@ dashboard_analysis = pn.Column(
     "Interface loading ...",
     name="analysis", css_classes=["content-width"])
 app_tabs.append(("Analysis", dashboard_analysis))
-analysis_tabs = pn.Tabs(margin=10, css_classes=["content-width", "detail_menu"], dynamic=True)
+analysis_tabs = pn.Tabs(margin=10, css_classes=["content-width", "detail_menu"], dynamic=False)
 
 ## Benchmark
 dashboard_benchmark = pn.Column(
     "Interface loading ...",
     name="benchmark", css_classes=["content-width"])
 app_tabs.append(("Benchmark", dashboard_benchmark))
-comparison_tabs = pn.Tabs(margin=10, css_classes=["content-width", "detail_menu"], dynamic=True)
+comparison_tabs = pn.Tabs(margin=10, css_classes=["content-width", "detail_menu"], dynamic=False)
 
 ## Manage datasets
 #dashboard_MissclassificationMatrix = pn.Column(
@@ -197,18 +199,18 @@ app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], width=100
 # ## App serving
 # Switch cells below between markup and code to set up for server hosting from the command line (app.servable) vs. local hosting from python.
 
-# try:
-#     server.stop()
-# except Exception:
-#     print("First server startup")
-# server = app.show(port=5067, websocket_max_message_size=MAX_SIZE_MB*1024*1024,
-#                   http_server_kwargs={'max_buffer_size': MAX_SIZE_MB*1024*1024})
-
 # In[ ]:
 
 
-app.servable()
+try:
+    server.stop()
+except Exception:
+    print("First server startup")
+server = app.show(port=5067, websocket_max_message_size=MAX_SIZE_MB*1024*1024, admin=True,
+                  http_server_kwargs={'max_buffer_size': MAX_SIZE_MB*1024*1024})
 
+
+# app.servable()
 
 # ## Cell structuring
 # All cells below contain one or several sets of these points:
@@ -305,92 +307,46 @@ btn_home_benchmark.on_click(home_gotobenchmark)
 #### Dashboard structure
 ########################
 dashboard_analysis.objects = [
-    pn.Column(name="file_config"),
+    pn.Row(name="file_config"),
     pn.Column(name="analysis_output")
 ]
 
 #### Layout elements
 #### File config
 ####################
-lo_read_file = pn.Card(header="### Upload configuration", min_width=400)
+#lo_read_file = pn.Card(header="### Upload configuration", min_width=400)
 lo_config_instructions = pn.Card(
     pn.Pane(textfragments["upload_instructions"]), header="### Instructions", width=400)
 lo_config_details = pn.Card(
     pn.Pane(textfragments["upload_details"]), header="### Details on configuring your data", width=400, collapsed = True)
 lo_config_error_messages = pn.Card(
     pn.Pane(textfragments["upload_error_messages"]), header="### Common error messages", width=400, collapsed = True)
-
-i_file = pn.widgets.FileInput(name="Upload file")
+#
+#i_file = pn.widgets.FileInput(name="Upload file")
+#lo_read_file.append(i_file)
 loading_status = pn.Row()
 idle = pn.indicators.LoadingSpinner(value=False, width=100, height=100, color="primary")
 loading = pn.indicators.LoadingSpinner(value=True, width=100, height=100, color="primary")
-i_acquisition = pn.widgets.Select(options=["LFQ6 - MQ", "LFQ5 - MQ", "LFQ6 - Spectronaut", "LFQ5 - Spectronaut",
-                                           "SILAC - MQ", "Custom"], name="Acquisition", width=300)
-i_organism = pn.widgets.Select(options=[el.split(".csv")[0] for el in
-                                        pkg_resources.resource_listdir("domaps", "annotations/complexes")],
-                               name="Organism", width=300, value="Homo sapiens - Uniprot")
-i_comment = pn.widgets.input.TextAreaInput(
-    name="Additional Comments",
-    placeholder="Write any kind of information associated with this dataset here...")
+
 analysis_status = pn.Pane("", width=300)
 filereading_status = pn.Pane("No data import yet", width=300)
-i_expname = pn.widgets.TextInput(name="Experiment Name", placeholder="Enter your experiment name here here...")
-i_custom_namepattern = pn.widgets.TextInput(name="Customized Name Pattern",
-                                            placeholder="Enter a string here...e.g.: .* (?P<rep>.*)_(?P<frac>.*)")
-regex_pattern = {
-    "(?P<rep>.*)_(?P<frac>.*)" : ["Spectronaut MAP1_03K"],
-    ".* (?P<rep>.*)_(?P<frac>.*)" : ["MAP1_03K","MAP3_03K"],
-    ".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)" : ["EGF_rep1_06K","EGF_rep3_06K"],
-    ".* (?P<cond>.*)_(?P<frac>.*)_(?P<rep>.*)" : ["Control_Mem_1", "Control_Cyt_1"],
-    ".* (?P<cond>.*)_(?P<frac>.*_.*)_(?P<rep>.*)" : ["4h_mem_frac3_1", "co_mem_frac2_2"]
-    }
-i_name_pattern = pn.widgets.Select(name="Name pattern",
-                                   options=[".* (?P<rep>.*)_(?P<frac>.*)", ".* (?P<frac>.*)_(?P<rep>.*)",
-                                            ".* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)",
-                                            ".* (?P<cond>.*)_(?P<frac>.*)_(?P<rep>.*)",
-                                            ".* (?P<cond>.*)_(?P<frac>.*_.*)_(?P<rep>.*)",
-                                            "(?P<rep>.*)_(?P<frac>.*)", "Custom"])
-i_pattern_examples = pn.widgets.Select(name = "Examples", options=regex_pattern[i_name_pattern.value])
 
-button_analysis = pn.widgets.Button(name="Analyse dataset", width=50)
 
-# gene reannotation
-i_reannotate_genes = pn.widgets.Select(
-    options=["don't reannotate", "from uniprot fasta headers", "from uniprot.org", "from uniprot tab download"],
-    name="Reannotate genes", value="from uniprot fasta headers")
-i_reannotate_genes_source = pn.widgets.Select(options=["upload custom file"], value="select last",
-                                              name="Annotation source:")
-i_reannotate_genes_file = pn.widgets.FileInput(name="Upload gene annotation file")
-
-# custom acqusition
-i_custom_cids = pn.widgets.Select(name="column containing protein ids")
-i_custom_cgenes = pn.widgets.Select(name="column containing gene names")
-i_custom_cdata = pn.widgets.MultiSelect(name="columns containing data")
-i_custom_normalized = pn.widgets.Checkbox(name="profiles are already 0-1 normalized (profile sum = 1)")
-
-# LFQ acquisition
-i_consecutiveLFQi = pn.widgets.IntSlider(name="Consecutive LFQ intensities", start=1, end=10, step=1, value=4)
-i_summed_MSMS_counts = pn.widgets.IntSlider(name="Summed MS/MS counts ≥ 2n x number of fractions",
-                                            start=0, end=10, step=1, value=2)
-
-# SILAC acquisition
-i_RatioHLcount = pn.widgets.IntSlider(name="Quantification events (Ratio H/L Count)", start=1, end=10, step=1, value=2)
-i_RatioVariability = pn.widgets.IntSlider(name="Ratio H/L variability [%]", start=0, end=100, step=5, value=30)
+i_FileConfig = gui.ConfigureSingleFile(width=540)
 #### Append layout to dashboard
 #### File config
 ###############################
 dashboard_analysis.objects[[el.name for el in dashboard_analysis].index("file_config")].objects = []
-for el in [i_file,
-    pn.Row(
-        pn.Column(lo_read_file, analysis_status, loading_status),
-        pn.Column(lo_config_instructions, lo_config_details, lo_config_error_messages) 
-    )
+for el in [
+    pn.Column(i_FileConfig, analysis_status, loading_status, width=600),
+    pn.Column(lo_config_instructions, lo_config_details, lo_config_error_messages)
 ]:
     dashboard_analysis.objects[[el.name for el in dashboard_analysis].index("file_config")].append(el)
 
 #### Callbacks
 #### File config
 ################
+# future_execution
 # response_pattern
 # response_acquisition
 # response_reannotation
@@ -400,234 +356,51 @@ for el in [i_file,
 cache_uploaded = pn.widgets.Checkbox(value=False)
 cache_run = pn.widgets.Checkbox(value=False)
 #define widgets that should be disbled after run==True
-wdgts = [i_acquisition,i_name_pattern,i_expname, i_pattern_examples, button_analysis, i_expname, i_organism,
-         i_consecutiveLFQi, i_summed_MSMS_counts, i_RatioHLcount, i_RatioVariability, i_comment,
-         i_custom_cids, i_custom_cgenes, i_custom_cdata, i_custom_normalized,
-         i_reannotate_genes, i_reannotate_genes_file, i_reannotate_genes_source]
+#wdgts = [i_acquisition,i_name_pattern,i_expname, i_pattern_examples, button_analysis, i_expname, i_organism,
+#         i_consecutiveLFQi, i_summed_MSMS_counts, i_RatioHLcount, i_RatioVariability, i_comment,
+#         i_custom_cids, i_custom_cgenes, i_custom_cdata, i_custom_normalized,
+#         i_reannotate_genes, i_reannotate_genes_file, i_reannotate_genes_source]
 
-
-@pn.depends(i_file.param.value)
-def read_file(file):
-    if file is None:
-        filereading_status = "No file is uploaded"
-        cache_uploaded.value = False
-        return filereading_status
-    else:
-        cache_uploaded.value = False
+def future_execution(event):
+    loading_status.objects = [loading]
+    analysis_status.object = "Analysis in progress"
+    lo_config_instructions.collapsed = True
+    lo_config_details.collapsed = True
+    lo_config_error_messages.collapsed = True
+    #lo_read_file.collapsed = True
+    output_layoutpos = [el.name for el in dashboard_analysis].index("analysis_output")
+    dashboard_analysis.objects[output_layoutpos].objects = []
+    cache_run.value = False
+    try:
+        
+        global i_class
+        i_class = domaps.SpatialDataSet.from_settings(i_FileConfig.get_settings(), legacy=False)
+        i_class.run_pipeline(content=BytesIO(i_FileConfig._content.file.value), progressbar=analysis_status)
+        
+        analysis_status.object = "Analysis finished!"
+        update_object_selector(i_mapwidget, i_clusterwidget)
+        loading_status.objects = []
+        dashboard_analysis.objects[output_layoutpos].append(i_clusterwidget)
+        dashboard_analysis.objects[output_layoutpos].append(i_mapwidget)
+        dashboard_analysis.objects[output_layoutpos].append(analysis_tabs)
+        mem_available_datasets[i_class.expname] = i_class.analysed_datasets_dict[i_class.expname]
         try:
-            if i_file.filename[-3:] == "xls" or i_file.filename[-3:] == "txt":
-                df_original = pd.read_csv(BytesIO(file), sep="\t", comment="#", nrows=5, usecols=lambda x: bool(re.match(domaps.SpatialDataSet.regex["imported_columns"], x)), low_memory=True)
-                if len(df_original.columns) < 5:
-                    df_original = pd.read_csv(BytesIO(file), sep="\t", comment="#", nrows=5)
-            elif i_file.filename[-3:] == "csv":
-                df_original = pd.read_csv(BytesIO(file), sep=",", comment="#", nrows=5, usecols=lambda x: bool(re.match(domaps.SpatialDataSet.regex["imported_columns"], x)), low_memory=True)
-                if len(df_original.columns) < 5:
-                    df_original = pd.read_csv(BytesIO(file), sep=",", comment="#", nrows=5)
-            else:
-                return pn.Column("Upload either csv, xls, or txt formatted files.")
-            cache_uploaded.value = True
-            analysis_status.object = "No analysis run yet"
-            for wdgt in wdgts:
-                wdgt.disabled = False
-
-            return pn.Column(pn.Row(pn.widgets.DataFrame(df_original, height=200, width=600, disabled=True)),#i_class.
-                             pn.Row(i_expname), 
-                             pn.Row(i_organism, i_acquisition),
-                             pn.Row(i_name_pattern, response_pattern),
-                             pn.Row(i_reannotate_genes, response_reannotation),
-                             pn.Row(response_acquisition), 
-                             pn.Row(i_comment),
-                             pn.Row(button_analysis))
-
-        except Exception: 
-            filereading_status = traceback.format_exc()
-            cache_uploaded.value = False
-            return filereading_status
-
-@pn.depends(i_name_pattern.param.value)
-def response_pattern(name_pattern):
-    if name_pattern == "Custom":
-        return i_custom_namepattern
-    else:
-        example_for_name_pattern = regex_pattern[name_pattern]
-        i_pattern_examples.options = example_for_name_pattern
-        return i_pattern_examples
-
-
-@pn.depends(i_acquisition.param.value)
-def response_acquisition(acquisition):
-    if acquisition == "SILAC - MQ":
-        return pn.Column(pn.Row(pn.Pane("Stringency filtering")), pn.Row(i_RatioHLcount, i_RatioVariability))
-    elif acquisition == "Custom":
-        try:
-            if i_file.filename[-3:] == "xls" or i_file.filename[-3:] == "txt":
-                columns = list(pd.read_csv(BytesIO(i_file.value), sep="\t", comment="#", nrows=2).columns)
-            elif i_file.filename[-3:] == "csv":
-                columns = list(pd.read_csv(BytesIO(i_file.value), sep=",", comment="#", nrows=2).columns)
-            else:
-                return "Failed to read file"
-            i_custom_cids.options = columns
-            i_custom_cgenes.options = columns
-            i_custom_cdata.options = columns
-            return pn.Column("Please note that the custom upload is still under development and currently assumes 0-1 normalized data.",
-                             pn.Row(pn.Column(i_custom_cids, i_custom_cgenes), i_custom_cdata),
-                             #i_custom_normalized
-                            )
-        except Exception:
-            return traceback.format_exc()
-    else:
-        return pn.Column(pn.Row(pn.Pane("Stringency filtering")), pn.Row(i_consecutiveLFQi, i_summed_MSMS_counts))
-
-@pn.depends(i_reannotate_genes.param.value, i_reannotate_genes_source.param.value)
-def response_reannotation(mode, source):
-    if mode in ["don't reannotate", "from uniprot.org"]:
-        i_reannotate_genes_source.options = i_reannotate_genes_source.options[0:1]
-        if source not in i_reannotate_genes_source.options:
-            i_reannotate_genes_source.value = i_reannotate_genes_source.options[-1]
-        return None
-    elif mode == "from uniprot fasta headers":
-        stored = [el for el in pkg_resources.resource_listdir("domaps", "annotations/idmapping") if el.endswith(".txt")]
-        i_reannotate_genes_source.options = i_reannotate_genes_source.options[0:1]+stored
-        if source not in i_reannotate_genes_source.options:
-            i_reannotate_genes_source.value = i_reannotate_genes_source.options[-1]
-    elif mode == "from uniprot tab download":
-        stored = [el for el in pkg_resources.resource_listdir("domaps", "annotations/idmapping") if el.endswith(".tab")]
-        i_reannotate_genes_source.options = i_reannotate_genes_source.options[0:1]+stored
-        if source not in i_reannotate_genes_source.options:
-            i_reannotate_genes_source.value = i_reannotate_genes_source.options[-1]
-    else:
-        return f"Reannotation mode {mode} is not implemented."
-    if source == i_reannotate_genes_source.options[0]:
-        return pn.Column(i_reannotate_genes_source, i_reannotate_genes_file)
-    else:
-        return i_reannotate_genes_source
-
-def execution(event):
-    if cache_uploaded.value == False:
-        analysis_status.object = "Please upload a file first"
-    elif i_expname.value == "":
-        analysis_status.object = "Please enter an experiment name first"
-    elif i_reannotate_genes_file.value == "upload custom file" and i_reannotate_genes_source.value is None:
-        analysis_status.object = "Please upload your custom file for gene reannotation"
-    else:
-        lo_config_instructions.collapsed = True
-        lo_config_details.collapsed = True
-        lo_config_error_messages.collapsed = True
-        lo_read_file.collapsed = True
-        output_layoutpos = [el.name for el in dashboard_analysis].index("analysis_output")
-        dashboard_analysis.objects[output_layoutpos].objects = []
-        cache_run.value = False
-        for wdgt in wdgts:
-            wdgt.disabled = True
-        #if you did already your comparison, but add another experiment afterwards - without reloading your
-        #AnylsedDatasets.json
-        try:
-            loading_status.objects = [loading]
-            analysis_status.object = "Analysis in progress"
-            
-            # get naming pattern
-            if i_name_pattern.value == "Custom":
-                namePattern = i_custom_namepattern.value
-            else:
-                namePattern = i_name_pattern.value
-            
-            # get gene reannotation
-            reannotation_source = {}
-            if i_reannotate_genes.value == "don't reannotate":
-                reannotate = False
-            else:
-                reannotate = True
-                if i_reannotate_genes.value == "from uniprot.org":
-                    reannotation_source["source"] = "uniprot"
-                elif i_reannotate_genes.value == "from uniprot fasta headers":
-                    reannotation_source["source"] = "fasta_headers"
-                    if i_reannotate_genes_source.value == "upload custom file":
-                        idmapping = [el.decode('UTF-8').strip()
-                                     for el in BytesIO(i_reannotate_genes_file.value).readlines()]
-                    else:
-                        idmapping = [el.decode('UTF-8').strip()
-                                     for el in pkg_resources.resource_stream(
-                            "domaps", 'annotations/idmapping/{}'.format(i_reannotate_genes_source.value)).readlines()]
-                    reannotation_source["idmapping"] = idmapping
-                elif i_reannotate_genes.value == "from uniprot tab download":
-                    reannotation_source["source"] = "tsv"
-                    if i_reannotate_genes_source.value == "upload custom file":
-                        idmapping = pd.read_csv(BytesIO(i_reannotate_genes_file.value), sep='\t',
-                                                usecols=["Entry", "Gene names  (primary )"])
-                    else:
-                        idmapping = pd.read_csv(pkg_resources.resource_stream(
-                            "domaps", 'annotations/idmapping/{}'.format(i_reannotate_genes_source.value)), sep='\t',
-                                                usecols=["Entry", "Gene names  (primary )"])
-                    reannotation_source["idmapping"] = idmapping
-                else:
-                    raise ValueError(i_reannotate_genes.value)
-            
-            global i_class
-            if i_acquisition.value == "SILAC":
-                i_class = domaps.SpatialDataSet(i_file.filename, i_expname.value, i_acquisition.value,
-                                                comment=i_comment.value, name_pattern=namePattern,
-                                                organism=i_organism.value,
-                                                reannotate_genes=reannotate, reannotation_source=reannotation_source,
-                                                RatioHLcount=i_RatioHLcount.value,
-                                                RatioVariability=i_RatioVariability.value)
-            if i_acquisition.value == "Custom":
-                i_class = domaps.SpatialDataSet(i_file.filename, i_expname.value, i_acquisition.value,
-                                                comment=i_comment.value, name_pattern=namePattern,
-                                                organism=i_organism.value,
-                                                reannotate_genes=reannotate, reannotation_source=reannotation_source,
-                                                custom_columns = {"ids": i_custom_cids.value,
-                                                                  "genes": i_custom_cgenes.value,
-                                                                  "data": i_custom_cdata.value},
-                                                custom_normalized = i_custom_normalized.value)
-            else:
-                i_class = domaps.SpatialDataSet(i_file.filename, i_expname.value, i_acquisition.value,
-                                                comment=i_comment.value, name_pattern=namePattern,
-                                                organism=i_organism.value,
-                                                reannotate_genes=reannotate, reannotation_source=reannotation_source,
-                                                consecutiveLFQi=i_consecutiveLFQi.value,
-                                                summed_MSMS_counts=i_summed_MSMS_counts.value)
-            #analysis_status.object = "Data Reading"
-            #i_class.data_reading(content=BytesIO(i_file.value))
-            #analysis_status.object = "Data Processing"
-            #i_class.processingdf()
-            #update_object_selector(i_mapwidget, i_clusterwidget)
-            #i_class.quantity_profiles_proteinGroups()
-            #analysis_status.object = "PCA"
-            #i_class.perform_pca()
-            #analysis_status.object = "Calculating Manhattan Distance"
-            #i_class.calc_biological_precision()
-            #analysis_status.object = "Writing Overview Table"
-            #i_class.results_overview_table()
-            #analysis_status.object = "Writing Analysed Dataset Dictionary"
-            #loading_status.objects = []
-            i_class.run_pipeline(content=BytesIO(i_file.value), progressbar=analysis_status)
-            analysis_status.object = "Analysis finished!"
-            update_object_selector(i_mapwidget, i_clusterwidget)
-            loading_status.objects = []
-            
-            dashboard_analysis.objects[output_layoutpos].append(i_clusterwidget)
-            dashboard_analysis.objects[output_layoutpos].append(i_mapwidget)
-            dashboard_analysis.objects[output_layoutpos].append(analysis_tabs)
-            mem_available_datasets[i_class.expname] = i_class.analysed_datasets_dict[i_class.expname]
-            try:
-                i_dfs_available.options.append(i_class.expname)
-                i_dfs_available.value.append(i_class.expname)
-                coll_activatebuttons(i_dfs_available.value)
-            except:
-                pass
-            cache_run.value = True
+            i_dfs_available.options = i_dfs_available.options + [i_class.expname]
+            i_dfs_available.value = i_dfs_available.value + [i_class.expname]
+            coll_activatebuttons(i_dfs_available.value)
+            resize(lo_dfs_available)
         except:
-            for wdgt in wdgts:
-                wdgt.disabled = False
-            loading_status.objects = [""]
-            analysis_status.object = traceback.format_exc()
-            cache_run.value = False
-button_analysis.on_click(execution)
+            pass
+        cache_run.value = True
+    except:
+        loading_status.objects = [""]
+        analysis_status.object = traceback.format_exc()
+        cache_run.value = False
 
-#### Callback output positioning
-#### File config
-################################
-lo_read_file.append(read_file)
+i_FileConfig._btn_run.on_click(future_execution)
+
+
+#### Analysis output
 
 
 
@@ -673,15 +446,15 @@ def update_object_selector(i_mapwidget, i_clusterwidget):
     i_clusterwidget.options = list(i_class.markerproteins.keys())
 
 
-@pn.depends(i_mapwidget.param.value, cache_run.param.value, i_collapse_maps_PCA.param.value, i_clusterwidget.param.value, i_xAxis_PCA.param.value, i_yAxis_PCA.param.value)
+@pn.depends(i_mapwidget.param.value,
+            cache_run.param.value,
+            i_collapse_maps_PCA.param.value, i_clusterwidget.param.value,
+            i_xAxis_PCA.param.value, i_yAxis_PCA.param.value)
 def update_data_overview(mapwidget, run, collapse_maps_PCA, clusterwidget, xAxis_PCA, yAxis_PCA):
     try:
         if run == True:
             pca_plot = i_class.plot_global_pca(map_of_interest=mapwidget , cluster_of_interest=clusterwidget, x_PCA=xAxis_PCA, y_PCA=yAxis_PCA, collapse_maps=collapse_maps_PCA)
-            if i_acquisition.value != "Custom":
-                log_histogram = i_class.plot_log_data()
-            else:
-                log_histogram = ""
+            log_histogram = i_class.plot_log_data()
             visualization_map = pn.Column(
                 pn.Row(i_collapse_maps_PCA),
                 pn.Row(pn.Pane(pca_plot, width=1000, config=plotly_config)),
@@ -769,7 +542,7 @@ def show_tabular_overview(run):
     try:
         if run == True:
             content = pn.Column(
-                pn.widgets.DataFrame(pd.read_json(i_class.analysed_datasets_dict[i_expname.value]["Overview table"]), height=200, width=600, disabled=True),
+                pn.widgets.DataFrame(pd.read_json(i_class.analysed_datasets_dict[i_class.expname]["Overview table"]), height=200, width=600, disabled=True),
 
                 i_logOR01_selection,
                 df01_download_widget,
@@ -787,7 +560,7 @@ def show_tabular_overview(run):
 def json_download(run):
     sio = StringIO()
     json.dump(
-        domaps.SpatialDataSetComparison.analysed_datasets_dict, 
+        i_class.analysed_datasets_dict, 
         sio, 
         indent=4, 
         sort_keys=True
@@ -827,7 +600,7 @@ def dflog_download(run):
 
 @pn.depends(cache_run.param.value)
 def df_filteredRawData_download(run):
-    df = i_class.reframe_df_01ORlog_for_Perseus(i_class.df_stringencyFiltered)
+    df = i_class.reframe_df_01ORlog_for_Perseus(i_class.df_filtered.stack(["Map", "Fraction"]))
     sio = StringIO()
     df.to_csv(sio)
     sio.seek(0)
@@ -864,6 +637,7 @@ cache_run_json = pn.widgets.Checkbox(value=False)
 #i_jsonFile = pn.widgets.FileInput(name="Upload JSON file for comparison")
 i_multi_choice = pn.widgets.CrossSelector(name="Select experiments for comparison", value=["a", "b"],
                                           options=["a", "b", "c"], definition_order=False)
+m_diverget_fractions = pn.Pane("")
 i_ref_exp = pn.widgets.Select(name="Select experiments as reference", options=["a", "b", "c"])
 i_collapse_cluster = pn.widgets.Checkbox(value=True, name="Collapse cluster")
 comparison_status = pn.Pane("No datasets were compared yet")
@@ -871,6 +645,7 @@ i_markerset_or_cluster = pn.widgets.Checkbox(value=False, name="Display only pro
 #i_ranking_boxPlot = pn.widgets.Checkbox(value=False, name="Display box plot")
 i_ranking_boxPlot = pn.widgets.RadioBoxGroup(name="Types of ranking", options=["Box plot", "Bar plot - median", "Bar plot - sum"], inline=True)
 #i_toggle_sumORmedian = pn.widgets.Toggle(name="Sum or Median", button_type="primary")
+i_clusterwidget_pca = pn.widgets.Select(options=[], name="Cluster of interest", width=300)
 i_clusterwidget_comparison = pn.widgets.Select(options=[], name="Cluster of interest", width=300)
 i_ExpOverview = pn.Row(pn.Pane("", width=1000))
 i_include_dataset = pn.widgets.Checkbox(value=False, name="Include data analysed under 'Analysis' tab")
@@ -883,7 +658,7 @@ i_compare_compartment = pn.widgets.MultiSelect(options=[], name="Select compartm
 json_exp_name_cache = []
 
 
-@pn.depends(i_multi_choice.param.value, i_clusterwidget_comparison.param.value, cache_run_json.param.value, i_xAxis_PCA_comp.param.value, i_yAxis_PCA_comp.param.value, 
+@pn.depends(i_multi_choice.param.value, i_clusterwidget_pca.param.value, cache_run_json.param.value, i_xAxis_PCA_comp.param.value, i_yAxis_PCA_comp.param.value, 
             i_markerset_or_cluster.param.value)
 def update_visualization_map_comparison(multi_choice, clusterwidget_comparison, run_json, xAxis_PCA_comp, yAxis_PCA_comp, markerset_or_cluster):
     try:
@@ -901,7 +676,7 @@ def update_visualization_map_comparison(multi_choice, clusterwidget_comparison, 
             )
             if markerset_or_cluster == False:
                 return pn.Column(
-                    pn.Row(i_clusterwidget_comparison),
+                    pn.Row(i_clusterwidget_pca),
                     pn.Row(i_markerset_or_cluster),
                     pn.Pane(pca_global_comparison, config=plotly_config),
                     pn.Row(i_xAxis_PCA_comp, i_yAxis_PCA_comp)
@@ -940,6 +715,7 @@ def update_comp_cluster_coverage(exp_names, min_n, run_json):
         [f,p,n] = i_class_comp.get_complex_coverage(min_n)
         i_clusters_for_ranking.options = [el for el in i_class_comp.markerproteins.keys() if el not in n.keys()]
         i_clusterwidget_comparison.options = [el for el in i_class_comp.markerproteins.keys() if el not in n.keys()]
+        i_clusterwidget_pca.options = [el for el in i_class_comp.markerproteins.keys() if el not in n.keys()]
         i_clusters_for_ranking.value = [el for el in i_class_comp.markerproteins.keys() if el in f.keys()]
         return pn.Row(
             "Coverage in all experiments \[>= n proteins]:<br>"+"<br>".join(["- {} ({})".format(k,v) for k,v in f.items()]),
@@ -1347,10 +1123,7 @@ def update_ExpOverview(multi_choice):
     dict_analysis_parameters={}
     for exp_name in multi_choice:
         dict_analysis_parameters[exp_name] = i_class_comp.json_dict[exp_name]["Analysis parameters"]
-    i_ExpOverview[0] = pn.widgets.DataFrame(pd.DataFrame.from_dict(dict_analysis_parameters))
-    i_ExpOverview.value = pd.DataFrame.from_dict(dict_analysis_parameters)
-    i_ExpOverview.disabled = True
-    i_ExpOverview.height = 300
+    i_ExpOverview[0] = pn.widgets.DataFrame(pd.DataFrame.from_dict(dict_analysis_parameters), height=300, disabled=True)
 
 
 #### Dashboard structure
@@ -1475,47 +1248,6 @@ i_benchmark_download.callback = benchmark_download
 #### Download data
 ################################
 o_benchmark_downloadpreview.append(benchmark_download_preview)
-    
-#def execution_comparison(event):
-#    if cache_uploaded_json.value == False:
-#        comparison_status.object = "Please upload a JSON-file first"
-#    else:        
-#        #dashboard_comparison.objects[2:] = []
-#        cache_run_json.value = False
-#        for wdgt in wdgts_comparison:
-#            wdgt.disabled = True
-#        try:
-#            loading_status_comparison.objects = [loading_comparison]
-#            comparison_status.object = "Analysis in progress"
-#            #protein_cluster = SpatialDataSet.markerproteins_set[i_organism_comparison.value].keys()
-#            update_ref_exp(i_ref_exp)
-#            global i_class_comp
-#            comparison_status.object = "Initialization"
-#            i_class_comp = domaps.SpatialDataSetComparison(ref_exp=i_ref_exp.value)#, clusters_for_ranking=protein_cluster, organism=i_organism_comparison.value)
-#            i_class_comp.json_dict = json_dict
-#            comparison_status.object = "Reading"
-#            i_class_comp.read_jsonFile()
-#            i_class_comp.calc_biological_precision()
-#            i_class_comp.get_complex_coverage()
-#            update_multi_choice(i_multi_choice, i_clusterwidget_comparison, i_clusters_for_ranking)
-#            i_compare_compartment.options = list(set(
-#                i_class_comp.df_01_filtered_combined.index.get_level_values("Compartment")))
-#            comparison_status.object = "SVM Processing"
-#            i_class_comp.svm_processing()
-#            comparison_status.object = "PCA"
-#            i_class_comp.perform_pca_comparison()
-#            dashboard_comparison.append(pn.Row(i_multi_choice, i_ExpOverview))
-#            dashboard_comparison.append(comparison_tabs)
-#            loading_status_comparison.objects = []
-#            comparison_status.object = "Comparison finished!"
-#            cache_run_json.value = True
-#        except Exception:
-#            loading_status_comparison.objects = [""]
-#            for wdgt in wdgts_comparison:
-#                wdgt.disabled = False
-#            comparison_status.object = traceback.format_exc()
-#            cache_run_json.value = False
-#button_comparison.on_click(execution_comparison)
 
 @pn.depends(i_multi_choice.param.value, i_clusters_for_ranking.param.value,
             i_scatter_metric.param.value, i_scatter_consolidation.param.value, i_scatter_quantile.param.value,
@@ -1564,6 +1296,12 @@ dashboard_benchmark.objects = [
     pn.Card(objects=[], header="## Manage data", name="manage_data", height_policy="fit"),
     pn.Row(objects=[], name="benchmark_output", height_policy="fit")
 ]
+
+## dataset collection analysed and displayed in the benchmarking tab
+mem_benchmark = None
+i_class_comp = None
+## currently available datasets to select for benchmarking
+mem_available_datasets = dict()
 
 #### Manage data Card layout
 # This accesses mem_available_datasets and mem_benchmark.
@@ -1756,7 +1494,7 @@ i_coll_download.callback = coll_downloadjson
 
 def coll_runmain(event):
     """
-    Drops selected datasets from collection stored in RAM.
+    Runs main analysis
     """
     # deactivate interface
     for el in lock_collection_change:
@@ -1782,6 +1520,8 @@ def coll_runmain(event):
             i_compare_compartment.options = list(set(
                 i_class_comp.df_01_filtered_combined.index.get_level_values("Compartment")))
             loading_status_comparison.objects = []
+            m_diverget_fractions.object = "" if not i_class_comp.mixed else "**Caution: You are comparing experiments with differently labelled fractions. This does not affect distance metrics, but the PCA and profile plots.**"
+            m_diverget_fractions.background = None if not i_class_comp.mixed else "salmon"
             cache_run_json.value=True
             set_status_datamanagement("Comparison finished!", append=True)
             
@@ -1866,7 +1606,7 @@ def display_benchmark_output(run_json):
         return pn.Column(
             "## Benchmark results",
             "Select dataset overlap to plot:",
-            pn.Row(i_multi_choice, i_ExpOverview),
+            pn.Row(pn.Column(i_multi_choice, m_diverget_fractions), i_ExpOverview),
             comparison_tabs
         )
     else:
@@ -1877,280 +1617,6 @@ dashboard_benchmark.objects[[i.name for i in dashboard_benchmark].index("benchma
 for el in [display_benchmark_output]:
     dashboard_benchmark.objects[[i.name for i in dashboard_benchmark].index("benchmark_output")].append(el)
 
-
-# ## Management tab
-
-# i_jsonFile_amendments_intended = pn.widgets.FileInput(name="Upload JSON file to be amended")
-# i_json_ExpSelector = pn.widgets.CrossSelector(name="Select experiments, that will be removed from JSON file", width=1000)
-# cache_uploaded_json_amendment = pn.widgets.Checkbox(value=False)
-# cache_run_json_amendment = pn.widgets.Checkbox(value=False)
-# button_reset = pn.widgets.Button(name="Reset", width=630)
-# download_status = pn.Pane("Upload a JSON file first", width=1000)
-# i_df_ExpComment = pn.widgets.DataFrame()
-# wdgt_json = [button_reset]
-# json_dict_amendments_intended = {}
-# #make a cache, and say, if this hasnt been executed so far, please reset it
-# dict_new_expNames = {}
-# dict_new_comments = {}
-# # i_exp_SVM = pn.widgets.Select(name="Select experiments as reference", options=["a", "b", "c"])
-# button_SVM_analysis = pn.widgets.Button(name="Analyse misclassification matrix", width=50)
-# # i_SVM_table = pn.widgets.input.TextAreaInput(name="Misclassification matrix from Perseus", placeholder="Copy matrix here...")
-# cache_uploaded_SVM = pn.widgets.Checkbox(value=False)
-# analysis_status_SVM = pn.Row(pn.Pane("No SVM analysis run yet", width=1000))
-# i_all_or_marker = pn.widgets.Select(name="Select type of data for download", options=["Modified AnalysedDataset.json file", "0/1 normalized data, all experiments", 
-#                                                                                "0/1 normalized data, markerset only, all experiments"], width=300)
-#     
-# @pn.depends(i_jsonFile_amendments_intended.param.value)#cache_run.param.value
-# def open_jsonFile_amendment(jsonFile_amendments):#run
-#     cache_run_json_amendment.value = False
-#     if jsonFile_amendments is None:
-#         cache_uploaded_json_amendment.value = False
-#     else:
-#         dashboard_manageDatasets.objects[2:] = []
-#         #dashboard_manageDatasets.objects = []
-#         dashboard_MissclassificationMatrix.objects = []
-#         dashboard_amendment.objects = []
-#         cache_uploaded_json_amendment.value = False
-#         try:
-#             
-#             json_dict_cache = json.load(BytesIO(i_jsonFile_amendments_intended.value))
-#             if hasattr(json_dict_cache, "keys") == False: 
-#                     return "Your json-File does not fulfill the requirements"
-#             else:
-#                 global json_dict_amendments_intended
-#                 try:
-#                     json_dict_amendments_intended.update(json_dict_cache)
-#                 except Exception:
-#                     json_dict_amendments_intended = json_dict_cache
-#                 i_json_ExpSelector.options = list(json_dict_amendments_intended.keys())
-#                 cache_uploaded_json_amendment.value = True
-#                 for wdgt in wdgt_json:
-#                     wdgt.disabled = False
-#                 download_status.object = "Upload successful! Select experiments now."
-#                 dashboard_manageDatasets.append(amendment_tabs)
-#                 dashboard_manageDatasets.append(button_reset)
-#                 dashboard_amendment.append(pn.Column(i_df_ExpComment, download_status))
-#                 analysis_status_SVM[0] = pn.Pane("Upload successful! Select experiments now.")
-#                 dashboard_MissclassificationMatrix.append(analysis_status_SVM)
-#                 return pn.Column(
-#                                  i_json_ExpSelector,
-#                                  i_all_or_marker,           
-#                                  df01_json_download_widget,#pn.Column(pn.widgets.FileDownload(callback=df01_fromJson_download, filename = "all_01_normalized_data.csv", width=650)),
-#                                  #button_reset,
-#                                  )
-#         except Exception: 
-#             filereading_status_json = traceback.format_exc()
-#             cache_uploaded_json_amendment.value = False
-#             return filereading_status_json
-# 
-#     
-# #@pn.depends(i_exp_SVM.param.value, watch=True)
-# #def update_SVM_Matrix(exp_SVM):
-# #    try:
-# #        i_SVM_table.value = json_dict_amendments_intended[exp_SVM]["Misclassification Matrix"]
-# #        
-# #    except:
-# #        i_SVM_table.value = ''
-#     
-# 
-# # @pn.depends(i_json_ExpSelector.param.value, watch=True)
-# # def update_exp_for_SVM(json_ExpSelector):
-# #     if json_ExpSelector == []:
-# #         dashboard_MissclassificationMatrix.objects = []
-# #         analysis_status_SVM[0] = pn.Pane("Select experiments first")
-# #         dashboard_MissclassificationMatrix.append(analysis_status_SVM)
-# #     else:
-# #         #i_SVM_table.value = ""       
-# #         dashboard_MissclassificationMatrix.objects = []
-# #         i_exp_SVM.options = json_ExpSelector
-# #         analysis_status_SVM[0] = pn.Pane("Please paste a SVM Matrix first")
-# #         dashboard_MissclassificationMatrix.append(pn.Row(i_exp_SVM, i_SVM_table))
-# #         dashboard_MissclassificationMatrix.append(read_SVM_matrix)
-# #         dashboard_MissclassificationMatrix.append(analysis_status_SVM)
-#     
-#         
-# # @pn.depends(i_SVM_table.param.value)
-# # def read_SVM_matrix(SVM_table):   
-# #     if SVM_table == "":
-# #         SVM_reading_status = "No misclassification matrix is uploaded"
-# #         cache_uploaded_SVM.value = False
-# #         analysis_status_SVM[0] = pn.Pane("Please paste a SVM Matrix first")
-# #     else:
-# #         cache_uploaded_SVM.value = False
-# #         try:
-# #             try:
-# #                 df_SVM = pd.DataFrame(json.loads(SVM_table))
-# #             except json.JSONDecodeError:
-# #                 df_SVM = pd.read_table(StringIO(SVM_table), sep="\t")
-# #             json_dict_amendments_intended[i_exp_SVM.value]["Misclassification Matrix"] = df_SVM.to_json()
-# #             SVM_reading_status = domaps.svm_heatmap(df_SVM)
-# #             cache_uploaded_SVM.value = True
-# #             #button_SVM_analysis.disabled = False
-# #             return pn.Column(#pn.Row(button_SVM_analysis),
-# #                              pn.Row(SVM_reading_status, height=600),
-# #                             )
-# #         except Exception: 
-# #             SVM_reading_status = "Paste the SVM matrix from Perseus only!"
-# #             #SVM_reading_status = traceback.format_exc()
-# #             cache_uploaded_SVM.value = False
-# #             analysis_status_SVM[0] = pn.Pane(traceback.format_exc())    #pn.Pane("")
-# #             return SVM_reading_status 
-# 
-# 
-# @pn.depends(cache_run_json_amendment.param.value)
-# def df01_fromJson_download(run):
-#     if i_json_ExpSelector.value == []:
-#         download_status.object = "No experiments are selected"
-#         return
-#     else:
-#         df = domaps.reframe_df_01_fromJson_for_Perseus(json_dict_amendments_intended)
-#         df = df.reset_index("Compartment")
-#         df["Compartment"] = [el if el != "undefined" else "" for el in df.Compartment.values]
-#         df = df.set_index("Compartment", append=True)
-#         sio = StringIO()
-#         df.to_csv(sio)
-#         sio.seek(0)
-#         return sio 
-# 
-#     
-# @pn.depends(cache_run_json_amendment.param.value)
-# def df01_marker_fromJson_download(run):
-#     if i_json_ExpSelector.value == []:
-#         download_status.object = "No experiments are selected"
-#         return
-#     else:
-#         df = domaps.reframe_df_01_fromJson_for_Perseus(json_dict_amendments_intended)
-#         df = df.loc[df.index.get_level_values("Compartment")!= "undefined"]
-#         sio = StringIO()
-#         df.to_csv(sio)
-#         sio.seek(0)
-#         return sio 
-#     
-#     
-# @pn.depends(cache_run_json_amendment.param.value, i_all_or_marker.param.value)
-# def df01_json_download_widget(run, all_or_marker):
-#     if all_or_marker == "Modified AnalysedDataset.json file":
-#         return pn.Column(pn.widgets.FileDownload(callback=json_amendment_download, filename = "AnalysedDatasets2.0.json"), width=650) 
-#     elif all_or_marker == "0/1 normalized data, all experiments":
-#         return pn.Column(pn.widgets.FileDownload(callback=df01_fromJson_download, filename = "all_01_normalized_data.csv"), width=650) 
-#     else:
-#         return pn.Column(pn.widgets.FileDownload(callback=df01_marker_fromJson_download, filename = "marker_01_normalized_data.csv"), width=650)
-#     
-#     
-# def json_amendment_download():
-#     if i_json_ExpSelector.value == []:
-#         download_status.object = "No experiments are selected"
-#         return
-#     else:
-#         json_new = json_dict_amendments_intended.copy()
-#         exp_names_del = [elem for elem in i_json_ExpSelector.options if not elem in i_json_ExpSelector.value]        
-#         for key in exp_names_del:
-#             del json_new[key]
-#         checked_exp = set()
-#         redundant_expNames = set(new_Exp for new_Exp in dict_new_expNames.values() if new_Exp in checked_exp or checked_exp.add(new_Exp))
-#         if redundant_expNames != set():
-#             download_status.object = "Experiments are not allowed to be labelled identically"
-#             return
-#         else:
-#             for exp_name in json_new:
-#                 json_new[exp_name]["Analysis parameters"]["comment"] = dict_new_comments[exp_name] #dict_new_expNames
-#             json_new = {dict_new_expNames[oldK]: value for oldK, value in json_new.items()}
-#             sio = StringIO()
-#             json.dump(
-#                 json_new, 
-#                 sio, 
-#                 indent=4, 
-#                 sort_keys=True
-#             )
-#             sio.seek(0)
-#             download_status.object = "Download sucessful"
-#             return sio
-# 
-#         
-# def reset_json_amendment(event):
-#     global json_dict_amendments_intended
-#     json_dict_amendments_intended = {}
-#     i_json_ExpSelector.options = []
-#     i_json_ExpSelector.value = []
-#     i_df_ExpComment.value = pd.DataFrame()
-#     for wdgt in wdgt_json:
-#         wdgt.disabled = True
-#     download_status.object = "Reset sucessful"
-# button_reset.on_click(reset_json_amendment)
-# 
-# 
-# @pn.depends(i_json_ExpSelector.param.value, watch=True)
-# def update_renameExp(json_ExpSelector):
-#     dict_ExpComments = {}
-#     for exp_name in json_ExpSelector:
-#         dict_ExpComments[exp_name] = json_dict_amendments_intended[exp_name]["Analysis parameters"]["comment"]
-#     df_ExpComments = pd.DataFrame(dict_ExpComments.items(), columns=["Experiment name - old", "Comment"])#pd.DataFrame.from_dict(dict_ExpComments)
-#     df_ExpComments.insert(0, "Experiment name - new", df_ExpComments["Experiment name - old"])
-#     df_ExpComments.set_index("Experiment name - old", inplace=True)
-#     df_ExpComments.replace({"Experiment name - new": dict_new_expNames}, inplace=True)
-#     exp_previous = list(dict_new_comments.keys())
-#     for exp in exp_previous:
-#         if exp not in json_ExpSelector:
-#             del dict_new_comments[exp]
-#     df_ExpComments.loc[dict_new_comments.keys(),"Comment"] = list(dict_new_comments.values())
-#     i_df_ExpComment.value = df_ExpComments
-#     i_df_ExpComment.height=len(json_ExpSelector)*50
-#     #return i_df_ExpComment
-# 
-# @pn.depends(i_df_ExpComment.param.value, watch=True)
-# def update_newExpNames(df_ExpComment):
-#     try:        
-#         global dict_new_expNames 
-#         changed_expName = set(list(dict_new_expNames.values())+list(df_ExpComment["Experiment name - new"]))-set(dict_new_expNames.values())
-#         dict_new_expNames = dict(zip(df_ExpComment.index, df_ExpComment["Experiment name - new"]))
-#         global dict_new_comments
-#         dict_new_comments_cache = dict_new_comments.copy()
-#         changed_comment = set(list(dict_new_comments.values())+list(df_ExpComment["Comment"]))-set(dict_new_comments.values())
-#         dict_new_comments = dict(zip(df_ExpComment.index, df_ExpComment["Comment"]))
-#         if changed_expName == set() and changed_comment == set():
-#             tracked_change = "No changes saved"
-#         elif changed_expName != set() and changed_comment != set():
-#             tracked_change = "Upload sucessful"
-#         elif changed_expName != set():
-#             new_exp = list(changed_expName)[0]
-#             old_exp = list(dict_new_expNames.keys())[list(dict_new_expNames.values()).index(new_exp)]
-#             tracked_change = "Experiment name was changed from {} to {}".format(old_exp, new_exp)
-#         else:# changed_comment != set():
-#             new_comment = list(changed_comment)[0]
-#             exp = list(dict_new_comments.keys())[list(dict_new_comments.values()).index(new_comment)]
-#             old_comment = dict_new_comments_cache[exp]
-#             tracked_change = "Comment of the experiment {} was changed from {} to {}".format(exp, old_comment, new_comment)
-#         download_status.object = tracked_change
-#     except Exception:
-#         pass
-# 
-# 
-# def save_parameters():
-#     parameters = dict()
-#     parameters["multi_choice"] = i_multi_choice.value
-#     
-#     # PCA plot
-#     parameters["xAxis_PCA_comp"] = i_xAxis_PCA_comp.value
-#     parameters["yAxis_PCA_comp"] = i_yAxis_PCA_comp.value
-#     
-#     # biological precision
-#     parameters["clusters_for_ranking"] = i_clusters_for_ranking.value
-#     parameters["reference_map"] = i_reference_map.value
-#     parameters["minn_proteins"] = i_minn_proteins.value
-#     
-#     # scatter
-#     parameters["scatter_metric"] = i_scatter_metric.value
-#     parameters["scatter_consolidation"] = i_scatter_consolidation.value
-#     
-#     # profile comparison
-#     parameters["compare_compartment"] = i_compare_compartment.value
-#     parameters["compare_profile_style"] = i_compare_profile_style.value
-#     
-#     sio = StringIO()
-#     json.dump(parameters, sio, indent=4)
-#     sio.seek(0)
-#     return sio
-# o_download_parameters = pn.widgets.FileDownload(callback=save_parameters, filename="parameters.json", width=200)
 
 # In[ ]:
 

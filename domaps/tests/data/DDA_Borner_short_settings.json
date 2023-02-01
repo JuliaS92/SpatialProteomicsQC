@@ -1,0 +1,67 @@
+{
+    "filename": "DDA_Borner_short.txt",
+    "expname": "DDA_Borner",
+    "source": "MaxQuant",
+    "acquisition": "LFQ",
+    "level": "proteins",
+    "orientation": "pivot",
+    "original_protein_ids": "Majority protein IDs",
+    "genes": "Gene names",
+    "sets": {
+        "LFQ intensity": "LFQ intensity .+",
+        "MS/MS count": "MS/MS count .+"
+    },
+    "name_pattern": ".* (?P<rep>.*)_(?P<frac>.*)",
+    "fractions": [
+        "1K",
+        "3K",
+        "6K",
+        "12K",
+        "24K",
+        "80K"
+    ],
+    "fraction_mapping": {
+        "1K": "1K",
+        "3K": "3K",
+        "6K": "6K",
+        "12K": "12K",
+        "24K": "24K",
+        "80K": "80K",
+        "Cyt": null
+    },
+    "columns_annotation": [
+        "Protein names",
+        "Q-value",
+        "Score",
+        "id"
+    ],
+    "organism": "Homo sapiens",
+    "reannotate": "fasta_headers",
+    "reannotation_source": "Homo sapiens - uniprot reference_swissprot",
+    "organelles": "Homo sapiens - Uniprot",
+    "complexes": "Homo sapiens - Uniprot",
+    "input_invert": false,
+    "input_logged": false,
+    "input_samplenormalization": null,
+    "quality_filter": [
+        "msms_count",
+        "consecutive"
+    ],
+    "average_MSMS_counts": 2,
+    "consecutive": 4,
+    "column_filters": {
+        "Potential contaminant": [
+            "!=",
+            "'+'"
+        ],
+        "Only identified by site": [
+            "!=",
+            "'+'"
+        ],
+        "Reverse": [
+            "!=",
+            "'+'"
+        ]
+    },
+    "comment": "Tests MQ LFQ default settings, fraction deletion and gene reannotation from deposited fasta headers."
+}

@@ -1,0 +1,59 @@
+{
+    "filename": "hyperLOPIT_U2OS_short.csv",
+    "expname": "HyperLOPIT U2OS",
+    "source": "custom",
+    "acquisition": "LFQ",
+    "level": "proteins",
+    "orientation": "pivot",
+    "original_protein_ids": "ProteinGroupAc",
+    "genes": "ProteinGroupAc",
+    "sets": {
+        "LFQ intensity": "Replicate. TMT Set.*"
+    },
+    "name_pattern": "(?P<rep>.*)-(?P<frac>.*)",
+    "fractions": [
+        "126",
+        "127C",
+        "127N",
+        "128C",
+        "128N",
+        "129C",
+        "129N",
+        "130C",
+        "130N",
+        "131"
+    ],
+    "fraction_mapping": {
+        "126": "126",
+        "127C": "127C",
+        "127N": "127N",
+        "128C": "128C",
+        "128N": "128N",
+        "129C": "129C",
+        "129N": "129N",
+        "130C": "130C",
+        "130N": "130N",
+        "131": "131"
+    },
+    "columns_annotation": [
+        "markers",
+        "SVM Classification",
+        "assignment"
+    ],
+    "organism": "Homo sapiens",
+    "reannotate": "tsv",
+    "reannotation_source": "Homo sapiens - UP000005640",
+    "organelles": "Homo sapiens - Uniprot",
+    "complexes": "Homo sapiens - Uniprot",
+    "input_invert": false,
+    "input_logged": false,
+    "input_samplenormalization": null,
+    "column_filters": {
+        "Quantified PSMs": [
+            ">=",
+            "40"
+        ]
+    },
+    "comment": "Tests custom/LFQ and gene reannotation from uniprot tab download",
+    "quality_filter": []
+}
