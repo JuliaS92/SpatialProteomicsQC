@@ -1,4 +1,5 @@
 setuptools>=58
+pandas<=1.3.5
 scipy
 scikit-learn
 plotly==4.14.1
