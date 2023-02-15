@@ -10,6 +10,10 @@ import pandas as pd
 from io import BytesIO, StringIO
 import json
 import natsort
+import plotly.express as px
+import numpy as np
+from sklearn.decomposition import PCA
+
 
 class ValidationError(Exception):
     pass
@@ -1729,4 +1733,178 @@ class ConfigureSingleFile(Viewer):
                    self._SILAC,self._MSMS,self._cons,self._col,self._comment,
                    self._btn_save,self._btn_load,self._btn_run]:
             el.disabled=state
+
+
+class pca_plot(Viewer):
+    
+    # data parameters
+    df_pca = param.DataFrame(default=pd.DataFrame([[0,1,2],[3,3,4], [2,5,1]], columns=["PC1", "PC2", "PC3"],
+                                                  index=pd.MultiIndex.from_arrays(
+                                                      [["a", "b", "c"], ["Mitochondrion", "undefined", "ER"], ["1", "2", "2"]],
+                                                      names=["Protein IDs", "Compartment", "Experiment"])))
+    df_var = param.DataFrame(default=pd.DataFrame())
+    df_loadings = param.DataFrame(default=pd.DataFrame())
+    
+    # layout parameters
+    title = param.String(default="PCA plot")
+    color = param.String(default="Compartment")
+    color_map = param.Dict({"undefined": "grey"})
+    facet_col = param.String(default="Experiment", allow_None=True)
+    facet_col_number = param.Integer(default=3)
+    highlight_dict = param.Dict(default={"None": []})
+    enable_highlight = param.Boolean(default=True)
+    show_variability = param.Boolean(default=True)
+    show_loadings = param.Boolean(default=True)
+    
+    def __init__(self, **params):
+        self._dimensions = pn.widgets.Select(options=["2D", "3D"], value="2D", name="Switch view", width=100)
+        self._component1 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC1", name="X-axis", width=100)
+        self._component2 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC3", name="Y-axis", width=100)
+        self._component3 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC2", name="Z-axis", width=100)
+        self._highlight = pn.widgets.Select(options=["None"], value="None", name="Highlight", width=150)
+        self._facet = pn.widgets.Select(options=["a", "b"], value="a", width=150)
+        super().__init__(**params)
+        self._layout = pn.Column(
+            pn.Row(self._dimensions, self._layout_components),
+            pn.Row(self._layout_highlight, self._layout_facet),
+            pn.Row(self._variability, self._loadings),
+            self._pca_plot
+        )
+        
+    def __panel__(self):
+        return self._layout
+    
+    @param.depends('df_pca', '_dimensions.value')
+    def _layout_components(self):
+        self._component1.options = list(self.df_pca.columns)
+        self._component2.options = list(self.df_pca.columns)
+        self._component3.options = list(self.df_pca.columns)
+        if self.df_pca.shape[1] == 2:
+            self._dimensions.value = "2D"
+            self._dimensions.disabled=True
+            return pn.Row(self._component1, self._component2)
+        elif self.df_pca.shape[1] > 2:
+            self._dimensions.disabled=False
+            if self._dimensions.value == "2D":
+                return pn.Row(self._component1, self._component2)
+            else:
+                return pn.Row(self._component1, self._component2, self._component3)
+    
+    @param.depends('df_pca', 'facet_col', '_dimensions.value')
+    def _layout_facet(self):
+        if self._dimensions.value == "3D" and self.facet_col != None:
+            self._facet.options = list(set(self.df_pca.index.get_level_values(self.facet_col)))
+            self._facet.name = f"Select {self.facet_col}"
+            return self._facet
+        else:
+            return pn.Column()
+    
+    @param.depends('enable_highlight', 'highlight_dict')
+    def _layout_highlight(self):
+        if "None" not in self.highlight_dict.keys():
+            self.highlight_dict["None"] = []
+        self._highlight.options = list(self.highlight_dict.keys())
+        if self.enable_highlight == True:
+            return self._highlight
+        else:
+            return pn.Column()
+        
+    
+    @param.depends('_dimensions.value', 'facet_col', 'facet_col_number', 'title',
+                   '_component1.value', '_component2.value', '_component3.value',
+                   '_highlight.value', '_facet.value')
+    def _pca_plot(self):
+        
+        if self._dimensions.value == "2D":
+            data_frame=self.df_pca.reset_index()
+            color_map = self.color_map
+            if self._highlight.value != "None":
+                data_frame.loc[data_frame["Protein IDs"]\
+                               .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
+                color_map[self._highlight.value] = "black"
+            plot = px.scatter(
+                data_frame=data_frame,
+                x=self._component1.value,
+                y=self._component2.value,
+                color=self.color,
+                color_discrete_map=color_map,
+                title=self.title, 
+                hover_data=self.df_pca.index.names,
+                template="simple_white",
+                opacity=0.9,
+                facet_col=self.facet_col,
+                facet_col_wrap=self.facet_col_number
+                )
+            
+            plot.update_layout(width=400+400*self.facet_col_number if self.facet_col is not None else 800,
+                               height=400*np.ceil(len(set(self.df_pca.index.get_level_values(self.facet_col)))/self.facet_col_number) if self.facet_col is not None else 400)
+        
+        else:
+            xlim = np.array([min(self.df_pca[self._component1.value]), max(self.df_pca[self._component1.value])])
+            ylim = np.array([min(self.df_pca[self._component2.value]), max(self.df_pca[self._component2.value])])
+            zlim = np.array([min(self.df_pca[self._component3.value]), max(self.df_pca[self._component3.value])])
+            xlim = xlim+((xlim[1]-xlim[0])*np.array([-0.05,0.05]))
+            ylim = ylim+((ylim[1]-ylim[0])*np.array([-0.05,0.05]))
+            zlim = zlim+((zlim[1]-zlim[0])*np.array([-0.05,0.05]))
+            
+            data_frame=self.df_pca.reset_index()
+            color_map = self.color_map
+            if self._highlight.value != "None":
+                data_frame.loc[data_frame["Protein IDs"]\
+                               .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
+                color_map[self._highlight.value] = "black"
+            
+            plot = px.scatter_3d(
+                data_frame=data_frame.loc[data_frame[self.facet_col] == self._facet.value,:] if self.facet_col is not None else data_frame,
+                x=self._component1.value,
+                y=self._component2.value,
+                z=self._component3.value,
+                color=self.color,
+                color_discrete_map=color_map,
+                title=self.title+" "+self._facet.value if self.facet_col is not None else self.title, 
+                hover_data=self.df_pca.index.names,
+                template="simple_white",
+                opacity=0.9
+                )
+            plot.update_layout(margin_b=50,
+                               scene_xaxis_range=xlim, scene_yaxis_range=ylim, scene_zaxis_range=zlim,
+                               width=800, height=500)
+        
+        return plot
+    
+    @param.depends('show_variability', 'df_var')
+    def _variability(self):
+        if self.show_variability:
+            fig = px.line(self.df_var, x="Component", y="variance explained",
+                           template="simple_white", title="Component variance").update_traces(mode="lines+markers")
+            fig.update_layout(height=350, width=200+(self.df_var.shape[0]*50))
+            return fig
+        else:
+            return pn.Column()
+    
+    @param.depends('show_loadings', 'df_loadings', '_component1.value', '_component2.value')
+    def _loadings(self):
+        if self.show_loadings:
+            fig = px.scatter(self.df_loadings, x=self._component1.value, y=self._component2.value,
+                             template="simple_white", hover_data=self.df_loadings.columns,
+                             title="Component loadings").update_traces(marker_size=1)
+            for i, row in self.df_loadings.iterrows():
+                fig.add_annotation(ax=0, ay=0, x=row[self._component1.value], y=row[self._component2.value],
+                                   axref="x", ayref="y", text="",
+                                   arrowhead=1, arrowwidth=2, showarrow=True, arrowcolor="black")
+            fig.update_layout(height=350, width=350)
+            return fig
+        else:
+            return pn.Column()
+    
+    def calculate_pca(df, n):
+        pca = PCA(n)
+        coords = pd.DataFrame(pca.fit_transform(df.dropna()), index=df.index)
+        coords.columns = [f"PC{el+1}" for el in range(n)]
+        loadings = pd.DataFrame(pca.components_, columns = df.columns, index=coords.columns).T.reset_index()
+        var = pd.DataFrame(pca.explained_variance_ratio_, index = coords.columns)\
+            .reset_index().rename({"index":"Component", 0:"variance explained"}, axis=1)
+        return pca_plot(df_pca = coords, df_loadings = loadings, df_var = var, facet_col=None)
+
+
 
