@@ -14,6 +14,12 @@ import plotly.express as px
 import numpy as np
 from sklearn.decomposition import PCA
 
+plotly_config={
+      'toImageButtonOptions': {
+            'format': 'svg', # one of png, svg, jpeg, webp
+            'filename': 'figure'
+      }
+}
 
 class ValidationError(Exception):
     pass
@@ -820,6 +826,8 @@ class ConfigureFileContent(Viewer):
     @param.depends('_name_pattern.value', 'column_mainset', watch=True)
     def _sync_pattern(self):
         self.name_pattern = self._name_pattern.value
+        if self._name_pattern.value in self._pattern_presets.options:
+            self._pattern_presets.value = self._name_pattern.value
         if self.file.value is not None:
             try:
                 if "(?P<frac>" not in self.name_pattern:
@@ -1748,9 +1756,11 @@ class pca_plot(Viewer):
     # layout parameters
     title = param.String(default="PCA plot")
     color = param.String(default="Compartment")
-    color_map = param.Dict({"undefined": "grey"})
+    color_map = param.Dict(dict())
     facet_col = param.String(default="Experiment", allow_None=True)
     facet_col_number = param.Integer(default=3)
+    facet_width = param.Integer(default=400)
+    facet_height = param.Integer(default=450)
     highlight_dict = param.Dict(default={"None": []})
     enable_highlight = param.Boolean(default=True)
     show_variability = param.Boolean(default=True)
@@ -1801,18 +1811,20 @@ class pca_plot(Viewer):
     
     @param.depends('enable_highlight', 'highlight_dict')
     def _layout_highlight(self):
+        hd = self.highlight_dict.copy()
         if "None" not in self.highlight_dict.keys():
-            self.highlight_dict["None"] = []
-        self._highlight.options = list(self.highlight_dict.keys())
+            hd["None"] = []
+        self._highlight.options = list(hd.keys())
         if self.enable_highlight == True:
             return self._highlight
         else:
             return pn.Column()
         
     
-    @param.depends('_dimensions.value', 'facet_col', 'facet_col_number', 'title',
+    @param.depends('_dimensions.value',
                    '_component1.value', '_component2.value', '_component3.value',
-                   '_highlight.value', '_facet.value')
+                   'title', 'color', 'color_map', '_highlight.value',
+                   '_facet.value', 'facet_col', 'facet_col_number')
     def _pca_plot(self):
         
         if self._dimensions.value == "2D":
@@ -1836,8 +1848,8 @@ class pca_plot(Viewer):
                 facet_col_wrap=self.facet_col_number
                 )
             
-            plot.update_layout(width=400+400*self.facet_col_number if self.facet_col is not None else 800,
-                               height=400*np.ceil(len(set(self.df_pca.index.get_level_values(self.facet_col)))/self.facet_col_number) if self.facet_col is not None else 400)
+            plot.update_layout(width=200+self.facet_width*self.facet_col_number if self.facet_col is not None else 200+self.facet_width,
+                               height=self.facet_height*np.ceil(len(set(self.df_pca.index.get_level_values(self.facet_col)))/self.facet_col_number) if self.facet_col is not None else self.facet_height)
         
         else:
             xlim = np.array([min(self.df_pca[self._component1.value]), max(self.df_pca[self._component1.value])])
@@ -1868,13 +1880,13 @@ class pca_plot(Viewer):
                 )
             plot.update_layout(margin_b=50,
                                scene_xaxis_range=xlim, scene_yaxis_range=ylim, scene_zaxis_range=zlim,
-                               width=800, height=500)
+                               width=self.facet_width+200, height=self.facet_height)
         
-        return plot
+        return pn.Pane(plot, config=plotly_config)
     
     @param.depends('show_variability', 'df_var')
     def _variability(self):
-        if self.show_variability:
+        if self.show_variability and self.df_var.shape != (0,0):
             fig = px.line(self.df_var, x="Component", y="variance explained",
                            template="simple_white", title="Component variance").update_traces(mode="lines+markers")
             fig.update_layout(height=350, width=200+(self.df_var.shape[0]*50))
@@ -1884,7 +1896,7 @@ class pca_plot(Viewer):
     
     @param.depends('show_loadings', 'df_loadings', '_component1.value', '_component2.value')
     def _loadings(self):
-        if self.show_loadings:
+        if self.show_loadings and self.df_loadings.shape != (0,0):
             fig = px.scatter(self.df_loadings, x=self._component1.value, y=self._component2.value,
                              template="simple_white", hover_data=self.df_loadings.columns,
                              title="Component loadings").update_traces(marker_size=1)

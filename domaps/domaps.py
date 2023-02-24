@@ -778,7 +778,7 @@ class SpatialDataSet:
         return fig_npg, fig_npr, fig_npr_dc, fig_npg_F, fig_npgf_F, fig_npg_F_dc
                                                   
                                                                                 
-    def perform_pca(self):
+    def perform_pca(self, n=3):
         """
         PCA will be performed, using logarithmized data.
 
@@ -815,19 +815,25 @@ class SpatialDataSet:
             df_01orlog_MapFracUnstacked = self.df_01_stacked["normalized profile"].unstack(["Fraction", "Map"]).dropna()
             
             
-        pca = PCA(n_components=3)
+        pca = PCA(n_components=n)
 
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         df_pca = pd.DataFrame(pca.fit_transform(df_01orlog_fracunstacked.apply(zscore, axis=0).replace(np.nan, 0)))
-        df_pca.columns = ["PC1", "PC2", "PC3"]
+        df_pca.columns = [f"PC{el+1}" for el in range(n)]
         df_pca.index = df_01orlog_fracunstacked.index
         self.df_pca = df_pca.sort_index(level=["Protein IDs", "Compartment"])
+        self.df_pca_loadings = pd.DataFrame(pca.components_, columns = df_01orlog_fracunstacked.columns, index=df_pca.columns).T.reset_index()
+        self.df_pca_var = pd.DataFrame(pca.explained_variance_ratio_, index = df_pca.columns)\
+            .reset_index().rename({"index":"Component", 0:"variance explained"}, axis=1)
         
         # df_pca: PCA processed dataframe, containing the columns "PC1", "PC2", "PC3"
         df_pca_combined = pd.DataFrame(pca.fit_transform(df_01orlog_MapFracUnstacked.apply(zscore, axis=0).replace(np.nan, 0)))
-        df_pca_combined.columns = ["PC1", "PC2", "PC3"]
+        df_pca_combined.columns = [f"PC{el+1}" for el in range(n)]
         df_pca_combined.index = df_01orlog_MapFracUnstacked.index
         self.df_pca_combined = df_pca_combined.sort_index(level=["Protein IDs", "Compartment"])
+        self.df_pca_combined_loadings = pd.DataFrame(pca.components_, columns = df_01orlog_MapFracUnstacked.columns, index=df_pca_combined.columns).T.reset_index()
+        self.df_pca_combined_var = pd.DataFrame(pca.explained_variance_ratio_, index = df_pca_combined.columns)\
+            .reset_index().rename({"index":"Component", 0:"variance explained"}, axis=1)
         
         map_names = self.map_names
         df_pca_all_marker_cluster_maps = pd.DataFrame()
@@ -835,7 +841,7 @@ class SpatialDataSet:
         for clusters in markerproteins:
             for marker in markerproteins[clusters]:
                 try:
-                    plot_try_pca = df_pca_filtered.xs(marker, level="Protein IDs", drop_level=False)
+                    plot_try_pca = df_pca_filtered.xs(marker, level="Protein IDs", drop_level=False).set_index(pd.Index([clusters], name="Cluster"), append=True)
                 except KeyError:
                     continue
                 df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.append(
@@ -862,19 +868,19 @@ class SpatialDataSet:
         """
         
         if collapse_maps == False:
-            df_global_pca = self.df_pca.unstack("Map").swaplevel(0,1, axis=1)[map_of_interest].reset_index()
+            df_pca = self.df_pca.unstack("Map").swaplevel(0,1, axis=1)[map_of_interest].reset_index()
         else:
-            df_global_pca = self.df_pca_combined.reset_index()
+            df_pca = self.df_pca_combined.reset_index()
             
         for i in self.markerproteins[cluster_of_interest]:
-            df_global_pca.loc[df_global_pca["Protein IDs"] == i, "Compartment"] = "Selection"
+            df_pca.loc[df_pca["Protein IDs"] == i, "Compartment"] = "Selection"
 
         compartments = self.df_organellarMarkerSet["Compartment"].unique()
         compartment_color = dict(zip(compartments, self.css_color))
         compartment_color["Selection"] = "black"
         compartment_color["undefined"] = "lightgrey"
         
-        fig_global_pca = px.scatter(data_frame=df_global_pca,
+        fig_global_pca = px.scatter(data_frame=df_pca,
                                     x=x_PCA,
                                     y=y_PCA,
                                     color="Compartment",
@@ -1643,7 +1649,16 @@ class SpatialDataSetComparison:
             marker_table = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/complexes/{}.csv'.format(organism)))
             self.markerproteins = {k: v.replace(" ", "").split(",") for k,v in zip(marker_table["Cluster"], marker_table["Members - Protein IDs"])}
         
-        self.clusters_for_ranking = self.markerproteins.keys()        
+        self.clusters_for_ranking = self.markerproteins.keys()
+        
+        self.color_maps = dict()
+        compartments = sorted(set(df_01_filtered_combined.index.get_level_values("Compartment")))
+        compartments.pop(compartments.index("undefined"))
+        self.color_maps["Compartments"] = dict(zip(compartments, self.css_color))
+        self.color_maps["Compartments"]["undefined"] = "lightgrey"
+        
+        self.color_maps["Clusters"] = dict(zip(self.clusters_for_ranking, self.css_color))
+        self.color_maps["Clusters"]["Undefined"] = "lightgrey"
            
 
     def add_svm_result(self, experiment, misclassification, name="default", prediction=pd.DataFrame(), comment="", overwrite=True):
@@ -1678,7 +1693,7 @@ class SpatialDataSetComparison:
         }
     
     
-    def perform_pca_comparison(self):
+    def perform_pca_comparison(self, n=3):
         """
         PCA will be performed, using logarithmized data.
 
@@ -1698,7 +1713,7 @@ class SpatialDataSetComparison:
                     index: "Experiment", "Gene names", "Map", "Exp_Map"
                     columns: "PC1", "PC2", "PC3"
                     contains only marker genes, that are consistent throughout all maps / experiments
-                df_global_pca: PCA processed dataframe
+                df_pca: PCA processed dataframe
                     index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
                     columns: "PC1", "PC2", "PC3"
                     contains all protein IDs, that are consistent throughout all experiments
@@ -1706,30 +1721,31 @@ class SpatialDataSetComparison:
 
         markerproteins = self.markerproteins.copy()
         
-        #df_01_filtered_combined = self.df_01_filtered_combined
-        #df_01_filtered_combined = self.df_01_filtered_combined 
-        
-        
+        df_zscore = self.df_01_filtered_combined.apply(zscore, axis=0).replace(np.nan, 0)
         df_mean = pd.DataFrame()
         for exp in self.exp_names:
-            df_exp = self.df_01_filtered_combined.stack("Fraction").unstack(["Experiment", "Map","Exp_Map"])[exp].mean(axis=1).to_frame(name=exp)
+            df_exp = df_zscore.stack("Fraction").unstack(["Experiment", "Map","Exp_Map"])[exp].mean(axis=1).to_frame(name=exp)
             df_mean = pd.concat([df_mean, df_exp], axis=1)
         df_mean = df_mean.rename_axis("Experiment", axis="columns").stack("Experiment").unstack("Fraction")
         
-        pca = PCA(n_components=3)
+        pca = PCA(n_components=n)
         
-        df_pca = pd.DataFrame(pca.fit_transform(df_mean.apply(zscore, axis=0).replace(np.nan, 0)))
-        df_pca.columns = ["PC1", "PC2", "PC3"]
-        df_pca.index = df_mean.index
+        df_pca = pd.DataFrame(pca.fit_transform(df_mean), columns=[f"PC{el+1}" for el in range(n)], index=df_mean.index)
+        self.df_pca_loadings = pd.DataFrame(pca.components_, columns = df_mean.columns, index=df_pca.columns).T.reset_index()
+        self.df_pca_var = pd.DataFrame(pca.explained_variance_ratio_, index = df_pca.columns)\
+            .reset_index().rename({"index":"Component", 0:"variance explained"}, axis=1)
         
         ###only one df, make annotation at that time
         df_cluster = pd.DataFrame([(k, i) for k, l in markerproteins.items() for i in l], columns=["Cluster", "Protein IDs"])
-        df_global_pca = df_pca.reset_index().merge(df_cluster, how="left", on="Protein IDs")
-        df_global_pca.Cluster.replace(np.NaN, "Undefined", inplace=True)
+        df_pca = df_pca.reset_index().merge(df_cluster, how="left", on="Protein IDs")
+        df_pca.Cluster.replace(np.NaN, "Undefined", inplace=True)
         
-        self.df_pca = df_pca 
-        self.df_global_pca = df_global_pca
-            
+        df_cluster_pca = df_zscore.reset_index().merge(df_cluster, how="right", on="Protein IDs").dropna()
+        df_cluster_pca.set_index(df_zscore.index.names+["Cluster"], inplace=True)
+        df_cluster_pca = pd.DataFrame(pca.transform(df_cluster_pca), columns=[f"PC{el+1}" for el in range(n)], index=df_cluster_pca.index)
+        
+        self.df_pca = df_pca
+        self.df_cluster_pca = df_cluster_pca
             
     def plot_pca_comparison(self, cluster_of_interest_comparison="Proteasome", multi_choice=["Exp1", "Exp2"]):
         """
@@ -1754,15 +1770,7 @@ class SpatialDataSetComparison:
         markerproteins = self.markerproteins
  
         try:
-            df_setofproteins_PCA = pd.DataFrame()
-            for map_or_exp in multi_choice:
-                    for marker in markerproteins[cluster_of_interest_comparison]:
-                        try:
-                            plot_try_pca = df_pca.xs((marker, map_or_exp), level=["Protein IDs", "Experiment"], drop_level=False)
-                        except KeyError:
-                            continue
-                        df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
-            df_setofproteins_PCA.reset_index(inplace=True)
+            df_setofproteins_PCA = df_pca.loc[df_pca.Cluster == cluster_of_interest_comparison,:]
             
             df_setofproteins_PCA = df_setofproteins_PCA.assign(Experiment_lexicographic_sort=pd.Categorical(df_setofproteins_PCA["Experiment"], categories=multi_choice,
                                                                                                               ordered=True))
@@ -1799,7 +1807,7 @@ class SpatialDataSetComparison:
                 df_organellarMarkerSet: df, columns: "Gene names", "Compartment", no index
                 multi_choice: list of experiment names
                 css_color: list of colors
-                df_global_pca: PCA processed dataframe
+                df_pca: PCA processed dataframe
                     index: "Gene names", "Protein IDs", "Compartment", "Experiment", 
                     columns: "PC1", "PC2", "PC3"
                     contains all protein IDs, that are consistent throughout all experiments    
@@ -1809,8 +1817,8 @@ class SpatialDataSetComparison:
         """
         
         
-        df_global_pca_exp = self.df_global_pca.loc[self.df_global_pca["Experiment"].isin(multi_choice)]
-        df_global_pca_exp.reset_index(inplace=True)
+        df_pca_exp = self.df_pca.loc[self.df_pca["Experiment"].isin(multi_choice)]
+        df_pca_exp.reset_index(inplace=True)
 
         compartments = list(SpatialDataSet.df_organellarMarkerSet["Compartment"].unique())
         compartment_color = dict(zip(compartments, self.css_color))
@@ -1825,17 +1833,17 @@ class SpatialDataSetComparison:
                 
         
         if markerset_or_cluster == True:
-            df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster!="Undefined"].sort_values(by="Cluster")
-            df_global_pca = df_global_pca_exp[df_global_pca_exp.Cluster=="Undefined"].append(df_global_pca)
+            df_pca = df_pca_exp[df_pca_exp.Cluster!="Undefined"].sort_values(by="Cluster")
+            df_pca = df_pca_exp[df_pca_exp.Cluster=="Undefined"].append(df_pca)
         else:
             for i in self.markerproteins[cluster_of_interest_comparison]:
-                df_global_pca_exp.loc[df_global_pca_exp["Protein IDs"] == i, "Compartment"] = "Selection"
-            df_global_pca = df_global_pca_exp.assign(Compartment_lexicographic_sort = pd.Categorical(df_global_pca_exp["Compartment"], 
+                df_pca_exp.loc[df_pca_exp["Protein IDs"] == i, "Compartment"] = "Selection"
+            df_pca = df_pca_exp.assign(Compartment_lexicographic_sort = pd.Categorical(df_pca_exp["Compartment"], 
                                                                                                      categories=[x for x in compartments], 
                                                                                                      ordered=True))
-            df_global_pca.sort_values(["Compartment_lexicographic_sort", "Experiment"], inplace=True)
+            df_pca.sort_values(["Compartment_lexicographic_sort", "Experiment"], inplace=True)
             
-        fig_global_pca = px.scatter(data_frame=df_global_pca,
+        fig_global_pca = px.scatter(data_frame=df_pca,
                                     x=x_PCA,
                                     y=y_PCA,
                                     color="Compartment" if markerset_or_cluster == False else "Cluster",
