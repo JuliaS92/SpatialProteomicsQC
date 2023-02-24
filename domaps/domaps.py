@@ -1567,9 +1567,15 @@ class SpatialDataSetComparison:
                 
                 elif data_type == "SVM results":
                     for res in self.json_dict[exp_name]["SVM results"].keys():
+                        misclassification = pd.read_json(self.json_dict[exp_name]["SVM results"][res]["misclassification"])
+                        if "T: True group" in misclassification.columns:
+                            misclassification.set_index("T: True group", inplace=True)
+                            misclassification.columns = [el.split(": ")[1] for el in misclassification.columns]
+                            misclassification.index = [el.split(": ")[1] for el in misclassification.index]
                         self.add_svm_result(exp_name,
-                                             pd.read_json(self.json_dict[exp_name]["SVM results"][res]["misclassification"]),
+                                             misclassification,
                                              name=res,
+                                             source="direct",
                                              prediction=pd.read_json(self.json_dict[exp_name]["SVM results"][res]["prediction"]),
                                              comment=self.json_dict[exp_name]["SVM results"][res]["comment"],
                                              overwrite=True # supposed to always exceed upload from old format
@@ -1661,7 +1667,7 @@ class SpatialDataSetComparison:
         self.color_maps["Clusters"]["Undefined"] = "lightgrey"
            
 
-    def add_svm_result(self, experiment, misclassification, name="default", prediction=pd.DataFrame(), comment="", overwrite=True):
+    def add_svm_result(self, experiment, misclassification, source="Perseus", name="default", prediction=pd.DataFrame(), comment="", overwrite=True):
         """
         Add SVM output (either only misclassification matrix or whole prediction) to the data.
         
@@ -1685,6 +1691,18 @@ class SpatialDataSetComparison:
         
         if name in self.svm_results[experiment].keys() and not overwrite:
             raise KeyError(f"SVM result named {name} already exists for experiment {experiment}. Rename it or set overwrite=True.")
+        
+        if source == "Perseus":
+            misclassification.set_index("T: True group", inplace=True)
+            misclassification.columns = [el.split(": ")[1] for el in misclassification.columns]
+            misclassification.index = [el.split(": ")[1] for el in misclassification.index]
+        elif source == "MetaMass":
+            misclassification.index = misclassification.columns
+            misclassification = misclassification.T
+        elif source == "direct":
+            misclassification.index = misclassification.columns
+        else:
+            raise ValueError(f"Source {source} for SVM results is not defined. Choose 'direct' and have true classes in rows and predicted classes in columns.")
         
         self.svm_results[experiment][name] = {
             "comment": comment,
@@ -2696,82 +2714,77 @@ class SpatialDataSetComparison:
                 }
         """
         
-        global_SVM_dict_total = {}
-        global_SVM_dict = {}
-        for exp in self.svm_results.keys():
-            try:
-                df_SVM = self.svm_results[exp]["default"]["misclassification"]
-                df_SVM["T: True group"] = df_SVM["T: True group"].str.replace(r'True: ', '')
-            except KeyError:
-                continue
-            SVM_dict = {}
-            all_correct = np.diag(df_SVM)
-            members = df_SVM.sum(axis=1)
-            total_members = 0
-            membrame_members = 0
-            membrane_correct = 0
-            all_organelle_recall = []
-            all_organelle_precision = []
-            all_organelle_f1 = []
-            F1_all_cluster = []
-            no_of_membrane_clusters = 0
-            total_correct = sum(all_correct)
-            predicted_one_organelle = df_SVM.sum(axis=0)
-            
-            for i in range(len(df_SVM)):
-                total_members = total_members + members[i]
-                recall = all_correct[i]/members[i]
-                fdr = (predicted_one_organelle[i]-all_correct[i])/predicted_one_organelle[i]
-                precision = 1-fdr
-                F1 = statistics.harmonic_mean([recall, precision])
-                F1_all_cluster.append(F1)
-                SVM_dict[df_SVM["T: True group"][i]] = {"Recall": recall, "FDR": fdr, "Precision": precision, "F1": F1} 
-                if df_SVM["T: True group"][i]!="Nuclear pore complex" and df_SVM["T: True group"][i]!="Large Protein Complex" and df_SVM["T: True group"][i]!="Actin binding proteins" :
-                    no_of_membrane_clusters = no_of_membrane_clusters+1
-                    membrame_members = membrame_members + members[i]
-                    membrane_correct = membrane_correct + all_correct[i]
-                    all_organelle_f1.append(F1)
-                    all_organelle_recall.append(recall)
-                    all_organelle_precision.append(precision)
-                
-            total_recall = total_correct/total_members
-            membrane_recall = membrane_correct/membrame_members
-            av_per_organelle_recall = statistics.mean(all_organelle_recall)
-            median_per_organelle_recall = statistics.median(all_organelle_recall)
-            av_per_organelle_precision = statistics.mean(all_organelle_precision)
-            avg_organelle_f1 = statistics.mean(all_organelle_f1)
-            avg_F1_all_cluster = statistics.mean(F1_all_cluster)
-            
-            SVM_dict_total = {}
-            SVM_dict_total["Avg. all clusters"] = {"Recall": total_recall, "F1": avg_F1_all_cluster} #total recall = marker prediction accuracy
-            SVM_dict_total["Avg. all organelles"] = {"Recall": av_per_organelle_recall, "F1": avg_organelle_f1, "Precision": av_per_organelle_precision}
-            SVM_dict_total["Membrane"] = {"Recall": membrane_recall}
-            SVM_dict_total["Median. per organelle"] = {"Recall": median_per_organelle_recall}
-            
-            global_SVM_dict[exp] = SVM_dict
-            global_SVM_dict_total[exp] = SVM_dict_total
-            self.global_SVM_dict = global_SVM_dict
-            self.global_SVM_dict_total = global_SVM_dict_total
-            
-        #f global_SVM_dict=={}:
-        #   self.cache_stored_SVM = False
-        #   return
-        #lse:
-        df_clusterPerformance_global = pd.DataFrame.from_dict({(i,j): global_SVM_dict[i][j] 
-                                for i in global_SVM_dict.keys() 
-                                for j in global_SVM_dict[i].keys()},
-                            orient='index')
-        df_clusterPerformance_global.index.names = ["Experiment", "Type"]
-        self.df_clusterPerformance_global = df_clusterPerformance_global.T 
+        df_clusterPerformance_global = pd.DataFrame()
+        df_AvgClusterPerformance_global = pd.DataFrame()
         
-        df_AvgClusterPerformance_global = pd.DataFrame.from_dict({(i,j): global_SVM_dict_total[i][j] 
-                                for i in global_SVM_dict_total.keys() 
-                                for j in global_SVM_dict_total[i].keys()},
-                            orient='index')
-        df_AvgClusterPerformance_global.index.names = ["Experiment", "Type"]
-        self.df_AvgClusterPerformance_global = df_AvgClusterPerformance_global.T
-        #elf.cache_stored_SVM = True
-        return 
+        for exp in self.exp_names:
+            
+            #confusion = pd.DataFrame([[5,0,1],[1,6,0],[0,0,6]], columns=["P1", "P2", "P3"], index=["T1", "T2", "T3"])
+            confusion = self.svm_results[exp]["default"]["misclassification"].copy()
+            
+            true_positives = np.diag(confusion)
+            mask_true = np.ones(confusion.shape)
+            mask_true[np.diag_indices(confusion.shape[0])] = 0
+            false_predicitons = confusion * mask_true
+            false_positives = false_predicitons.sum(axis=0)
+            false_negatives = false_predicitons.sum(axis=1)
+            recall = true_positives/(true_positives+false_negatives)
+            precision = true_positives/(true_positives+false_positives)
+            F1_scores = pd.Series([statistics.harmonic_mean([p,r]) for p,r in zip(precision, recall)], index=confusion.index)
+            df_clusterPerformance = pd.DataFrame(
+                [recall.values, precision.values, F1_scores.values],
+                columns=pd.MultiIndex.from_arrays([np.repeat(exp, len(recall)), confusion.index],
+                                                names=["Experiment", "Type"]),
+                index=["Recall", "Precision", "F1 score"]
+            )
+            df_clusterPerformance_global = pd.concat([df_clusterPerformance_global, df_clusterPerformance], axis=1)
+            
+            # Performance of SVMs across all predictions
+            overall = [
+                true_positives.sum()/(true_positives.sum()+false_negatives.sum()),
+                true_positives.sum()/(true_positives.sum()+false_positives.sum())
+            ]
+            overall.append(statistics.harmonic_mean(overall))
+            
+            # Average performance across all classes
+            average = [
+                recall.mean(),
+                precision.mean(),
+                F1_scores.mean()
+            ]
+            
+            # Average performance across membranous organelles
+            organelles = [
+                "Plasma membrane",
+                "Peroxisome",
+                "Mitochondrion",
+                "Lysosome",
+                "ER",
+                "Endosome",
+                "Golgi",
+                "Ergic/cisGolgi",
+                "ER_high_curvature",
+                "PM",
+                "endosome",
+                "Nucleus"
+            ]
+            organelle = [
+                recall[[el in organelles for el in confusion.index]].mean(),
+                precision[[el in organelles for el in confusion.index]].mean(),
+                F1_scores[[el in organelles for el in confusion.index]].mean()
+            ]
+            df_AvgClusterPerformance = pd.DataFrame([overall, average, organelle],
+                        index=pd.MultiIndex.from_arrays(
+                            [np.repeat(exp, 3),
+                            ["Overall performance", "Average all classes", "Average membraneous organelles"]],
+                            names=["Experiment", "Type"]),
+                        columns=["Recall", "Precision", "F1 score"]).T
+            df_AvgClusterPerformance_global = pd.concat([df_AvgClusterPerformance_global, df_AvgClusterPerformance], axis=1)
+        
+        self.df_clusterPerformance_global = df_clusterPerformance_global
+        self.df_AvgClusterPerformance_global = df_AvgClusterPerformance_global
+        
+        return
             
             
     def svm_plotting(self, multi_choice):
@@ -2786,7 +2799,7 @@ class SpatialDataSetComparison:
         df_clusterPerformance_global = self.df_clusterPerformance_global
         df_AvgClusterPerformance_global = self.df_AvgClusterPerformance_global
         
-        df_AvgAllCluster = df_AvgClusterPerformance_global.xs("Avg. all clusters", level='Type', axis=1)
+        df_AvgAllCluster = df_AvgClusterPerformance_global.xs("Overall performance", level='Type', axis=1)
         fig_markerPredictionAccuracy = go.Figure()#data=[go.Bar(x=df_test.columns, y=df_test.loc["Recall"])])
         for exp in multi_choice:
             fig_markerPredictionAccuracy.add_trace(go.Bar(x=[exp], y=[df_AvgAllCluster[exp].loc["Recall"]], name=exp))
@@ -2802,14 +2815,14 @@ class SpatialDataSetComparison:
                     )
         
         fig_clusterPerformance = go.Figure()
-        list_data_type = ["Avg. all clusters", "Avg. all organelles"]
+        list_data_type = ["Average all classes", "Average membraneous organelles"]
         for i,exp in enumerate(multi_choice):
             df_clusterPerformance = df_clusterPerformance_global.xs(exp, level='Experiment', axis=1).sort_index(axis=1)
             df_AvgClusterPerformance = df_AvgClusterPerformance_global.xs(exp, level='Experiment', axis=1)
-            fig_clusterPerformance.add_trace(go.Scatter(x=df_clusterPerformance.columns, y=df_clusterPerformance.loc["F1"], 
+            fig_clusterPerformance.add_trace(go.Scatter(x=df_clusterPerformance.columns, y=df_clusterPerformance.loc["F1 score"], 
                                                     marker=dict(color=pio.templates["simple_white"].layout["colorway"][i]), name=exp))
             for  data_type in list_data_type:
-                fig_clusterPerformance.add_trace(go.Scatter(x=[data_type], y=[df_AvgClusterPerformance[data_type].loc["F1"]],
+                fig_clusterPerformance.add_trace(go.Scatter(x=[data_type], y=[df_AvgClusterPerformance[data_type].loc["F1 score"]],
                             mode="markers",
                             showlegend=False,
                             marker=dict(color=pio.templates["simple_white"].layout["colorway"][i])
@@ -2853,7 +2866,7 @@ def svm_heatmap(df_SVM):
         df_SVM = df_SVM.set_index("T: True group")[::-1]
     
     except:
-        df_SVM = df_SVM.set_index("T: True group")[::-1]
+        pass
     
     y_axis_label = df_SVM.index
     x_axis_label = df_SVM.columns
@@ -2863,7 +2876,7 @@ def svm_heatmap(df_SVM):
     fig_SVMheatmap.add_trace(go.Heatmap(
                              z=data_svm,
                              x = x_axis_label,
-                             y = y_axis_label,
+                             y = y_axis_label if y_axis_label[0] != 0 else x_axis_label,
                              colorscale=[
                                  [0.0, "green"],
                                  [0.01, "white"],
