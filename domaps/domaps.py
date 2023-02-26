@@ -144,9 +144,6 @@ class SpatialDataSet:
     
 
     analysed_datasets_dict = {}
-    
-    df_organellarMarkerSet = pd.read_csv(pkg_resources.resource_stream(__name__, 'annotations/organellemarkers/{}.csv'.format("Homo sapiens - Uniprot")),
-                                       usecols=lambda x: bool(re.match("Compartment|Protein ID", x)))
 
     def __init__(
         self,
@@ -1838,12 +1835,8 @@ class SpatialDataSetComparison:
         df_pca_exp = self.df_pca.loc[self.df_pca["Experiment"].isin(multi_choice)]
         df_pca_exp.reset_index(inplace=True)
 
-        compartments = list(SpatialDataSet.df_organellarMarkerSet["Compartment"].unique())
-        compartment_color = dict(zip(compartments, self.css_color))
-        compartment_color["Selection"] = "black"
-        compartment_color["undefined"] = "lightgrey"
-        compartments.insert(0, "undefined")
-        compartments.insert(len(compartments), "Selection")
+        compartment_color = self.color_maps["Compartments"]
+        compartments = list(compartment_color.keys())
             
         cluster = self.markerproteins.keys()
         cluster_color = dict(zip(cluster, self.css_color))
