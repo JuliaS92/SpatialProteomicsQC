@@ -1986,7 +1986,7 @@ class SpatialDataSetComparison:
         return full_coverage, partial_coverage, no_coverage
     
     
-    def distance_boxplot_comparison(self, cluster_of_interest_comparison="Proteasome", collapse_maps=False, multi_choice=["Exp1", "Exp2"]):
+    def plot_intramap_scatter_cluster(self, cluster_of_interest_comparison="Proteasome", collapse_maps=False, multi_choice=["Exp1", "Exp2"]):
         """
         A box plot for desired experiments (multi_choice) and 1 desired cluster is generated displaying the distribution of the e.g.
         Manhattan distance. Either the maps for every single experiment are displayed individually or in a combined manner.
@@ -2106,188 +2106,91 @@ class SpatialDataSetComparison:
             return distance_boxplot_figure
     
     
-    def plot_biological_precision(self, multi_choice=None, clusters_for_ranking=None, min_members=5, reference=""):
+    def plot_intramap_scatter(self,
+                              normalization=np.median,
+                              aggregate_proteins=True,
+                              aggregate_maps=False,
+                              plot_type="strip",
+                              min_size=5,
+                              multi_choice=None,
+                              clusters_for_ranking=None,
+                              highlight=None
+                              ):
+        
         if multi_choice is None:
             multi_choice = self.exp_names
         if clusters_for_ranking is None:
             clusters_for_ranking = self.clusters_for_ranking
         if len(multi_choice) == 0 or len(clusters_for_ranking) == 0:
             return("Please provide at least one experiment and one cluster for ranking")
-        
+            
         df = self.df_distance_comp.copy()
+        df.drop(["Exp_Map", "merge type", "Compartment"], axis=1, inplace=True)
         df = df[df["Experiment"].isin(multi_choice)]
         df = df[df["Cluster"].isin(clusters_for_ranking)]
+        df = df.groupby(["Cluster", "Experiment", "Map"]).filter(lambda x: len(x)>=min_size)
+        df.set_index([col for col in df.columns if col != "distance"], inplace=True)
         
-        df_m = df.groupby(["Cluster", "Experiment", "Map"]).filter(lambda x: len(x)>=min_members)
-        df_c = df_m.groupby(["Cluster", "Experiment"]).median().reset_index()
-        df_m = df_m.groupby(["Cluster", "Experiment", "Map"]).median().reset_index()
+        if aggregate_maps is not False:
+            if aggregate_maps is True:
+                aggregate_maps = np.nanmean
+            df = pd.DataFrame(df.unstack("Map").apply(aggregate_maps, axis=1), columns=["distance"])
         
-        df_m = df_m.assign(Experiment_lexicographic_sort = pd.Categorical(df_m["Experiment"], categories=multi_choice, ordered=True))
-        df_m = df_m.sort_values("Experiment_lexicographic_sort").drop("Experiment_lexicographic_sort", axis=1)\
-               .groupby("Experiment", as_index=False, group_keys=False, sort=False).apply(lambda x: x.sort_values("distance", ascending=False))
-        df_c = df_c.assign(Experiment_lexicographic_sort = pd.Categorical(df_c["Experiment"], categories=multi_choice, ordered=True))
-        df_c = df_c.sort_values("Experiment_lexicographic_sort").drop("Experiment_lexicographic_sort", axis=1)\
-               .groupby("Experiment", as_index=False, group_keys=False, sort=False).apply(lambda x: x.sort_values("distance", ascending=False))
-        
-        bp_stacked_bar = px.bar(df_m, x="Experiment", y="distance", color="Cluster", hover_data=["Map"],
-                                width=400+80*len(multi_choice), template="simple_white", height=100+30*len(clusters_for_ranking)).update_layout(legend_traceorder="reversed")
-        
-        bp_box_minus_min = px.box(df_m.set_index(["Experiment", "Cluster", "Map"]).unstack(["Experiment", "Map"])\
-                                      .apply(lambda x: x-x.min(), axis=1).stack(["Experiment", "Map"]).reset_index()\
-                                      .sort_values(["Experiment"], key=lambda x: [multi_choice.index(el) for el in x]),
-                                  x="Experiment", y="distance", color="Experiment", hover_data=["Cluster", "Map"],
-                                  width=200+100*len(multi_choice), template="simple_white", height=400, points="all")\
-                                  .update_yaxes(title="distance - cluster offset (minimum)")
-        bp_box_minus_ref = px.box(df_c.set_index(["Experiment", "Cluster"]).unstack(["Experiment"])\
-                                      .apply(lambda x: x/x[("distance", reference)], axis=1).stack(["Experiment"]).reset_index()\
-                                      .sort_values(["Experiment"], key=lambda x: [multi_choice.index(el) for el in x])\
-                                      .loc[lambda x: x.Experiment != reference],
-                                  x="Experiment", y="distance", color="Experiment", hover_data=["Cluster"],
-                                  color_discrete_sequence=[px.colors.qualitative.D3[multi_choice.index(el)]
-                                      for el in multi_choice if el != reference],
-                                  width=200+100*len(multi_choice), template="simple_white", height=400, points="all")\
-                                  .update_yaxes(title="distance relative to {}".format(reference))
-        
-        return bp_stacked_bar, bp_box_minus_min, bp_box_minus_ref
-        
-        
-    
-    def distance_ranking_barplot_comparison(self, collapse_cluster=False, multi_choice=["Exp1", "Exp2"], clusters_for_ranking=None, ranking_boxPlot="Box plot"):#, toggle_sumORmedian=False):
-    #ref_exp="Exp1", 
-        if clusters_for_ranking is None:
-            clusters_for_ranking = self.clusters_for_ranking
-            
-            #an error massage, if no Experiments are selected, will be displayed already, that is why: return ""
-        if len(multi_choice)>=1:
+        if normalization == np.median:
+            df = df.groupby(["Cluster"]).apply(lambda x: x/normalization(x))
+        elif normalization in multi_choice:
+            df = df.unstack("Experiment").apply(lambda x: x/x[("distance", normalization)], axis=1).stack("Experiment")
+        else:
             pass
+        
+        if aggregate_proteins is not False:
+            if aggregate_proteins is True:
+                aggregate_proteins = np.nanmedian
+            df = pd.DataFrame(df.unstack(["Protein IDs", "Gene names"]).apply(aggregate_proteins, axis=1), columns=["distance"])
+        
+        plotargs = dict(
+            x="Experiment", y="distance", hover_data=df.index.names, template="simple_white"
+        )
+        
+        df = df.sort_values("distance", ascending=False)\
+            .sort_index(level="Experiment", key=lambda x:pd.Index([multi_choice.index(el) for el in x], name="Experiment"))
+        
+        medians = df.groupby("Experiment").median()
+        
+        if plot_type == "strip":
+            plot = px.strip(df.reset_index(), color="Experiment", stripmode="overlay", **plotargs)
+            plot.update_traces(width=2.3)
+            plot.update_xaxes(range=(-0.6,len(multi_choice)-0.4))
+            for index,m in medians.iterrows():
+                i = multi_choice.index(index)
+                plot.add_shape(x0=i-0.45,x1=i+0.45,y0=m[0],y1=m[0],
+                            line_color=px.colors.DEFAULT_PLOTLY_COLORS[i],
+                            line_width=3, opacity=0.8)
+        elif plot_type == "box":
+            plot = px.box(df.reset_index(), color="Experiment", **plotargs)
+        elif plot_type == "violin":
+            plot = px.violin(df.reset_index(), color="Experiment", **plotargs)
+        elif plot_type == "stacked":
+            plot = px.bar(df.reset_index(), color="Cluster", barmode="stack", **plotargs)
+            plot.update_layout(legend_traceorder="reversed", height=30*len(df.reset_index().Cluster.unique()))\
+            .update_traces(marker_line_color="black", marker_line_width=1)
+        elif plot_type == "histogram":
+            plot = px.histogram(df.reset_index(), x="distance", color="Experiment", barmode="overlay", **{k:v for k,v in plotargs.items() if k != "x"})
         else:
-            return ("")
+            raise ValueError("Unknown plot type")
         
-    #dict_cluster_normalizedMedian = {}
-        #multi_choice = i_multi_choice.value
-        #clusters_for_ranking =  i_clusters_for_ranking.value
-        df_distance_comp = self.df_distance_comp.copy()
-        df_distance_comp = df_distance_comp[df_distance_comp["Experiment"].isin(multi_choice)]
-        df_distance_comp = df_distance_comp[df_distance_comp["Cluster"].isin(clusters_for_ranking)]
+        if highlight is not None and highlight in df.index.get_level_values("Cluster") and plot_type not in ["histogram", "stacked"]:
+            df_highlight = df.xs(highlight, level="Cluster", axis=0, drop_level=False)
+            for index,v in df_highlight.iterrows():
+                i = multi_choice.index(index[df.index.names.index("Experiment")])
+                plot.add_annotation(x=i-0.45, y=v[0], ax=-10, ay=0,
+                                    showarrow=True, arrowside="end", arrowhead=1, arrowwidth=2, arrowsize=1,
+                                    hovertext="<br>".join(index))
         
-        df_quantified_cluster = df_distance_comp.reset_index()
-        df_quantified_cluster = df_distance_comp.drop_duplicates(subset=["Cluster", "Experiment"]).set_index(["Cluster", 
-                                                                                                                "Experiment"])["distance"].unstack("Cluster")
-        self.df_quantified_cluster = df_quantified_cluster.notnull().replace({True: "x", False: "-"})
+        plot.update_layout(width=200+100*len(multi_choice))
         
-        
-        dict_quantified_cluster = {}
-        dict_cluster_normalizedMedian_ref = {}
-        dict_median_distance_ranking = {}
-        for cluster in clusters_for_ranking:
-            try:
-                df_cluster = df_distance_comp[df_distance_comp["Cluster"]==cluster]
-                cluster_quantitity = df_cluster["Protein IDs"].unique().size
-                if  cluster_quantitity>= 5:
-                    dict_quantified_cluster[cluster] = cluster_quantitity
-                    all_median_one_cluster_several_exp = {}
-                    #ref = df_cluster["distance"].median()
-                    for exp in multi_choice:
-                        median = df_cluster[df_cluster["Experiment"]==exp]["distance"].median()
-                        all_median_one_cluster_several_exp[exp] = float(median)
-                        #new
-                        #if exp == ref_exp:
-                        #    ref = median
-                    ref = np.median(list(all_median_one_cluster_several_exp.values()))
-                    dict_median_distance_ranking[cluster] = all_median_one_cluster_several_exp
-                    
-                    median_ranking_ref = {exp: median/ref for exp, median in all_median_one_cluster_several_exp.items()}
-                    dict_cluster_normalizedMedian_ref[cluster] = median_ranking_ref
-                else:
-                    continue
-            except:
-                continue
-        
-        self.cluster_above_treshold = dict_quantified_cluster.keys()
-        self.df_quantified_cluster2 = pd.DataFrame.from_dict({"Number of PG per Cluster":dict_quantified_cluster}).T
-        
-        df_cluster_normalizedMedian_ref = pd.DataFrame(dict_cluster_normalizedMedian_ref)
-        df_cluster_normalizedMedian_ref.index.name="Experiment"
-        df_cluster_normalizedMedian_ref.rename_axis("Cluster", axis=1, inplace=True)
-        
-        #median makes a huge differnece, improves result of DIA, MQ, libary
-        df_RelDistanceRanking = pd.concat([df_cluster_normalizedMedian_ref.median(axis=1), df_cluster_normalizedMedian_ref.sem(axis=1)], axis=1, 
-                                        keys=["Distance Ranking (rel, median)", "SEM"]).reset_index().sort_values("Distance Ranking (rel, median)")
-        
-        ranking_sum = df_cluster_normalizedMedian_ref.sum(axis=1).round(2)
-        ranking_sum.name = "Normalized Median - Sum"
-        df_ranking_sum = ranking_sum.reset_index()
-        
-        #ranking_product = df_cluster_normalizedMedian.product(axis=1).round(2)
-        #ranking_product.name = "Normalized Median - Product"
-        #df_globalRanking = pd.concat([pd.DataFrame(ranking_sum), pd.DataFrame(ranking_product)], axis=1).reset_index()
-        
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.stack("Cluster")
-        df_cluster_normalizedMedian_ref.name="Normalized Median"
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.reset_index()
-        self.df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref
-        df_cluster_normalizedMedian_ref = df_cluster_normalizedMedian_ref.assign(Experiment_lexicographic_sort = pd.Categorical(df_cluster_normalizedMedian_ref["Experiment"], categories=multi_choice, ordered=True))
-        df_cluster_normalizedMedian_ref.sort_values("Experiment_lexicographic_sort", inplace=True)
-        
-        
-        if collapse_cluster == False:
-            
-            fig_ranking = px.bar(df_cluster_normalizedMedian_ref, 
-                                x="Cluster", 
-                                y="Normalized Median", 
-                                color="Experiment", 
-                                barmode="group", 
-                                title="Ranking - normalization to reference experiments the median across all experiments for each cluster",
-                                template="simple_white"
-                                )
-            
-            fig_ranking.update_xaxes(categoryorder="total ascending")
-                
-            fig_ranking.update_layout(autosize=False,
-                                    width=1200 if len(multi_choice)<=3 else 300*len(multi_choice),
-                                    height=500,
-                                    template="simple_white"
-                                    )
-            return fig_ranking
- 
-        else:
-            if ranking_boxPlot == "Bar plot - median":
-                fig_globalRanking = px.bar(df_RelDistanceRanking.sort_values("Distance Ranking (rel, median)"), 
-                                            x="Experiment",
-                                            y="Distance Ranking (rel, median)", 
-                                            title="Median manhattan distance distribution for <br>all protein clusters (n>=5 per cluster)",# - median of all individual normalized medians - reference experiment is the median across all experiments for each cluster",
-                                            error_x="SEM", error_y="SEM", 
-                                            color="Experiment", 
-                                            template="simple_white")
-                    
-        
-                                                
-            if ranking_boxPlot == "Box plot": 
-                fig_globalRanking = px.box(df_cluster_normalizedMedian_ref,
-                                        x="Experiment",
-                                        y="Normalized Median", 
-                                        title="Median manhattan distance distribution for <br>all protein clusters (n>=5 per cluster)",# "Ranking - median of all individual normalized medians - reference is the median across all experiments for each cluster",
-                                        color="Experiment",
-                                        points="all",
-                                        template="simple_white",
-                                        hover_name="Cluster")
-                #return pn.Column(pn.Row(fig_globalRanking), pn.Row(fig_globalRanking2))
-            else:
-                fig_globalRanking = px.bar(df_ranking_sum.sort_values("Normalized Median - Sum"), 
-                    x="Experiment",
-                    template="simple_white",
-                    y="Normalized Median - Sum", 
-                    title="Ranking - median of all individual normalized medians - reference is the median across all experiments for each cluster",
-                    color="Experiment")
-            
-            fig_globalRanking.update_layout(autosize=False,
-                                            width=250*len(multi_choice),
-                                            height=500,
-                                            template="simple_white"
-                                            )
-            
-            return fig_globalRanking
-        
+        return medians, plot
+    
     
     def quantity_pr_pg_barplot_comparison(self, multi_choice=["Exp1", "Exp2"]):
         """
