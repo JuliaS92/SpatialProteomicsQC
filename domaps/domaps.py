@@ -363,7 +363,7 @@ class SpatialDataSet:
             self.df_original = pd.read_csv(content, sep="\t", comment="#", usecols=lambda x: bool(re.match(self.imported_columns, x)), low_memory = True)
         else: #assuming csv file
             self.df_original = pd.read_csv(content, sep=",", comment="#", usecols=lambda x: bool(re.match(self.imported_columns, x)), low_memory = True)
-        assert self.df_original.shape[0]>10 and self.df_original.shape[1]>5
+        assert self.df_original.shape[0]>10 and self.df_original.shape[1]>2
         
         self.filename = filename
 
@@ -3214,6 +3214,9 @@ def format_data_long(
     if any([col not in sets.keys() for col in df_index.columns]):
         raise ValueError(f"Additional unknown column(s) {', '.join([col for col in df_index.columns if col not in sets.keys()])} present. Please specify what these are or remove them from the uploaded file.")
     
+    ## Convert to numeric type
+    df_index = df_index.apply(pd.to_numeric, errors='coerce')
+    
     ## Unstack samples and apply regex 
     df_index = df_index.unstack("Samples")
     df_index.columns = pd.MultiIndex.from_arrays(
@@ -3289,6 +3292,9 @@ def format_data_pivot(
     ## Catch any additional columns, which are not accounted for
     if any([not re.match("|".join(sets.values()), col) for col in df_index.columns]):
         raise ValueError(f"Additional unknown column(s) {', '.join([col for col in df_index.columns if not re.match('|'.join(sets.values()), col)])} present. Please specify what these are or remove them from the uploaded file.")
+    
+    ## Convert to numeric type
+    df_index = df_index.apply(pd.to_numeric, errors='coerce')
     
     # multindex will be generated, by extracting the information about the Map, Fraction and Type from each individual column name
     multiindex = pd.MultiIndex.from_arrays(
