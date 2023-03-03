@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
+import datashader as ds
 import re
 import traceback
 from io import BytesIO, StringIO
@@ -1631,7 +1632,7 @@ class SpatialDataSetComparison:
         fractions = []
         for (f,_) in columns:
             fractions.append(f)
-        fractions = set(fractions)
+        fractions = list(set(fractions))
         mixed = False
         for f in fractions:
             for e in self.exp_names:
@@ -1639,6 +1640,7 @@ class SpatialDataSetComparison:
                     mixed = True
                     continue
         self.mixed = mixed
+        self.fractions = fractions
         
         
         if "legacy" in json_dict[self.ref_exp]["Analysis parameters"].keys():
@@ -3703,3 +3705,97 @@ def normalize_sum1(
     df_01 = df_profiles.join(df_01norm)
     
     return df_01
+
+## The following function is taken from https://doi.org/10.1002/pmic.202100103, and was authored by Schessner et al.
+def plot_sample_correlations(df: pd.DataFrame,
+                             data_columns: str = "Intensity (.*)",
+                             correlation_function: callable = lambda x: np.corrcoef(x.T),
+                             mode: str = "scatter", log10: bool = True, binning: int = 10):
+    """
+    Generates either a grid of paired scatter plots, or a heatmap of pairwise correlation values.
+    
+    Parameters
+    ----------
+    df: pandas DataFrame
+    data_columns: regular expression string, default = "Intensity (.*)"
+        Regular expression matching to columns containing data and a capture group for sample labels.
+    correlation_function: callable, default = lambda x: np.corrcoef(x.T)
+        Callable function to calculate correlation between samples.
+    mode: str, default = "scatter"
+        One of 'scatter' and 'heatmap' to swtich modes.
+    log10: bool = True
+        If True, data is log10 transformed prior to analysis
+    binning: int = 10
+        Only relevant in scatter mode. Number of bins per full axis unit (e.g. 1e10 Intensity)
+        used for datashader density rendering.
+    
+    Returns
+    -------
+    a plotly Figure
+        either a subplotted, or a single heatmap depending on the mode
+    """
+    # pick and process data
+    df_sub = df[[el for el in df.columns if re.match(data_columns, el)]].copy()
+    if log10:
+        df_sub = df_sub.apply(np.log10)
+    df_sub = df_sub.replace([np.inf, -np.inf], np.nan)
+    df_sub.columns = [re.findall(data_columns, el)[0] for el in df_sub.columns]
+    
+    if mode == "scatter":
+        # setup subplots and axes
+        fig = make_subplots(rows=len(df_sub.columns), cols=len(df_sub.columns), start_cell='bottom-left',
+                            shared_yaxes=True, shared_xaxes=True, horizontal_spacing=0.03, vertical_spacing=0.03)
+        i_range = (np.floor(np.nanmin(df_sub)), np.ceil(np.nanmax(df_sub))+1/binning)
+        j_range = (np.floor(np.nanmin(df_sub)), np.ceil(np.nanmax(df_sub))+1/binning)
+        i_width = int((i_range[1]-i_range[0]-1/binning)*binning+1)
+        j_width = int((j_range[1]-j_range[0]-1/binning)*binning+1)
+        
+        # fill plots
+        for i,ni in enumerate(df_sub.columns):
+            for j,nj in enumerate(df_sub.columns):
+                # apply datashader
+                dc = ds.Canvas(plot_width=i_width, plot_height=j_width, x_range=i_range, y_range=j_range)
+                df_ij = df_sub[[ni,nj]].dropna() if i!=j else pd.DataFrame(df_sub[ni].dropna())
+                da = dc.points(df_ij, x=ni, y=nj)
+                zero_mask = da.values == 0
+                da.values = da.values.astype(float)
+                da.values[zero_mask] = np.nan
+                
+                # add trace
+                fig.add_trace(
+                    go.Heatmap(z=da,coloraxis="coloraxis1" if i!=j else "coloraxis2"),
+                    row=j+1, col=i+1
+                )
+                
+                # add annotations
+                if j == 0:
+                    fig.update_xaxes(title_text=ni, row=j+1, col=i+1, tickvals=list(range(0,i_width,binning)),
+                                     ticktext=np.round(da[nj].values[0:i_width:binning]))
+                if i == 0:
+                    fig.update_yaxes(title_text=nj, row=j+1, col=i+1, tickvals=list(range(0,j_width,binning)),
+                                     ticktext=np.round(da[ni].values[0:j_width:binning]))
+                if i!=j:
+                    fig.add_annotation(dict(text=str(np.round(np.min(correlation_function(df_sub[[ni,nj]].dropna())),4)),
+                                            x=binning, y=j_width, showarrow=False), row=j+1, col=i+1)
+        
+        # layout figure
+        fig.update_layout(template="simple_white", coloraxis2=dict(showscale=False, colorscale=["black", "black"]),
+                          width=i*200+100, height=j*200+70, margin_t=0)
+    elif mode=="heatmap":
+        da = np.ones((len(df_sub.columns), len(df_sub.columns)))
+        for i,ni in enumerate(df_sub.columns):
+            for j,nj in enumerate(df_sub.columns):
+                # filter data and store correlation values
+                df_ij = df_sub[[ni,nj]].dropna() if i!=j else pd.DataFrame(df_sub[ni].dropna())
+                if i!=j:
+                    da[i,j] = np.round(np.min(correlation_function(df_sub[[ni,nj]].dropna())),4)
+        # create figure and label axes
+        fig = go.Figure(data=go.Heatmap(z=da))
+        fig.update_xaxes(tickvals=list(range(0,i+1,1)),
+                          ticktext=list(df_sub.columns))
+        fig.update_yaxes(tickvals=list(range(0,j+1,1)),
+                          ticktext=list(df_sub.columns))
+        fig.update_layout(template="simple_white", width=i*40+150, height=j*40+150)
+    else:
+        raise ValueError
+    return fig
