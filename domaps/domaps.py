@@ -2618,9 +2618,13 @@ class SpatialDataSetComparison:
         for exp in self.exp_names:
             
             #confusion = pd.DataFrame([[5,0,1],[1,6,0],[0,0,6]], columns=["P1", "P2", "P3"], index=["T1", "T2", "T3"])
-            confusion = self.svm_results[exp]["default"]["misclassification"].copy()
+            try:
+                confusion = self.svm_results[exp]["default"]["misclassification"].copy()
+            except:
+                continue
             
             true_positives = np.diag(confusion)
+            class_sizes = confusion.sum(axis=1)
             mask_true = np.ones(confusion.shape)
             mask_true[np.diag_indices(confusion.shape[0])] = 0
             false_predicitons = confusion * mask_true
@@ -2630,10 +2634,10 @@ class SpatialDataSetComparison:
             precision = true_positives/(true_positives+false_positives)
             F1_scores = pd.Series([statistics.harmonic_mean([p,r]) for p,r in zip(precision, recall)], index=confusion.index)
             df_clusterPerformance = pd.DataFrame(
-                [recall.values, precision.values, F1_scores.values],
+                [recall.values, precision.values, F1_scores.values, class_sizes],
                 columns=pd.MultiIndex.from_arrays([np.repeat(exp, len(recall)), confusion.index],
                                                 names=["Experiment", "Type"]),
-                index=["Recall", "Precision", "F1 score"]
+                index=["Recall", "Precision", "F1 score", "Class size"]
             )
             df_clusterPerformance_global = pd.concat([df_clusterPerformance_global, df_clusterPerformance], axis=1)
             
@@ -2643,12 +2647,14 @@ class SpatialDataSetComparison:
                 true_positives.sum()/(true_positives.sum()+false_positives.sum())
             ]
             overall.append(statistics.harmonic_mean(overall))
+            overall.append(class_sizes.sum())
             
             # Average performance across all classes
             average = [
                 recall.mean(),
                 precision.mean(),
-                F1_scores.mean()
+                F1_scores.mean(),
+                class_sizes.mean()
             ]
             
             # Average performance across membranous organelles
@@ -2669,80 +2675,80 @@ class SpatialDataSetComparison:
             organelle = [
                 recall[[el in organelles for el in confusion.index]].mean(),
                 precision[[el in organelles for el in confusion.index]].mean(),
-                F1_scores[[el in organelles for el in confusion.index]].mean()
+                F1_scores[[el in organelles for el in confusion.index]].mean(),
+                class_sizes[[el in organelles for el in confusion.index]].mean()
             ]
             df_AvgClusterPerformance = pd.DataFrame([overall, average, organelle],
                         index=pd.MultiIndex.from_arrays(
                             [np.repeat(exp, 3),
                             ["Overall performance", "Average all classes", "Average membraneous organelles"]],
                             names=["Experiment", "Type"]),
-                        columns=["Recall", "Precision", "F1 score"]).T
+                        columns=["Recall", "Precision", "F1 score", "Class size"]).T
             df_AvgClusterPerformance_global = pd.concat([df_AvgClusterPerformance_global, df_AvgClusterPerformance], axis=1)
         
         self.df_clusterPerformance_global = df_clusterPerformance_global
         self.df_AvgClusterPerformance_global = df_AvgClusterPerformance_global
         
         return
-            
-            
-    def svm_plotting(self, multi_choice):
-        """
-        The markerperformance (line/scatter plot) as well as marker prediction accuracy (bar plot) is visuaized.
+    
+    
+    def plot_svm_summary(self,
+                         multi_choice=[],
+                         score="F1 score"):
         
-        Args:
-            self: df_AvgClusterPerformance_global 
-                  df_clusterPerformance_global
-            multi_choice: list of experiment names
-        """
-        df_clusterPerformance_global = self.df_clusterPerformance_global
-        df_AvgClusterPerformance_global = self.df_AvgClusterPerformance_global
+        if multi_choice == []:
+            multi_choice = self.exp_names
         
-        df_AvgAllCluster = df_AvgClusterPerformance_global.xs("Overall performance", level='Type', axis=1)
-        fig_markerPredictionAccuracy = go.Figure()#data=[go.Bar(x=df_test.columns, y=df_test.loc["Recall"])])
-        for exp in multi_choice:
-            fig_markerPredictionAccuracy.add_trace(go.Bar(x=[exp], y=[df_AvgAllCluster[exp].loc["Recall"]], name=exp))
-        fig_markerPredictionAccuracy.update_layout(template="simple_white", #showlegend=False, 
-                    title="Marker prediction accuracy - Overall recall",
-                    xaxis=go.layout.XAxis(linecolor="black",
-                                        linewidth=1,
-                                        mirror=True),
-                    yaxis=go.layout.YAxis(linecolor="black",
-                                        linewidth=1,
-                                        title="Marker prediction accuracy [%]",
-                                        mirror=True),
+        try:
+            df = pd.DataFrame(self.df_AvgClusterPerformance_global.loc[score,])
+        except KeyError:
+            raise KeyError(f"{score} is not among the criteria calculated for classification performance.")
+        
+        df.index.names=["Experiment", "Aggregation"]
+        df.reset_index(inplace=True)
+        df = df.loc[df.Experiment.isin(multi_choice)]
+        df = df.sort_values("Experiment", key=lambda x: [multi_choice.index(el) for el in x])
+        
+        plot = px.bar(df,
+                    x="Aggregation",
+                    y=score,
+                    color="Experiment",
+                    template="simple_white",
+                    barmode="group"
                     )
         
-        fig_clusterPerformance = go.Figure()
-        list_data_type = ["Average all classes", "Average membraneous organelles"]
-        for i,exp in enumerate(multi_choice):
-            df_clusterPerformance = df_clusterPerformance_global.xs(exp, level='Experiment', axis=1).sort_index(axis=1)
-            df_AvgClusterPerformance = df_AvgClusterPerformance_global.xs(exp, level='Experiment', axis=1)
-            fig_clusterPerformance.add_trace(go.Scatter(x=df_clusterPerformance.columns, y=df_clusterPerformance.loc["F1 score"], 
-                                                    marker=dict(color=pio.templates["simple_white"].layout["colorway"][i]), name=exp))
-            for  data_type in list_data_type:
-                fig_clusterPerformance.add_trace(go.Scatter(x=[data_type], y=[df_AvgClusterPerformance[data_type].loc["F1 score"]],
-                            mode="markers",
-                            showlegend=False,
-                            marker=dict(color=pio.templates["simple_white"].layout["colorway"][i])
-                                ))
-            fig_clusterPerformance.update_layout(template="simple_white", #showlegend=False, 
-                            title="Cluster wise SVM analysis",
-                            xaxis=go.layout.XAxis(linecolor="black",
-                                                linewidth=1,
-                                                mirror=True),
-                            yaxis=go.layout.YAxis(linecolor="black",
-                                                linewidth=1,
-                                                title="F1 score", #- harmonic mean of recall and precision
-                                                mirror=True),
-                            )
+        return plot
+    
+    def plot_svm_detail(self,
+                        multi_choice=[],
+                        score="F1 score"):
         
-        return fig_markerPredictionAccuracy, fig_clusterPerformance
+        if multi_choice == []:
+            multi_choice = self.exp_names
         
-
+        try:
+            df = pd.DataFrame(self.df_clusterPerformance_global.loc[score,])
+        except KeyError:
+            raise KeyError(f"{score} is not among the criteria calculated for classification performance.")
         
+        df.index.names=["Experiment", "Compartment"]
+        df.reset_index(inplace=True)
+        df = df.loc[df.Experiment.isin(multi_choice)]
+        df = df.sort_values("Experiment", key=lambda x: [multi_choice.index(el) for el in x])
+        
+        plot = px.bar(df,
+                    x="Compartment",
+                    y=score,
+                    color="Experiment",
+                    template="simple_white",
+                    barmode="group"
+                    )
+        
+        return plot
+    
     def __repr__(self):
         return str(self.__dict__)
-        #return "This is a spatial dataset with {} lines.".format(len(self.df_original))
+    
 
 def svm_heatmap(df_SVM):
     """
