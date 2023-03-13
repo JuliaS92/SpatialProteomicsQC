@@ -1878,17 +1878,18 @@ class pca_plot(Viewer):
                 template="simple_white",
                 opacity=0.9
                 )
-            plot.update_layout(margin_b=50,
-                               scene_xaxis_range=xlim, scene_yaxis_range=ylim, scene_zaxis_range=zlim,
-                               width=self.facet_width+200, height=self.facet_height)
+            plot.update_layout(scene_xaxis_range=xlim, scene_yaxis_range=ylim, scene_zaxis_range=zlim,
+                               width=self.facet_width+200, height=self.facet_height)\
+                .update_scenes(camera_eye=dict(x=1.75, y=1.75, z=1)).update_layout(margin=dict(l=0,r=0,t=50,b=0))\
+                .update_traces(marker_size=3)
         
         return pn.Pane(plot, config=plotly_config)
     
     @param.depends('show_variability', 'df_var')
     def _variability(self):
         if self.show_variability and self.df_var.shape != (0,0):
-            fig = px.line(self.df_var, x="Component", y="variance explained",
-                           template="simple_white", title="Component variance").update_traces(mode="lines+markers")
+            fig = px.bar(self.df_var, x="Component", y="variance explained",
+                         template="simple_white", title="Component variance")
             fig.update_layout(height=350, width=200+(self.df_var.shape[0]*50))
             return fig
         else:
@@ -1899,7 +1900,7 @@ class pca_plot(Viewer):
         if self.show_loadings and self.df_loadings.shape != (0,0):
             fig = px.scatter(self.df_loadings, x=self._component1.value, y=self._component2.value,
                              template="simple_white", hover_data=self.df_loadings.columns,
-                             title="Component loadings").update_traces(marker_size=1)
+                             title="Component loadings", text="Fraction").update_traces(marker_size=1)
             for i, row in self.df_loadings.iterrows():
                 fig.add_annotation(ax=0, ay=0, x=row[self._component1.value], y=row[self._component2.value],
                                    axref="x", ayref="y", text="",

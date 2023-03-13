@@ -2694,7 +2694,8 @@ class SpatialDataSetComparison:
     
     def plot_svm_summary(self,
                          multi_choice=[],
-                         score="F1 score"):
+                         score="F1 score",
+                         orientation="v"):
         
         if multi_choice == []:
             multi_choice = self.exp_names
@@ -2710,8 +2711,9 @@ class SpatialDataSetComparison:
         df = df.sort_values("Experiment", key=lambda x: [multi_choice.index(el) for el in x])
         
         plot = px.bar(df,
-                    x="Aggregation",
-                    y=score,
+                    x="Aggregation" if orientation == "v" else score,
+                    y=score if orientation == "v" else "Aggregation",
+                    orientation=orientation,
                     color="Experiment",
                     template="simple_white",
                     barmode="group"
@@ -2721,7 +2723,8 @@ class SpatialDataSetComparison:
     
     def plot_svm_detail(self,
                         multi_choice=[],
-                        score="F1 score"):
+                        score="F1 score",
+                        orientation="v"):
         
         if multi_choice == []:
             multi_choice = self.exp_names
@@ -2737,8 +2740,9 @@ class SpatialDataSetComparison:
         df = df.sort_values("Experiment", key=lambda x: [multi_choice.index(el) for el in x])
         
         plot = px.bar(df,
-                    x="Compartment",
-                    y=score,
+                    x="Compartment" if orientation == "v" else score,
+                    y=score if orientation == "v" else "Compartment",
+                    orientation=orientation,
                     color="Experiment",
                     template="simple_white",
                     barmode="group"
