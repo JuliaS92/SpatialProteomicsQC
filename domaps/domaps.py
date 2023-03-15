@@ -2544,9 +2544,14 @@ class SpatialDataSetComparison:
     
     
     def plot_overview(self, multi_choice, clusters, quantile):
-        dists = self.df_distance_comp.query('Cluster in @clusters').query('Experiment in @multi_choice')\
-            .groupby(["Experiment", "Map", "Cluster"]).median()\
-            .groupby("Experiment").sum().rename({"distance": "complex scatter"}, axis=1)
+    
+        dists, _ = self.plot_intramap_scatter(
+            normalization=np.median,
+            min_size=1,
+            multi_choice=multi_choice,
+            clusters_for_ranking=clusters
+        )
+        dists = dists.rename({"distance": "complex scatter"}, axis=1)
         
         rep = self.distances[multi_choice].dropna().apply(lambda x: np.quantile(x, quantile), axis=0)
         rep.name = "intermap scatter"
@@ -2573,7 +2578,7 @@ class SpatialDataSetComparison:
                                     ), 1, i+1)
         fig.update_xaxes(matches='x').update_layout(template="simple_white", showlegend=False)
         fig.for_each_yaxis(lambda x: x.update(title="full coverage protein groups" if x.anchor=="x"\
-                                              else "∑ median intracomplex distances" if x.anchor=="x2"\
+                                              else "median normalized intracomplex scatter" if x.anchor=="x2"\
                                               else f"{quantile*100}% quantile of shared protein groups",
                                               tickformat=".0s" if x.anchor == "x" else ".2r",
                                               nticks=8, title_standoff=8 if x.anchor=="x" else 0
