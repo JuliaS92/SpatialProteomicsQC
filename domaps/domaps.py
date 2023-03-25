@@ -726,6 +726,7 @@ class SpatialDataSet:
                 y=plot_df["number of protein groups"],
                 name=t))
         fig_npg.update_layout(layout, title="Number of Protein Groups", yaxis=go.layout.YAxis(title="Protein Groups"))
+        fig_npg.update_layout(**calc_width_categorical(fig_npg))
         
                 
         fig_npr = go.Figure()
@@ -736,6 +737,7 @@ class SpatialDataSet:
                 y=plot_df["number of profiles"],
                 name=t))
         fig_npr.update_layout(layout, title="Number of Profiles")
+        fig_npr.update_layout(**calc_width_categorical(fig_npr))
         
         df_quantity_pr_pg = df_quantity_pr_pg.sort_values("filtering")
         fig_npr_dc = go.Figure()
@@ -746,7 +748,7 @@ class SpatialDataSet:
                 y=plot_df["data completeness of profiles"],
                 name=t))
         fig_npr_dc.update_layout(layout, title="Coverage", yaxis=go.layout.YAxis(title="Data completness"))
-        #fig_npr_dc.update_xaxes(tickangle=30)
+        fig_npr_dc.update_layout(**calc_width_categorical(fig_npr_dc))
         
         fig_npg_F = px.bar(self.df_npg,
                           x="Fraction", 
@@ -755,6 +757,7 @@ class SpatialDataSet:
                           template="simple_white",
                           title = "Protein groups per fraction - before filtering",
                           width=500)
+        fig_npg_F.update_layout(**calc_width_categorical(fig_npg_F))
         
         fig_npgf_F = px.bar(self.df_npgf,
                   x="Fraction", 
@@ -763,6 +766,7 @@ class SpatialDataSet:
                   template="simple_white",
                   title = "Protein groups per fraction - after filtering",
                   width=500)
+        fig_npgf_F.update_layout(**calc_width_categorical(fig_npgf_F))
         
         fig_npg_F_dc = go.Figure()
         for data_type in ["Data completeness after filtering", "Data completeness before filtering"]:
@@ -771,6 +775,7 @@ class SpatialDataSet:
                     y=self.df_npg_dc[data_type],
                     name=data_type))
         fig_npg_F_dc.update_layout(layout, barmode="overlay", title="Data completeness per fraction", yaxis=go.layout.YAxis(title=""), height=450, width=600)
+        fig_npg_F_dc.update_layout(**calc_width_categorical(fig_npg_F_dc))
         
         
         return fig_npg, fig_npr, fig_npr_dc, fig_npg_F, fig_npgf_F, fig_npg_F_dc
@@ -1256,7 +1261,7 @@ class SpatialDataSet:
                                       mirror=True),
                 template="simple_white"
             )
-    
+            
             return distance_boxplot_figure
     
         except:
@@ -2057,6 +2062,7 @@ class SpatialDataSetComparison:
                                                                                        title="Distance",
                                                                                        mirror=True),
                                                                  template="simple_white")
+                individual_distance_boxplot_figure.update_layout(**calc_width_categorical(individual_distance_boxplot_figure))
                 
                 return individual_distance_boxplot_figure
         
@@ -2104,6 +2110,7 @@ class SpatialDataSetComparison:
                                                                         mirror=True),
                                                   template="simple_white"
                                                  )
+            distance_boxplot_figure.update_layout(**calc_width_categorical(distance_boxplot_figure))
             
             return distance_boxplot_figure
     
@@ -2189,7 +2196,7 @@ class SpatialDataSetComparison:
                                     showarrow=True, arrowside="end", arrowhead=1, arrowwidth=2, arrowsize=1,
                                     hovertext="<br>".join(index))
         
-        plot.update_layout(width=200+100*len(multi_choice))
+        plot.update_layout(**calc_width_categorical(plot), xaxis_tickangle=45)
         
         return medians, plot
     
@@ -2232,7 +2239,7 @@ class SpatialDataSetComparison:
         fig_quantity_pg.update_layout(layout, title="Number of Protein Groups",
                                       xaxis={"tickmode":"array", "tickvals":[el for el in range(len(multi_choice)*2)],
                                              "ticktext":filtered, "title": {"text": None}})
-        
+        fig_quantity_pg.update_layout(**calc_width_categorical(fig_quantity_pg))
          
          
         fig_quantity_pr = px.bar(df_quantity_pr_pg_combined, x="filtering", y="number of profiles",
@@ -2240,6 +2247,7 @@ class SpatialDataSetComparison:
                                  facet_col="Experiment",template="simple_white", opacity=1)\
                                 .for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
         fig_quantity_pr.update_layout(layout, title="Number of Profiles" )
+        fig_quantity_pr.update_layout(**calc_width_categorical(fig_quantity_pr))
         
         return fig_quantity_pg, fig_quantity_pr
     
@@ -2279,6 +2287,7 @@ class SpatialDataSetComparison:
             width=100*len(multi_choice)+150, height=400,
             template="simple_white", xaxis={"tickmode":"array", "tickvals":[el for el in range(len(multi_choice)*2)],
                                             "ticktext":filtered, "title": {"text": None}})
+        fig_pr_dc.update_layout(**calc_width_categorical(fig_pr_dc))
         
         return fig_pr_dc
     
@@ -3814,3 +3823,16 @@ def plot_sample_correlations(df: pd.DataFrame,
     else:
         raise ValueError
     return fig
+
+
+def calc_width_categorical(f, itemwidth=40, charwidth=7):
+    legendlength = max([len(el.name) for el in f.data])
+    try:
+        items = set([i for el in f.data for i in el.x])
+    except:
+        items = [tup for el in f.data for tup in zip(*el.x)]
+        items = [el for i, el in enumerate(items) if el not in items[:i]]
+    xwidth = 80+len(items)*itemwidth
+    legendwidth = 50+charwidth*legendlength
+    width=xwidth+legendwidth
+    return dict(width=width, xaxis_domain=[0,xwidth/width], legend_x=(xwidth+5)/width)
