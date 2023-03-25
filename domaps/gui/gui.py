@@ -495,7 +495,7 @@ class ConfigureFileContent(Viewer):
         self._column_samples = pn.widgets.TextInput(name="Sample names", disabled=True, value="")
         self._column_mainset_long = pn.widgets.TextInput(name="Main dataset", disabled=True, value="")
         self._column_mainset_pivot = pn.widgets.TextInput(name="Main dataset regex", disabled=True, value="")
-        self._columns_annotation = pn.widgets.MultiSelect(name="Additional columns to load", value=[])
+        self._columns_annotation = pn.widgets.CrossSelector(name="Additional columns to load", value=[], height=220)
         self._name_pattern = pn.widgets.TextInput(name="Sample name pattern", value="")
         self._pattern_presets = pn.widgets.Select(name="preset patterns",
                                    options=[".* (?P<rep>.*)_(?P<frac>.*)",
@@ -528,6 +528,7 @@ class ConfigureFileContent(Viewer):
                 objects=[
                     pn.Row(self._column_ids, self._column_genes, self._column_mainset_long),
                     pn.Row(self._name_pattern, self._pattern_presets, self._column_samples, help_icon("Correct specification of this regular expression is crucial to ensure correct processing of the profiles. Open the fractions card below to control that fractions are labelled and ordered correctly.")),
+                    pn.pane.Markdown("Additional columns to load (these won't affect the analysis)", width=self.width),
                     self._columns_annotation
                 ],
                 header=pn.pane.Markdown("**Column configuration**", width=self.width)),
@@ -538,6 +539,7 @@ class ConfigureFileContent(Viewer):
                 objects=[
                     pn.Row(self._column_ids, self._column_genes, self._column_mainset_pivot),
                     pn.Row(self._name_pattern, self._pattern_presets, help_icon("Correct specification of this regular expression is crucial to ensure correct processing of the profiles. Open the fractions card below to control that fractions are labelled and ordered correctly.")),
+                    pn.pane.Markdown("Additional columns to load (these won't affect the analysis)", width=self.width),
                     self._columns_annotation
                 ],
                 header=pn.pane.Markdown("**Column configuration**", width=self.width)),
@@ -577,7 +579,7 @@ class ConfigureFileContent(Viewer):
         self._column_samples.width = self.width//3-20-15
         self._name_pattern.width = self.width//3-20-15
         self._pattern_presets.width = self.width//3-20-15
-        self._columns_annotation.width= self.width//2-20
+        self._columns_annotation.width= self.width-20
     
     @param.depends('acquisition', 'level', 'orientation',
                    'source', watch=True)
@@ -691,12 +693,13 @@ class ConfigureFileContent(Viewer):
                     self._dependent_layout_long[0][1][2] = self._column_custom_samples
                     self._column_custom_samples.param.trigger('value')
             try:
-                self._columns_annotation.value = source["annotation_columns"]
-                self._dependent_layout_long[0][2] = self._columns_annotation
-                self._dependent_layout_pivot[0][2] = self._columns_annotation
+                v = [el for el in source["annotation_columns"] if el in self._columns_annotation.options]
+                self._columns_annotation.value = v
+                self._dependent_layout_long[0][3] = self._columns_annotation
+                self._dependent_layout_pivot[0][3] = self._columns_annotation
             except:
-                self._dependent_layout_long[0][2] = self._columns_annotation
-                self._dependent_layout_pivot[0][2] = self._columns_annotation
+                self._dependent_layout_long[0][3] = self._columns_annotation
+                self._dependent_layout_pivot[0][3] = self._columns_annotation
         
         else:
             self._dependent_layout_long[0][0][0] = self._column_custom_ids
@@ -708,8 +711,8 @@ class ConfigureFileContent(Viewer):
             self._column_mainset_pivot.disabled = False
             self._dependent_layout_long[0][1][2] = self._column_custom_samples
             self._column_custom_samples.param.trigger('value')
-            self._dependent_layout_long[0][2] = self._columns_annotation
-            self._dependent_layout_pivot[0][2] = self._columns_annotation
+            self._dependent_layout_long[0][3] = self._columns_annotation
+            self._dependent_layout_pivot[0][3] = self._columns_annotation
         
         self._set_defaults_acquisition()
     
@@ -747,7 +750,8 @@ class ConfigureFileContent(Viewer):
     @param.depends('columns_annotation', 'column_ids', 'column_genes', 'column_samples', 'column_mainset', 'name_pattern', watch=True)
     def _sync_widgets_values(self):
         if self._columns_annotation.value != self.columns_annotation:
-            self._columns_annotation.value = self.columns_annotation
+            v = [el for el in self.columns_annotation if el in self._columns_annotation.options]
+            self._columns_annotation.value = v
         try:
             self._column_custom_ids.value = self.column_ids
         except:
@@ -1891,7 +1895,7 @@ class pca_plot(Viewer):
             fig = px.bar(self.df_var, x="Component", y="variance explained",
                          template="simple_white", title="Component variance")
             fig.update_layout(height=350, width=200+(self.df_var.shape[0]*50))
-            return fig
+            return pn.Pane(fig, config=plotly_config)
         else:
             return pn.Column()
     
@@ -1906,7 +1910,7 @@ class pca_plot(Viewer):
                                    axref="x", ayref="y", text="",
                                    arrowhead=1, arrowwidth=2, showarrow=True, arrowcolor="black")
             fig.update_layout(height=350, width=350)
-            return fig
+            return pn.Pane(fig, config=plotly_config)
         else:
             return pn.Column()
     
