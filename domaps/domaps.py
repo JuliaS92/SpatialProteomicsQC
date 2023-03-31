@@ -88,6 +88,7 @@ class SpatialDataSet:
                     "LFQ intensity": "LFQ intensity .+",
                     "MS/MS count": "MS/MS count .+",
                     "Intensity": "Intensity .+",
+                    "Abundance": "Intensity .+"
                 },
                 column_filters={
                     "Potential contaminant": ["!=", "'+'"],
@@ -104,7 +105,8 @@ class SpatialDataSet:
                 sets={
                     "LFQ intensity": "PG.Quantity",
                     "MS/MS count": "PG.RunEvidenceCount",
-                    "Intensity": "PG.Quantity"
+                    "Intensity": "PG.Quantity",
+                    "Abundance": "PG.Quantity"
                 }
             ),
             Spectronaut_proteins_pivot=None,
