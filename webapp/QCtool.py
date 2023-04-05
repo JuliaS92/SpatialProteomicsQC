@@ -1,7 +1,21 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Library imports
+# ## Table of contents<a id="TOC"></a>
+# 1. [Library imports](#libraries)
+# 2. [panel and plotly settings and customization](#styling)
+# 3. [Global variables](#globals)
+# 4. [App interface skeleton](#skeleton)
+# 5. [App serving](#serving)
+# 6. [Cell structuring](#structuring)
+# 7. [Home tab](#home)
+# 8. [Analysis tab](#analysis)
+# 9. [Comparison output tabs](#comparison)
+# 10. [Benchmark tab upload section](#benchmarkupload)
+# 11. [Code interactions](#interactions)
+
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## Library imports<a id="libraries"></a>
 
 # In[ ]:
 
@@ -26,6 +40,7 @@ from importlib import reload
 import pkg_resources
 import time
 import copy
+from scipy.stats import spearmanr
 
 import domaps.gui as gui
 
@@ -40,7 +55,8 @@ except Exception as ex:
 from datetime import datetime
 
 
-# ## panel and plotly settings and customization
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## panel and plotly settings and customization<a id="styling"></a>
 
 # In[ ]:
 
@@ -49,7 +65,8 @@ css = """
 .detail_menu .bk-headers-wrapper{
   border-bottom: 2px solid #0a5da8 !important;
   margin-bottom: 10px;
-  min-width: 1300px;
+  min-width: 800px;
+  max-width: 2000px !important;
 }
 .detail_menu .bk-tab{
   color: #0a5da8;
@@ -63,7 +80,8 @@ css = """
 .main_menu .bk-headers-wrapper{
   border-bottom: 2px solid #0a5da8 !important;
   margin-bottom: 10px;
-  min-width: 1300px;
+  min-width: 800px;
+  max-width: 2000px !important;
 }
 .main_menu .bk-tab{
   color: #0a5da8;
@@ -75,12 +93,9 @@ css = """
   border-width: 2px 1px 0px 1px !important;
   color: #111111 !important;
 }
-.content-width{
-  min-width: 1300px;
-}
 
 .bk-tabs-header{
-  min-width: 1300px;
+  min-width: 1000px;
 }
 
 .card-title:first-child{
@@ -90,6 +105,10 @@ css = """
 .button-main .bk-btn{
   font-size: 120%;
   font-weight: bold;
+}
+
+body{
+  margin:0;
 }
 """
 pn.extension(raw_css=[css])
@@ -109,7 +128,8 @@ def resize(el):
         pass
 
 
-# ## Global variables
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## Global variables<a id="globals"></a>
 
 # In[ ]:
 
@@ -127,78 +147,65 @@ mem_available_datasets = dict()
 with open("textfragments.json", "r") as file:
     textfragments = json.load(file)
 
-DEBUG = True
+DEBUG = False
 MAX_SIZE_MB = 80
 CONTENT_WIDTH = 1000
 
 
-# ## App interface
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## App interface skeleton<a id="skeleton"></a>
 
 # In[ ]:
 
 
 #### Served panel object:
-app = pn.GridSpec()#sizing_mode="stretch_both", margin=0)
-app[0,0] = pn.Spacer(background="white", margin=0) #"#DDDDDD"
-app[0,9] = pn.Spacer(background="white", margin=0) #"#DDDDDD"
+app = pn.GridSpec(sizing_mode="stretch_both", margin=0)
+app[0,0] = pn.Spacer(background="#DDDDDD", margin=0) #
+app[0,16] = pn.Spacer(background="#DDDDDD", margin=0) #
 
 #### Insert main content container
 app_center = pn.Column(pn.Row(pn.Pane("# QC tool for Spatial Proteomics", width = 600),
                               pn.layout.HSpacer(),
                               margin=10),
-                       pn.Row(name="main_content"),
-                       pn.Spacer(background="#DDDDDD", height=100, margin=0)
+                       pn.Row(name="main_content", margin=50)
                       )
-app[0,1:8] = app_center
+app[0,1:15] = app_center
 
 #### Insert main menu tab object
-app_tabs = pn.Tabs(margin=10, css_classes=["content-width", "main_menu"], dynamic=False)
+app_tabs = pn.Tabs(margin=10, css_classes=["main_menu"], dynamic=True, sizing_mode="stretch_width")
 app_center.objects[[i.name for i in app_center].index("main_content")] = app_tabs
 
 #### Append individual dashboards
 ## Home
 dashboard_home = pn.Column(
     "Interface loading ...",
-    name="home", css_classes=["content-width"])
+    name="home", sizing_mode="stretch_width"
+)
 app_tabs.append(("Home", dashboard_home))
 
 ## Single analysis
 dashboard_analysis = pn.Column(
     "Interface loading ...",
-    name="analysis", css_classes=["content-width"])
+    name="analysis", sizing_mode="stretch_width"
+)
 app_tabs.append(("Analysis", dashboard_analysis))
-analysis_tabs = pn.Tabs(margin=10, css_classes=["content-width", "detail_menu"], dynamic=False)
+analysis_tabs = pn.Tabs(margin=10, css_classes=["detail_menu"], dynamic=True, sizing_mode="stretch_width")
 
 ## Benchmark
 dashboard_benchmark = pn.Column(
     "Interface loading ...",
-    name="benchmark", css_classes=["content-width"])
+    name="benchmark", sizing_mode="stretch_width"
+)
 app_tabs.append(("Benchmark", dashboard_benchmark))
-comparison_tabs = pn.Tabs(margin=10, css_classes=["content-width", "detail_menu"], dynamic=False)
-
-## Manage datasets
-#dashboard_MissclassificationMatrix = pn.Column(
-#    "Please, upload a file first and press 'Analyse clusters'",
-#    name="SVM Analysis", css_classes=["content-width"])
-#dashboard_amendment = pn.Column(
-#    "Please, upload a json file first",
-#    name="Renaming", css_classes=["content-width"])
-dashboard_manageDatasets = pn.Column(
-    "Interface loading ...",
-    name="Manage datasets", css_classes=["content-width"])
-#app_tabs.append(("Manage Datasets", dashboard_manageDatasets))
-
-#amendment_tabs = pn.Tabs(margin=10, css_classes=["content-width", "detail_menu"], dynamic=True)
-#amendment_tabs.append(("Change Experiment name and comment", dashboard_amendment))
-#amendment_tabs.append(("SVM Upload", dashboard_MissclassificationMatrix))
+comparison_tabs = pn.Tabs(margin=10, css_classes=["detail_menu"], dynamic=True, sizing_mode="stretch_width")
 
 ## About
-app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], width=1000))))
+app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], sizing_mode="stretch_width"))))
 
 
-# ## App serving
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## App serving<a id="serving"></a>
 # Switch cells below between markup and code to set up for server hosting from the command line (app.servable) vs. local hosting from python.
-
 
 # try:
 #     server.stop()
@@ -212,7 +219,9 @@ app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], width=100
 
 app.servable()
 
-# ## Cell structuring
+
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## Cell structuring<a id="structuring"></a>
 # All cells below contain one or several sets of these points:
 # - (Dashboard structure)
 # - Layout and widget elements (outside in)
@@ -242,7 +251,8 @@ app.servable()
 ################################
 
 
-# ## Home tab
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## Home tab<a id="home"></a>
 
 # In[ ]:
 
@@ -297,7 +307,8 @@ btn_home_benchmark.on_click(home_gotobenchmark)
 # None
 
 
-# ## Analysis tab
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## Analysis tab<a id="analysis"></a>
 # - File config
 # - Analysis output
 
@@ -308,7 +319,7 @@ btn_home_benchmark.on_click(home_gotobenchmark)
 ########################
 dashboard_analysis.objects = [
     pn.Row(name="file_config"),
-    pn.Column(name="analysis_output")
+    pn.Column(name="analysis_output", sizing_mode="stretch_width")
 ]
 
 #### Layout elements
@@ -321,25 +332,26 @@ lo_config_details = pn.Card(
     pn.Pane(textfragments["upload_details"]), header="### Details on configuring your data", width=400, collapsed = True)
 lo_config_error_messages = pn.Card(
     pn.Pane(textfragments["upload_error_messages"]), header="### Common error messages", width=400, collapsed = True)
-#
-#i_file = pn.widgets.FileInput(name="Upload file")
-#lo_read_file.append(i_file)
+
 loading_status = pn.Row()
 idle = pn.indicators.LoadingSpinner(value=False, width=100, height=100, color="primary")
 loading = pn.indicators.LoadingSpinner(value=True, width=100, height=100, color="primary")
-
 analysis_status = pn.Pane("", width=300)
 filereading_status = pn.Pane("No data import yet", width=300)
-
-
 i_FileConfig = gui.ConfigureSingleFile(width=540)
+#lo_read_file.append(i_FileConfig)
+
 #### Append layout to dashboard
 #### File config
 ###############################
 dashboard_analysis.objects[[el.name for el in dashboard_analysis].index("file_config")].objects = []
 for el in [
     pn.Column(i_FileConfig, analysis_status, loading_status, width=600),
-    pn.Column(lo_config_instructions, lo_config_details, lo_config_error_messages)
+    pn.Column(
+        lo_config_instructions,
+        lo_config_details,
+        # lo_config_error_messages # currently empty
+    )
 ]:
     dashboard_analysis.objects[[el.name for el in dashboard_analysis].index("file_config")].append(el)
 
@@ -347,26 +359,18 @@ for el in [
 #### File config
 ################
 # future_execution
-# response_pattern
-# response_acquisition
-# response_reannotation
-# read_file
-# execution
 
 cache_uploaded = pn.widgets.Checkbox(value=False)
 cache_run = pn.widgets.Checkbox(value=False)
 #define widgets that should be disbled after run==True
-#wdgts = [i_acquisition,i_name_pattern,i_expname, i_pattern_examples, button_analysis, i_expname, i_organism,
-#         i_consecutiveLFQi, i_summed_MSMS_counts, i_RatioHLcount, i_RatioVariability, i_comment,
-#         i_custom_cids, i_custom_cgenes, i_custom_cdata, i_custom_normalized,
-#         i_reannotate_genes, i_reannotate_genes_file, i_reannotate_genes_source]
+#wdgts = [i_FileConfig]
 
-def future_execution(event):
+def execution(event):
     loading_status.objects = [loading]
     analysis_status.object = "Analysis in progress"
     lo_config_instructions.collapsed = True
     lo_config_details.collapsed = True
-    lo_config_error_messages.collapsed = True
+    #lo_config_error_messages.collapsed = True
     #lo_read_file.collapsed = True
     output_layoutpos = [el.name for el in dashboard_analysis].index("analysis_output")
     dashboard_analysis.objects[output_layoutpos].objects = []
@@ -380,8 +384,6 @@ def future_execution(event):
         analysis_status.object = "Analysis finished!"
         update_object_selector(i_mapwidget, i_clusterwidget)
         loading_status.objects = []
-        dashboard_analysis.objects[output_layoutpos].append(i_clusterwidget)
-        dashboard_analysis.objects[output_layoutpos].append(i_mapwidget)
         dashboard_analysis.objects[output_layoutpos].append(analysis_tabs)
         mem_available_datasets[i_class.expname] = i_class.analysed_datasets_dict[i_class.expname]
         try:
@@ -397,12 +399,15 @@ def future_execution(event):
         analysis_status.object = traceback.format_exc()
         cache_run.value = False
 
-i_FileConfig._btn_run.on_click(future_execution)
+i_FileConfig._btn_run.on_click(execution)
 
 
+#### Dashboard structure
 #### Analysis output
+########################
 
-
+#### Layout elements
+####################
 
 i_logOR01_selection = pn.widgets.Select(options=["0/1 normalized data", "log transformed data",
                                                  "stringency filtered raw data", "Overview - cluster distances"],
@@ -412,53 +417,126 @@ i_clusterwidget = pn.widgets.Select(options=["Proteasome", "Lysosome"], name="Cl
 i_mapwidget = pn.widgets.Select(options=["Map1", "Map2"], name="Map of interest", width=300)
 
 i_collapse_maps_PCA = pn.widgets.Checkbox(value=False, name="Collapse maps")
+i_pca_ncomp = pn.widgets.IntSlider(value=3, start=2, end=5)
+btn_pca_ncomp = pn.widgets.Button(name="Recalculate PCA with different number of components.")
 
-i_x_vs_yAxis_PCA = {
-    "PC1" : ["PC3", "PC2"],
-    "PC2" : ["PC1", "PC3"],
-    "PC3" : ["PC1", "PC2"],
-    }
+#### Correlation plot in single analysis tab
+i_corr_mode = pn.widgets.Select(options=["heatmap", "scatter"], name="Show correlations as")
+i_corr_measure = pn.widgets.Select(options=["Pearson", "Spearman"], name="Correlation metric")
+i_corr_selection = pn.widgets.Select(options=["all samples"], name="Select fraction(s)")
+i_corr_level = pn.widgets.Select(options=["original data", "filtered and processed data", "normalized profiles"],
+                                 value="filtered and processed data",
+                                 name="Show dataset")
+lo_corr_widgets = pn.WidgetBox(i_corr_mode, i_corr_measure, i_corr_selection, i_corr_level)
 
-i_xAxis_PCA = pn.widgets.Select(name="X-Axis", options=["PC1", "PC2","PC3"])
-i_yAxis_PCA = pn.widgets.Select(name="Y-Axis", options=i_x_vs_yAxis_PCA[i_xAxis_PCA.value])
+#### Append layout to dashboard
+###############################
 
-i_xAxis_PCA_comp = pn.widgets.Select(name="X-Axis", options=["PC1", "PC2","PC3"])
-i_yAxis_PCA_comp = pn.widgets.Select(name="Y-Axis", options=i_x_vs_yAxis_PCA[i_xAxis_PCA_comp.value])
+#### Callbacks
+##############
+# update_corr_selection
+# show_correlation_single
+# update_object_selector
+# recalculate_pca
+# update_data_overview # tab content
+# update_cluster_overview # tab content
+# update_cluster_details
+# update_quantity # tab content
+# show_tabular_overview
+# json_download
+# df01_download_widget
+# df01_download
+# dflog_download
+# df_filteredRawData_download
+# table_download # tab content
 
-@pn.depends(i_xAxis_PCA_comp.param.value, watch=True)
-def custimization_PCA_comp(xAxis_PCA_comp):
-    yAxis_PCA_comp = i_x_vs_yAxis_PCA[xAxis_PCA_comp]
-    i_yAxis_PCA_comp.options = yAxis_PCA_comp
-    #return i_yAxis_PCA_comp
 
-@pn.depends(i_xAxis_PCA.param.value, watch=True)
-def custimization_PCA(xAxis_PCA):
-    yAxis_PCA = i_x_vs_yAxis_PCA[xAxis_PCA]
-    i_yAxis_PCA.options = yAxis_PCA
-    #return i_yAxis_PCA
-        
+@param.depends(cache_run.param.value, watch=True)
+def update_corr_selection(run):
+    if run == True:
+        i_corr_selection.options = [i_corr_selection.options[0]]+i_class.fractions
 
-
-## Analysis tab
+@param.depends(i_corr_mode.param.value, i_corr_measure.param.value,
+               i_corr_selection.param.value, i_corr_level.param.value,
+               cache_run.param.value)
+def show_correlation_single(mode, measure, selection, level, run):
+    if run == True:
+        try:
+            if mode == "scatter" and selection == "all samples":
+                return "Please select only one fraction in scatter mode."
+            if level == "original data":
+                df = i_class.df_index[i_class.mainset]
+            elif level == "filtered and processed data":
+                df = i_class.df_log_stacked["log profile"].unstack(["Map", "Fraction"])
+            elif level == "normalized profiles":
+                df = i_class.df_01_stacked["normalized profile"].unstack(["Map", "Fraction"])
+            else:
+                raise ValueError(f"Unknown data level {level} for correlation plot.")
+            df = df.sort_index(axis=1, level="Fraction")
+            if selection != "all samples":
+                df = df.xs(selection, level="Fraction", axis=1, drop_level=False)
+            
+            df.columns = ["_".join(el) for el in df.columns]
+            
+            measure_dict = {
+                "Spearman": lambda x: spearmanr(x.values).correlation,
+                "Pearson": lambda x: np.corrcoef(x.T)
+            }
+            
+            plot = domaps.plot_sample_correlations(
+                df, data_columns="(.*)",
+                log10=False if level != "original data" else True,
+                binning=10 if level != "normalized profiles" else 50,
+                mode=mode,
+                correlation_function=measure_dict[measure]
+            )
+            return plot
+    
+        except:
+            return traceback.format_exc()
+lo_corr = pn.Row(lo_corr_widgets, show_correlation_single)
 
 def update_object_selector(i_mapwidget, i_clusterwidget):
     i_mapwidget.options = list(i_class.map_names)
     i_clusterwidget.options = list(i_class.markerproteins.keys())
+    i_pca_ncomp.end = len(i_class.fractions)
 
 
-@pn.depends(i_mapwidget.param.value,
-            cache_run.param.value,
-            i_collapse_maps_PCA.param.value, i_clusterwidget.param.value,
-            i_xAxis_PCA.param.value, i_yAxis_PCA.param.value)
-def update_data_overview(mapwidget, run, collapse_maps_PCA, clusterwidget, xAxis_PCA, yAxis_PCA):
+def recalculate_pca(event):
+    cache_run.value=False
+    i_class.perform_pca(n=i_pca_ncomp.value)
+    cache_run.value=True
+btn_pca_ncomp.on_click(recalculate_pca)
+
+
+@pn.depends(cache_run.param.value,
+            i_collapse_maps_PCA.param.value)
+def update_data_overview(run, collapse_maps_PCA):
     try:
         if run == True:
-            pca_plot = i_class.plot_global_pca(map_of_interest=mapwidget , cluster_of_interest=clusterwidget, x_PCA=xAxis_PCA, y_PCA=yAxis_PCA, collapse_maps=collapse_maps_PCA)
+            
+            compartments = i_class.df_organellarMarkerSet["Compartment"].unique()
+            compartment_color = dict(zip(compartments, i_class.css_color))
+            compartment_color["undefined"] = "lightgrey"
+            
+            pca_plot = gui.pca_plot(
+                df_pca=i_class.df_pca if not collapse_maps_PCA else i_class.df_pca_combined,
+                df_var=i_class.df_pca_var if not collapse_maps_PCA else i_class.df_pca_combined_var,
+                df_loadings=i_class.df_pca_loadings if not collapse_maps_PCA else i_class.df_pca_combined_loadings,
+                color="Compartment", color_map=compartment_color,
+                facet_col="Map" if not collapse_maps_PCA else None,
+                title="PCA plot"
+            )
+            pca_plot.highlight_dict=i_class.markerproteins
+            
             log_histogram = i_class.plot_log_data()
             visualization_map = pn.Column(
-                pn.Row(i_collapse_maps_PCA),
-                pn.Row(pn.Pane(pca_plot, width=1000, config=plotly_config)),
-                pn.Row(i_xAxis_PCA, i_yAxis_PCA),
+                pn.Pane(textfragments["analysis_overview_top"], width=600),
+                pn.Row(i_collapse_maps_PCA, i_pca_ncomp, btn_pca_ncomp),
+                pca_plot,
+                pn.layout.VSpacer(height=3, background="#AAAAAA"),
+                lo_corr,
+                pn.layout.VSpacer(height=3, background="#AAAAAA"),
                 pn.Row(pn.Pane(log_histogram, width=1000, config=plotly_config))
             )
             app_tabs.active = 1
@@ -469,11 +547,10 @@ def update_data_overview(mapwidget, run, collapse_maps_PCA, clusterwidget, xAxis
     except Exception:
         update_status = traceback.format_exc()
         return pn.Column(
-            pn.Row(i_collapse_maps_PCA),
-            pn.Row(i_xAxis_PCA, i_yAxis_PCA),             
+            pn.Row(i_collapse_maps_PCA),          
             update_status
         )
-            
+
 
 @pn.depends(i_clusterwidget.param.value,i_mapwidget.param.value, cache_run.param.value)
 def update_cluster_overview(clusterwidget, mapwidget, run):
@@ -483,32 +560,60 @@ def update_cluster_overview(clusterwidget, mapwidget, run):
             i_class.cache_cluster_quantified = True
             distance_boxplot = i_class.distance_boxplot(cluster_of_interest=clusterwidget)
             if i_class.cache_cluster_quantified == False:
-                return "This protein cluster was not quantified"
+                return pn.Column(
+                    pn.Row(
+                        pn.Pane(textfragments["analysis_intramap_top"], width=600),
+                        pn.layout.HSpacer(width=30),
+                        pn.Column(i_clusterwidget,i_mapwidget)
+                    ),
+                    "This protein cluster was not quantified"
+                )
             
             else:
                 df_quantification_overview = i_class.quantification_overview(cluster_of_interest=clusterwidget)
                 profiles_plot = i_class.profiles_plot(map_of_interest = mapwidget, cluster_of_interest=clusterwidget)
-                pca_plot = i_class.plot_cluster_pca(cluster_of_interest=clusterwidget)
+                pca_plot = gui.pca_plot(
+                    df_pca=i_class.df_pca_all_marker_cluster_maps.xs(clusterwidget, level="Cluster", axis=0),
+                    show_variability=False, show_loadings=False, enable_highlight=False,
+                    facet_col=None, color="Map", color_map=dict(),
+                    title=f"PCA plot of {clusterwidget}"
+                )
+                pca_plot._dimensions.value="3D"
                 cluster_overview = pn.Column(
-                        pn.Row(pn.Pane(pca_plot, width=500, config=plotly_config),
-                               pn.Pane(profiles_plot, width=500, config=plotly_config),
-                               pn.Pane(distance_boxplot, width=500, config=plotly_config),
-                              ),
-                        pn.Row(pn.Pane("In total {} proteins across all maps were quantified, whereas the following proteins were not consistently quantified throughout all maps: {}".format(
-                                i_class.proteins_quantified_across_all_maps, ", ".join(list_genes)) if len(list_genes) != 0 else
-                            "All genes from this cluster are quantified in all maps."), width=1000),
-                        pn.Row(pn.widgets.DataFrame(df_quantification_overview, height=200, width=500, disabled=True))  
-                        )
+                    pn.Row(
+                        pn.Pane(textfragments["analysis_intramap_top"], width=600),
+                        pn.layout.HSpacer(width=30),
+                        pn.Column(i_clusterwidget,i_mapwidget)
+                    ),
+                    pn.Row(pca_plot,
+                           pn.Pane(profiles_plot, width=500, config=plotly_config),
+                           pn.Pane(distance_boxplot, width=500, config=plotly_config),
+                          ),
+                    pn.layout.VSpacer(height=3, background="#AAAAAA"),
+                    pn.Row(pn.Pane("In total {} proteins across all maps were quantified, whereas the following proteins were not consistently quantified throughout all maps: {}".format(
+                            i_class.proteins_quantified_across_all_maps, ", ".join(list_genes)) if len(list_genes) != 0 else
+                        "All genes from this cluster are quantified in all maps."), width=1000),
+                    pn.Row(pn.widgets.DataFrame(df_quantification_overview, height=200, width=500, disabled=True)),
+                    pn.layout.VSpacer(height=3, background="#AAAAAA"),
+                    update_cluster_details
+                )
                 return cluster_overview
         
         else:
             cluster_overview = "Run analysis first!"
             return cluster_overview
     except Exception:
-        update_status = traceback.format_exc()
+        update_status = pn.Column(
+            pn.Row(
+                pn.Pane(textfragments["analysis_intramap_top"], width=600),
+                pn.layout.HSpacer(width=30),
+                pn.Column(i_clusterwidget,i_mapwidget)
+            ),
+            pn.Pane(traceback.format_exc(), width=600)
+        )
         return update_status
-    
-    
+
+
 @pn.depends(i_clusterwidget.param.value, cache_run.param.value)
 def update_cluster_details(clusterwidget, run):
     try:
@@ -521,15 +626,27 @@ def update_cluster_details(clusterwidget, run):
     except Exception:
         update_status = traceback.format_exc()
         return update_status
-    
+
+
 @pn.depends(cache_run.param.value)
 def update_quantity(run):
     try:
         if run == True:
             fig_npg, fig_npr, fig_npr_dc, fig_npg_F, fig_npgf_F, fig_npg_F_dc = i_class.plot_quantity_profiles_proteinGroups()
             return pn.Column(
-                    pn.Row(pn.Pane(fig_npg, config=plotly_config), pn.Pane(fig_npr, config=plotly_config), pn.Pane(fig_npr_dc, config=plotly_config)) ,
-                pn.Row(pn.Pane(fig_npg_F, config=plotly_config), pn.Pane(fig_npgf_F, config=plotly_config), pn.Pane(fig_npg_F_dc, config=plotly_config)))
+                pn.Pane(textfragments["analysis_depth_top"], width=600),
+                pn.Row(
+                    pn.Pane(fig_npg, config=plotly_config),
+                    #pn.Pane(fig_npr, config=plotly_config),
+                    pn.Pane(fig_npr_dc, config=plotly_config)
+                ),
+                pn.layout.VSpacer(background="#AAAAAA", height=3),
+                pn.Row(
+                    pn.Pane(fig_npg_F, config=plotly_config),
+                    pn.Pane(fig_npgf_F, config=plotly_config),
+                    pn.Pane(fig_npg_F_dc, config=plotly_config)
+                )
+            )
         else:
             return "Run analysis first!"
     except Exception:
@@ -556,6 +673,7 @@ def show_tabular_overview(run):
         content = traceback.format_exc()
         return pn.Row(content, width=1000)
 
+
 @pn.depends(cache_run.param.value)
 def json_download(run):
     sio = StringIO()
@@ -580,7 +698,7 @@ def df01_download_widget(run, logOR01_selection):
     else:
         return pn.Column(pn.widgets.FileDownload(callback=df_filteredRawData_download, filename = "stringency_filtered_raw_data.csv"), width=650)
 
-    
+
 @pn.depends(cache_run.param.value)
 def df01_download(run):
     df_01 = i_class.reframe_df_01ORlog_for_Perseus(i_class.df_01_stacked)
@@ -588,8 +706,8 @@ def df01_download(run):
     df_01.to_csv(sio)
     sio.seek(0)
     return sio 
-    
-    
+
+
 @pn.depends(cache_run.param.value)
 def dflog_download(run):
     df_log = i_class.reframe_df_01ORlog_for_Perseus(i_class.df_log_stacked)
@@ -597,6 +715,7 @@ def dflog_download(run):
     df_log.to_csv(sio)
     sio.seek(0)
     return sio 
+
 
 @pn.depends(cache_run.param.value)
 def df_filteredRawData_download(run):
@@ -606,6 +725,7 @@ def df_filteredRawData_download(run):
     sio.seek(0)
     return sio
 
+
 @pn.depends(cache_run.param.value)
 def table_download(run):
     df = i_class.results_overview_table()
@@ -614,173 +734,118 @@ def table_download(run):
     sio.seek(0)
     return sio
 
+#### Callback output positioning
+################################
 analysis_tabs.clear()
 analysis_tabs.append(("Data overview", update_data_overview))
 analysis_tabs.append(("Depth and Coverage", update_quantity))
-analysis_tabs.append(("Cluster Overview", update_cluster_overview))
-analysis_tabs.append(("Cluster Details", update_cluster_details))
+analysis_tabs.append(("Intramap Scatter", update_cluster_overview))
 analysis_tabs.append(("Download", show_tabular_overview))
 
+
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## Comparison output tabs<a id="comparison"></a>
 
 # In[ ]:
 
 
-## Comparison tab
+#### Dashboard structure
+#### Overview tab
+########################
+lo_benchmark_pca = pn.Column()
+
+#### Layout elements
+####################
 
 loading_status_comparison = pn.Row()
 idle_comparison = pn.indicators.LoadingSpinner(value=False, width=100, height=100, color="primary")
 loading_comparison = pn.indicators.LoadingSpinner(value=True, width=100, height=100, color="primary")
-
 cache_uploaded_json = pn.widgets.Checkbox(value=False)
 cache_run_json = pn.widgets.Checkbox(value=False)
-#button_comparison = pn.widgets.Button(name="Compare experiments", width=50)
-#i_jsonFile = pn.widgets.FileInput(name="Upload JSON file for comparison")
+m_diverget_fractions = pn.Pane("")
+comparison_status = pn.Pane("No datasets were compared yet")
+i_ExpOverview = pn.Row(pn.Pane("", width=1000))
+
 i_multi_choice = pn.widgets.CrossSelector(name="Select experiments for comparison", value=["a", "b"],
                                           options=["a", "b", "c"], definition_order=False)
-m_diverget_fractions = pn.Pane("")
-i_ref_exp = pn.widgets.Select(name="Select experiments as reference", options=["a", "b", "c"])
-i_collapse_cluster = pn.widgets.Checkbox(value=True, name="Collapse cluster")
-comparison_status = pn.Pane("No datasets were compared yet")
+
 i_markerset_or_cluster = pn.widgets.Checkbox(value=False, name="Display only protein clusters")
-#i_ranking_boxPlot = pn.widgets.Checkbox(value=False, name="Display box plot")
-i_ranking_boxPlot = pn.widgets.RadioBoxGroup(name="Types of ranking", options=["Box plot", "Bar plot - median", "Bar plot - sum"], inline=True)
-#i_toggle_sumORmedian = pn.widgets.Toggle(name="Sum or Median", button_type="primary")
-i_clusterwidget_pca = pn.widgets.Select(options=[], name="Cluster of interest", width=300)
-i_clusterwidget_comparison = pn.widgets.Select(options=[], name="Cluster of interest", width=300)
-i_ExpOverview = pn.Row(pn.Pane("", width=1000))
-i_include_dataset = pn.widgets.Checkbox(value=False, name="Include data analysed under 'Analysis' tab")
-i_compare_gene = pn.widgets.TextInput(value="PLEC", name="Enter gene name or protein ID to see profile.")
-i_compare_profile_style = pn.widgets.Select(options=[
-    #"all profiles",
-    "mean +- stdev", "mean +- SEM"])
-i_compare_compartment = pn.widgets.MultiSelect(options=[], name="Select compartments for which to show summary profiles.")
-#wdgts_comparison = [button_comparison]#,i_organism_comparison]#, i_include_dataset]
-json_exp_name_cache = []
+i_pca_comp_ncomp = pn.widgets.IntSlider(value=3, start=2, end=5)
+btn_pca_comp_ncomp = pn.widgets.Button(name="Recalculate PCA with different number of components.")
 
+#### Append layout to dashboard
+###############################
+for el in [pn.Pane(textfragments["benchmark_pca_top"], width=600),
+           pn.Row(i_markerset_or_cluster, i_pca_comp_ncomp, btn_pca_comp_ncomp)]:
+    lo_benchmark_pca.append(el)
 
-@pn.depends(i_multi_choice.param.value, i_clusterwidget_pca.param.value, cache_run_json.param.value, i_xAxis_PCA_comp.param.value, i_yAxis_PCA_comp.param.value, 
+#### Callbacks
+##############
+# recalculate_comp_pca
+# update_visualization_map_comparison # tab content
+
+def recalculate_comp_pca(event):
+    cache_run_json.value=False
+    i_class_comp.perform_pca_comparison(n=i_pca_comp_ncomp.value)
+    cache_run_json.value=True
+btn_pca_comp_ncomp.on_click(recalculate_comp_pca)
+
+@pn.depends(i_multi_choice.param.value, cache_run_json.param.value,
             i_markerset_or_cluster.param.value)
-def update_visualization_map_comparison(multi_choice, clusterwidget_comparison, run_json, xAxis_PCA_comp, yAxis_PCA_comp, markerset_or_cluster):
+def update_visualization_map_comparison(multi_choice, run_json, markerset_or_cluster):
     try:
         if run_json == True:
             if multi_choice == []:
-                return pn.Column(#pn.Row(i_multi_choice),
-                                 pn.Row("Please select experiments for comparison")
-                                )
+                return "Please select experiments for comparison"
             else:
                 pass
-            pca_global_comparison = i_class_comp.plot_global_pca_comparison(
-                cluster_of_interest_comparison=clusterwidget_comparison,
-                x_PCA=xAxis_PCA_comp, y_PCA=yAxis_PCA_comp,
-                markerset_or_cluster=markerset_or_cluster, multi_choice=multi_choice
+            
+            df_pca = i_class_comp.df_pca.loc[i_class_comp.df_pca["Experiment"].isin(multi_choice)]                .set_index([col for col in i_class_comp.df_pca.columns if not col.startswith("PC")])
+            
+            pca_global_comparison = gui.pca_plot(
+                df_pca=df_pca,
+                df_var=i_class_comp.df_pca_var,
+                df_loadings=i_class_comp.df_pca_loadings,
+                show_variability=True, show_loadings=True,
+                color="Cluster" if markerset_or_cluster else "Compartment",
+                color_map=i_class_comp.color_maps["Clusters"] if markerset_or_cluster else i_class_comp.color_maps["Compartments"],
+                enable_highlight = False if markerset_or_cluster else True,
+                facet_col="Experiment",
+                title="PCA plot"
             )
-            if markerset_or_cluster == False:
-                return pn.Column(
-                    pn.Row(i_clusterwidget_pca),
-                    pn.Row(i_markerset_or_cluster),
-                    pn.Pane(pca_global_comparison, config=plotly_config),
-                    pn.Row(i_xAxis_PCA_comp, i_yAxis_PCA_comp)
-                )
-            else:
-                return pn.Column(
-                    pn.Row(i_markerset_or_cluster),
-                    pn.Pane(pca_global_comparison, config=plotly_config),
-                    pn.Row(i_xAxis_PCA_comp, i_yAxis_PCA_comp)
-                )
+            pca_global_comparison.highlight_dict = i_class_comp.markerproteins
+            return pca_global_comparison
         else:
             pca_global_comparison = "Run analysis first!"
             return pca_global_comparison
     except Exception:
         update_status = traceback.format_exc()
-        return pn.Column(
-            pn.Row(i_markerset_or_cluster),
-            pn.Row(i_xAxis_PCA_comp, i_yAxis_PCA_comp),
-            update_status
-        )
-
-#### Biological precision tab
-## Widgets
-i_clusters_for_ranking = pn.widgets.CrossSelector(name="Select clusters to be considered for ranking calculation",
-                                                  options=[], size=8)
-i_minn_proteins = pn.widgets.IntSlider(name="Minimum number of proteins per complex", start=3, end=13, step=1, value=5)
-i_collapse_maps = pn.widgets.Checkbox(value=False, name="Collapse maps")
-i_reference_map = pn.widgets.Select(options=[], value="", name="Select reference map")
-
-## Callbacks
-@pn.depends(i_multi_choice.param.options, i_minn_proteins.param.value, cache_run_json.param.value)
-def update_comp_cluster_coverage(exp_names, min_n, run_json):
-    try:
-        if not run_json:
-            return ""
-        [f,p,n] = i_class_comp.get_complex_coverage(min_n)
-        i_clusters_for_ranking.options = [el for el in i_class_comp.markerproteins.keys() if el not in n.keys()]
-        i_clusterwidget_comparison.options = [el for el in i_class_comp.markerproteins.keys() if el not in n.keys()]
-        i_clusterwidget_pca.options = [el for el in i_class_comp.markerproteins.keys() if el not in n.keys()]
-        i_clusters_for_ranking.value = [el for el in i_class_comp.markerproteins.keys() if el in f.keys()]
-        return pn.Row(
-            "Coverage in all experiments \[>= n proteins]:<br>"+"<br>".join(["- {} ({})".format(k,v) for k,v in f.items()]),
-            "Coverage in some experiments \[proteins/experiment]:<br>"+"<br>".join(["- {} \{}".format(k,str(v)) for k,v in p.items()]),
-            "No sufficient coverage in any experiment \[proteins/experiment]:<br>"+"<br>".join(["- {} \{}".format(k,str(v)) for k,v in n.items()])
-        )
-    except Exception:
-        update_status = traceback.format_exc()
         return update_status
 
-@pn.depends(i_multi_choice.param.value, i_clusters_for_ranking.param.value, i_reference_map.param.value,
-            i_minn_proteins.param.value, cache_run_json.param.value)
-def update_comp_bp_global(multi_choice, clusters_for_ranking, reference_map, min_n, run_json):
-    try:
-        if not run_json:
-            return ""
-        if set(multi_choice) != set(i_class_comp.df_distance_comp.Experiment.values):
-            i_class_comp.calc_biological_precision(multi_choice)
-            i_reference_map.options = multi_choice
-            if reference_map not in multi_choice:
-                i_reference_map.value = multi_choice[0]
-                reference_map = multi_choice[0]
-        if clusters_for_ranking == []:
-            return "Select at least one cluster"
-        else:
-            bp_bargraph, bp_boxplot_abs, bp_boxplot_rel = i_class_comp.plot_biological_precision(
-                multi_choice, clusters_for_ranking, min_members=min_n, reference = reference_map)
-            return pn.Column(
-                pn.Row(i_reference_map),
-                pn.Row(pn.Pane(bp_bargraph, config=plotly_config),
-                       pn.Pane(bp_boxplot_abs, config=plotly_config),
-                       pn.Pane(bp_boxplot_rel, config=plotly_config)))
-        
-    except Exception:
-        update_status = traceback.format_exc()
-        return pn.Column(
-            pn.Row(i_reference_map),
-            update_status
-        )
+#### Callback output positioning
+################################
+lo_benchmark_pca.append(update_visualization_map_comparison)
 
-@pn.depends(i_multi_choice.param.value, i_clusterwidget_comparison.param.value, i_collapse_maps.param.value,
-            cache_run_json.param.value)
-def update_comp_bp_single(multi_choice, clusterwidget_comparison, collapse_maps, run_json):
-    try:
-        i_class_comp.cache_cluster_quantified = True
-        distance_comparison = i_class_comp.distance_boxplot_comparison(collapse_maps=collapse_maps, cluster_of_interest_comparison=clusterwidget_comparison, multi_choice=multi_choice)
-        if i_class_comp.cache_cluster_quantified == False:
-            return "Cluster was not quantified in any experiment"
-        else:
-            pca_comparison = i_class_comp.plot_pca_comparison(cluster_of_interest_comparison=clusterwidget_comparison, multi_choice=multi_choice)
-            return pn.Row(pn.Pane(pca_comparison, config=plotly_config),
-                          pn.Pane(distance_comparison, config=plotly_config))
-    except Exception:
-        update_status = traceback.format_exc()
-        return update_status
+#### Dashboard structure
+#### Depth tab
+########################
+lo_benchmark_depth = pn.Column()
 
-## Tab assembly
-comparison_tab_bp = pn.Column(
-    pn.Row(pn.Column(i_clusters_for_ranking,i_minn_proteins),
-           update_comp_cluster_coverage),
-    update_comp_bp_global,
-    pn.Row(i_clusterwidget_comparison,i_collapse_maps),
-    update_comp_bp_single
-)
-    
+#### Layout elements
+####################
+
+#### Append layout to dashboard
+###############################
+for el in [
+    pn.Pane(textfragments["benchmark_depth_top"], width=600)
+]:
+    lo_benchmark_depth.append(el)
+
+#### Callbacks
+##############
+# update_npr_ngg_nprDc
+# update_venn
+
 @pn.depends(i_multi_choice.param.value, cache_run_json.param.value)
 def update_npr_ngg_nprDc(multi_choice, run_json):
     try:
@@ -791,11 +856,10 @@ def update_npr_ngg_nprDc(multi_choice, run_json):
             else:
                 fig_quantity_pg, fig_quantity_pr = i_class_comp.quantity_pr_pg_barplot_comparison(multi_choice=multi_choice)
                 coverage_barplot = i_class_comp.coverage_comparison(multi_choice=multi_choice)
-                return pn.Row(pn.Column(
-                                 pn.Pane(fig_quantity_pg, config=plotly_config), 
-                                 #pn.Pane(fig_quantity_pr, config=plotly_config), #removed for now, as the added information is not a lot
-                                 pn.Pane(coverage_barplot, config=plotly_config)
-                                ))
+                return pn.Row(
+                    pn.Pane(fig_quantity_pg, config=plotly_config), 
+                    pn.Pane(coverage_barplot, config=plotly_config)
+                )
         else:
             completeness_barplot = "Run analysis first!"
             return completeness_barplot
@@ -830,13 +894,138 @@ def update_venn(multi_choice, run_json):
             return venn_plot
     except Exception:
         update_status = traceback.format_exc()
-        return update_status    
+        return update_status
 
+#### Callback output positioning
+################################
+lo_benchmark_depth.append(update_npr_ngg_nprDc)
+lo_benchmark_depth.append(update_venn)
+
+#### Dashboard structure
+#### Intramap scatter tab
+########################
+
+#### Layout elements
+####################
+i_complexes_norm = pn.widgets.Select(name="Normalize complexes to", options=["Median across all experiments"])
+i_complexes_plot = pn.widgets.Select(name="Plot type", options=["stacked", "strip", "box", "violin", "histogram"])
+i_complexes_sync = pn.widgets.Checkbox(name="Highlight selected cluster (summary plots only)")
+i_complexes_detail = pn.widgets.Select(options=[], name="Cluster of interest", width=300)
+
+lo_complexes = pn.WidgetBox("**Compare experiments**", i_complexes_norm, i_complexes_plot, i_complexes_sync)
+
+i_clusters_for_ranking = pn.widgets.CrossSelector(name="Select clusters to be considered for ranking calculation",
+                                                  options=[], size=8)
+i_minn_proteins = pn.widgets.IntSlider(name="Minimum number of proteins per complex", start=3, end=13, step=1, value=5)
+i_collapse_maps = pn.widgets.Checkbox(value=False, name="Collapse maps")
+
+#### Append layout to dashboard
+###############################
+
+#### Callbacks
+##############
+# update_comp_cluster_coverage
+# update_comp_bp_global
+# update_comp_bp_single
+
+@pn.depends(i_multi_choice.param.options, i_minn_proteins.param.value, cache_run_json.param.value)
+def update_comp_cluster_coverage(exp_names, min_n, run_json):
+    try:
+        if not run_json:
+            return ""
+        [f,p,n] = i_class_comp.get_complex_coverage(min_n)
+        i_clusters_for_ranking.options = [el for el in i_class_comp.markerproteins.keys() if el not in n.keys()]
+        i_complexes_detail.options = [el for el in i_class_comp.markerproteins.keys() if el not in n.keys()]
+        i_clusters_for_ranking.value = [el for el in i_class_comp.markerproteins.keys() if el in f.keys()]
+        return pn.Row(
+            "Coverage in all experiments \[>= n proteins]:<br>"+"<br>".join(["- {} ({})".format(k,v) for k,v in f.items()]),
+            "Coverage in some experiments \[proteins/experiment]:<br>"+"<br>".join(["- {} \{}".format(k,str(v)) for k,v in p.items()]),
+            "No sufficient coverage in any experiment \[proteins/experiment]:<br>"+"<br>".join(["- {} \{}".format(k,str(v)) for k,v in n.items()])
+        )
+    except Exception:
+        update_status = traceback.format_exc()
+        return update_status
+
+@pn.depends(i_multi_choice.param.value, i_clusters_for_ranking.param.value,
+            i_minn_proteins.param.value,
+            i_complexes_norm.param.value, i_complexes_plot.param.value, i_complexes_sync.param.value, i_complexes_detail.param.value,
+            cache_run_json.param.value)
+def update_comp_bp_global(multi_choice, clusters_for_ranking, min_n,
+                          norm, plot_type, sync, highlight,
+                          run_json):
+    try:
+        if not run_json:
+            return ""
+        if set(multi_choice) != set(i_class_comp.df_distance_comp.Experiment.values):
+            i_class_comp.calc_biological_precision(multi_choice)
+            i_complexes_norm.options = [i_complexes_norm.options[0]]+multi_choice
+        if clusters_for_ranking == []:
+            return pn.Row(
+                lo_complexes,
+                "Select at least one cluster"
+            )
+        else:
+            medians, plot = i_class_comp.plot_intramap_scatter(
+                normalization=np.median if norm == "Median across all experiments" else norm,
+                aggregate_proteins=True, aggregate_maps=False,
+                plot_type=plot_type, highlight=None if sync == False else highlight,
+                min_size=min_n,
+                multi_choice=multi_choice,
+                clusters_for_ranking=clusters_for_ranking)
+            return pn.Row(
+                lo_complexes,
+                medians.rename({"distance": "median distance"}, axis=1),
+                pn.Pane(plot, config=plotly_config)
+            )
+        
+    except Exception:
+        update_status = traceback.format_exc()
+        return pn.Row(
+            lo_complexes,
+            update_status
+        )
+
+@pn.depends(i_multi_choice.param.value, i_complexes_detail.param.value, i_collapse_maps.param.value,
+            cache_run_json.param.value)
+def update_comp_bp_single(multi_choice, clusterwidget_comparison, collapse_maps, run_json):
+    try:
+        i_class_comp.cache_cluster_quantified = True
+        distance_comparison = i_class_comp.plot_intramap_scatter_cluster(collapse_maps=collapse_maps, cluster_of_interest_comparison=clusterwidget_comparison, multi_choice=multi_choice)
+        if i_class_comp.cache_cluster_quantified == False:
+            return "Cluster was not quantified in any experiment"
+        else:
+            df_pca = i_class_comp.df_cluster_pca.xs(clusterwidget_comparison, level="Cluster", axis=0)
+            df_pca = df_pca.query(f'Experiment in {str(multi_choice)}')
+            if collapse_maps:
+                df_pca = df_pca.groupby([el for el in df_pca.index.names if "Map" not in el]).mean()
+            pca_comparison = gui.pca_plot(
+                df_pca=df_pca,
+                color="Experiment", color_map=dict(), facet_col=None,
+                enable_highlight=False, show_variability=False, show_loadings=False,
+                title="PCA plot for {}".format(clusterwidget_comparison)
+            )
+            return pn.Row(pca_comparison,
+                          pn.Pane(distance_comparison, config=plotly_config))
+    except Exception:
+        update_status = traceback.format_exc()
+        return update_status
+
+#### Callback output positioning
+################################
+comparison_tab_bp = pn.Column(
+    pn.Pane(textfragments["benchmark_intra_top"], width=600),
+    pn.Row(pn.Column(i_clusters_for_ranking,i_minn_proteins),
+           update_comp_cluster_coverage),
+    update_comp_bp_global,
+    pn.Row(i_complexes_detail,i_collapse_maps),
+    update_comp_bp_single
+)
 
 #### Dashboard structure
 #### SMV analysis
 ########################
 lo_benchmark_SVMs = pn.Column(
+    pn.Pane(textfragments["benchmark_SVM_top"], width=600),
     pn.Card(header="###Add misclassification matrix", name="add_mcmatrix"),
     pn.Row(name="svm_output")
 )
@@ -846,16 +1035,20 @@ lo_benchmark_SVMs = pn.Column(
 ####################
 SVM_status = pn.pane.Markdown(width=400)
 lo_SVM_heatmap = pn.Column(SVM_status)
-i_SVMmatrix = pn.widgets.input.TextAreaInput(name="Misclassification matrix from Perseus", placeholder="Copy matrix here...")
+i_SVMmatrix = pn.widgets.input.TextAreaInput(name="Misclassification matrix", placeholder="Copy matrix here...")
+i_SVMsource = pn.widgets.Select(options=["Perseus", "MetaMass", "direct"], value="Perseus", name="Select source of misclassification matrix")
+lo_SVM_source = pn.Row(i_SVMsource, gui.help_icon("For Perseus, copy whole matrix via Ctrl-A, Ctrl-C. For MetaMass copy matrix including column headings, but without row labels. Direct assumes true classes in rows and predicted classes in columns, with column headings only."))
 i_SVMcomment = pn.widgets.TextInput(name="Comment", placeholder="Add comments here...")
 i_SVMexp = pn.widgets.Select(name="Select experiments for the assignment of a misclassification matrix", options=["a", "b", "c"])
 btn_SVM_addmatrix = pn.widgets.Button(name="Update misclassification matrix",
                                       button_type="success", width=400, height=50,
                                       css_classes=["button-main"])
+i_svm_score = pn.widgets.Select(options=["F1 score", "Precision", "Recall", "Class size"], value="F1 score")
+
 #### Append layout to dashboard
 #### SVM analysis
 ###############################
-for el in [i_SVMexp, i_SVMcomment, i_SVMmatrix, lo_SVM_heatmap, btn_SVM_addmatrix]:
+for el in [i_SVMexp, lo_SVM_source, i_SVMcomment, i_SVMmatrix, lo_SVM_heatmap, btn_SVM_addmatrix]:
     lo_benchmark_SVMs.objects[[el.name for el in lo_benchmark_SVMs.objects].index("add_mcmatrix")].append(el)
 
 #### Callbacks
@@ -874,7 +1067,7 @@ def add_SVM_result(event):
     """
     # 1. Get input from interface
     
-    experiment, SVMcomment = i_SVMexp.value, i_SVMcomment.value
+    experiment, SVMsource, SVMcomment = i_SVMexp.value, i_SVMsource.value, i_SVMcomment.value
     
     # change comment of a stored dataset
     try:
@@ -891,7 +1084,7 @@ def add_SVM_result(event):
 # 
     # 2. Add to i_class_comp
     # defaults to name="default" and overwrite=True
-    i_class_comp.add_svm_result(experiment, SVMmatrix, comment=SVMcomment)
+    i_class_comp.add_svm_result(experiment, SVMmatrix, source=SVMsource, comment=SVMcomment)
     # 3. Add to mem_available_datasets so it can be downloaded together with the data
     mem_available_datasets[experiment]["SVM results"] = copy.deepcopy(i_class_comp.svm_results[experiment])
     for k in i_class_comp.svm_results[experiment].keys():
@@ -955,6 +1148,18 @@ def load_matrix(SVMexp):
     except:
         SVM_status.object = "Upload missclassificationmatrix first"
 
+    
+@pn.depends(i_multi_choice.param.value, i_svm_score.param.value)
+def show_svm_results(multi_choice, score):
+    try:
+        if len(i_class_comp.svm_results) == 0:
+            return "Please upload SVM results first"
+        plot_detail = i_class_comp.plot_svm_detail(multi_choice=multi_choice, score=score)
+        plot_summary = i_class_comp.plot_svm_summary(multi_choice=multi_choice, score=score)
+        return pn.Column(pn.Pane(plot_summary, config=plotly_config), pn.Pane(plot_detail, config=plotly_config))
+    except:
+        return traceback.format_exc()
+
 @pn.depends(i_multi_choice.param.value, watch=True)        
 def update_SVM_Analysis(multi_choice):     
     #empty lo if available
@@ -963,29 +1168,31 @@ def update_SVM_Analysis(multi_choice):
         if multi_choice == []:
             lo = pn.Column(pn.Row("Please select experiments for comparison"))
         else:
-            for exp in multi_choice:
-                # catch exception, if misclassification matrix is missing
-                try:
-                    i_class_comp.svm_results[exp]
-                    i_class_comp.svm_processing()
-                    fig_markerPredictionAccuracy, fig_clusterPerformance = i_class_comp.svm_plotting(multi_choice)
-                    lo = pn.Column(pn.Pane(fig_markerPredictionAccuracy, config=plotly_config),
-                                pn.Pane(fig_clusterPerformance, config=plotly_config),
-                                pn.Row(pn.Pane("", width=1000))
-                               )
-                except KeyError:
-                #if i_class_comp.svm_results[exp]["default"]["misclassification"] is None:
-                    lo = pn.Column(pn.Row("Please upload misclassfication matrix for {}".format(exp)))
+            i_class_comp.svm_processing()
+            lo = pn.Column(i_svm_score, show_svm_results)
     except Exception:
         update_status = traceback.format_exc()
         lo = update_status
     lo_benchmark_SVMs.objects[[el.name for el in lo_benchmark_SVMs.objects].index("svm_output")].append(lo)
-    
+
 #### Callback output positioning
 #### SVM analysis
 ################################
 lo_SVM_heatmap.append(show_misclassification)
 #lo_benchmark_SVMs.objects[[el.name for el in lo_benchmark_SVMs.objects].index("svm_output")].append(update_SVM_Analysis())
+
+#### Dashboard structure
+#### Intermap scatter tab
+########################
+lo_benchmark_intermap = pn.Column(
+    pn.Row(name="intermap_top"),
+    pn.Row(name="intermap_scatter"),
+    pn.layout.VSpacer(background="#AAAAAA", height=3),
+    pn.Row(name="correlation_plots")
+)
+
+#### Layout elements
+####################
 
 i_scatter_metric = pn.widgets.Select(name="Distance metric",
                                      options=["manhattan distance to average profile",
@@ -998,6 +1205,85 @@ i_scatter_quantile = pn.widgets.FloatInput(name="Highlight quantile", value=0.5)
 i_scatter_showrug = pn.widgets.Checkbox(name="Show rugplot in bottom margin", value=False)
 i_scatter_showfull = pn.widgets.Checkbox(name="Show additional traces for full datasets", value=False)
 i_scatter_x_cut = pn.widgets.FloatInput(name="Cut x-axis at", value=1)
+
+i_comp_corr_mode = pn.widgets.Select(options=["heatmap", "scatter"], name="Show correlations as")
+i_comp_corr_measure = pn.widgets.Select(options=["Pearson", "Spearman"], name="Correlation metric")
+i_comp_corr_fraction = pn.widgets.Select(options=["all fractions"], name="Select fraction(s)")
+i_comp_corr_experiment = pn.widgets.Select(options=["all experiments"], name="Select experiment(s)")
+
+#### Append layout to dashboard
+###############################
+lo_benchmark_intermap.objects[0].append(
+    pn.Pane(textfragments["benchmark_inter_top"], width=600)
+)
+lo_benchmark_inter_widgets = pn.WidgetBox(
+    i_scatter_metric,
+    i_scatter_consolidation,
+    i_scatter_showrug,
+    i_scatter_showfull,
+    i_scatter_quantile,
+    i_scatter_x_cut
+)
+lo_benchmark_intermap.objects[1].append(lo_benchmark_inter_widgets)
+lo_benchmark_corr_widgets = pn.WidgetBox(
+    i_comp_corr_mode, 
+    i_comp_corr_measure,
+    i_comp_corr_fraction,
+    i_comp_corr_experiment
+)
+lo_benchmark_intermap.objects[3].append(lo_benchmark_corr_widgets)
+
+#### Callbacks
+##############
+# update_corr_selection_comp
+# show_correlation_comp
+# update_global_scatter_comparison
+
+@param.depends(cache_run_json.param.value, i_multi_choice.param.value, watch=True)
+def update_corr_selection_comp(run, multi_choice):
+    if run == True:
+        i_comp_corr_fraction.options = [i_comp_corr_fraction.options[0]]+i_class_comp.fractions
+        i_comp_corr_experiment.options = [i_comp_corr_experiment.options[0]]+multi_choice
+
+
+@param.depends(i_comp_corr_mode.param.value, i_comp_corr_measure.param.value,
+               i_comp_corr_fraction.param.value, i_comp_corr_experiment.param.value,
+               i_multi_choice.param.value, cache_run_json.param.value)
+def show_correlation_comp(mode, measure, fractions, experiments, multi_choice, run):
+    if run == True:
+        try:
+            if mode == "scatter" and (fractions == "all fractions" or experiments == "all experiments"):
+                return "Please select only one fraction and experiment in scatter mode."
+            df = i_class_comp.df_01_filtered_combined.loc[
+                i_class_comp.df_01_filtered_combined.index.get_level_values("Experiment").isin(multi_choice),:].copy()
+            df = df.reset_index("Exp_Map", drop=True).unstack(["Experiment", "Map"]).sort_index(axis=1, level="Fraction")
+            
+            if fractions != "all fractions":
+                df = df.xs(fractions, level="Fraction", axis=1, drop_level=False)
+            if experiments != "all experiments":
+                df = df.xs(experiments, level="Experiment", axis=1, drop_level=False)
+            
+            df.columns = ["_".join(el) for el in df.columns]
+            
+            measure_dict = {
+                "Spearman": lambda x: spearmanr(x.values).correlation,
+                "Pearson": lambda x: np.corrcoef(x.T)
+            }
+            
+            plot = domaps.plot_sample_correlations(
+                df, data_columns="(.*)",
+                log10=False,
+                binning=50,
+                mode=mode,
+                correlation_function=measure_dict[measure]
+            )
+            return plot
+    
+        except:
+            return traceback.format_exc()
+    else:
+        return "Run analysis first"
+
 
 @pn.depends(i_multi_choice.param.value, i_scatter_metric.param.value, i_scatter_consolidation.param.value,
             cache_run_json.param.value, i_scatter_showfull.param.value,
@@ -1015,18 +1301,36 @@ def update_global_scatter_comparison(multi_choice, metric, consolidation, run_js
             multi_choice=multi_choice,
             x_cut=x_cut, q=quantile,
             show_rug=show_rug, show_full=show_full)
-        return pn.Column(pn.Row(pn.Column(i_scatter_metric,i_scatter_consolidation),
-                                pn.Column("Customize:",i_scatter_showrug,i_scatter_showfull,
-                                          i_scatter_quantile,i_scatter_x_cut)),
-                         pn.Pane(reproducibility_plot, config=plotly_config)
-                        )
+        return pn.Pane(reproducibility_plot, config=plotly_config)
     except Exception:
         update_status = traceback.format_exc()
-        return pn.Column(pn.Row(pn.Column(i_scatter_metric,i_scatter_consolidation),
-                                pn.Column("Customize:",i_scatter_showrug,i_scatter_showfull,
-                                          i_scatter_quantile,i_scatter_x_cut)),
-                         update_status
-                        )
+        return update_status
+
+#### Callback output positioning
+################################
+lo_benchmark_intermap[1].append(update_global_scatter_comparison)
+lo_benchmark_intermap[3].append(show_correlation_comp)
+
+
+#### Dashboard structure
+#### Profile comparison tab
+########################
+
+#### Layout elements
+####################
+
+i_compare_gene = pn.widgets.TextInput(value="PLEC", name="Enter gene name or protein ID to see profile.")
+i_compare_profile_style = pn.widgets.Select(options=[
+    #"all profiles",
+    "mean +- stdev", "mean +- SEM"])
+i_compare_compartment = pn.widgets.MultiSelect(options=[], name="Select compartments for which to show summary profiles.")
+
+#### Append layout to dashboard
+###############################
+
+#### Callbacks
+##############
+# update_profile_comparison
 
 @pn.depends(i_multi_choice.param.value, i_compare_gene.param.value, i_compare_compartment.param.value,
             i_compare_profile_style.param.value, cache_run_json.param.value)
@@ -1092,38 +1396,23 @@ def update_profile_comparison(multi_choice, compare_gene, compare_compartment, c
             else:
                 plotcompartments = "Please select at least one compartment"
         
-        return pn.Row(pn.Column(i_compare_gene,
-                                pn.Pane(plotprofile, config=plotly_config)),
-                      pn.Column(pn.Row(i_compare_compartment, i_compare_profile_style),
-                                pn.Pane(plotcompartments, config=plotly_config)))
+        return pn.Column(
+            pn.Pane(textfragments["benchmark_profile_top"], width=600),
+            pn.Row(pn.Column(i_compare_gene,
+                            pn.Pane(plotprofile, config=plotly_config)),
+                  pn.Column(pn.Row(i_compare_compartment, i_compare_profile_style),
+                            pn.Pane(plotcompartments, config=plotly_config)))
+        )
     except Exception:
-        return pn.Row(pn.Column(i_compare_gene,
-                                traceback.format_exc()),
-                      pn.Column(pn.Row(i_compare_compartment, i_compare_profile_style)))
+        return pn.Column(
+            pn.Pane(textfragments["benchmark_profile_top"], width=600),
+            pn.Row(pn.Column(i_compare_gene,
+                             traceback.format_exc()),
+                   pn.Column(pn.Row(i_compare_compartment, i_compare_profile_style)))
+        )
 
-
-def update_multi_choice():
-    i_multi_choice.options = i_class_comp.exp_names
-    i_reference_map.options = i_class_comp.exp_names
-    i_clusterwidget.options = list(i_class_comp.markerproteins.keys())
-    i_clusters_for_ranking.options = list(i_class_comp.markerproteins.keys())
-    i_clusters_for_ranking.value = list(i_class_comp.markerproteins.keys())
-    i_multi_choice.value = i_class_comp.exp_names
-    i_reference_map.value = i_class_comp.exp_names[0]
-
-    
-@pn.depends(i_multi_choice.param.value, watch=True)
-def update_ref_exp(multi_choice):
-    i_ref_exp.options = i_multi_choice.value
-    #return i_ref_exp
-
-
-@pn.depends(i_multi_choice.param.value, watch=True)
-def update_ExpOverview(multi_choice):
-    dict_analysis_parameters={}
-    for exp_name in multi_choice:
-        dict_analysis_parameters[exp_name] = i_class_comp.json_dict[exp_name]["Analysis parameters"]
-    i_ExpOverview[0] = pn.widgets.DataFrame(pd.DataFrame.from_dict(dict_analysis_parameters), height=300, disabled=True)
+#### Callback output positioning
+################################
 
 
 #### Dashboard structure
@@ -1249,9 +1538,42 @@ i_benchmark_download.callback = benchmark_download
 ################################
 o_benchmark_downloadpreview.append(benchmark_download_preview)
 
+#### Dashboard structure
+#### Overview tab
+########################
+
+#### Layout elements
+####################
+
+#### Append layout to dashboard
+###############################
+
+#### Callbacks
+##############
+# update_multi_choice
+# update_ExpOverview
+# update_benchmark_overview
+
+def update_multi_choice():
+    i_multi_choice.options = i_class_comp.exp_names
+    i_complexes_norm.options = [i_complexes_norm.options[0]]+i_class_comp.exp_names
+    i_clusterwidget.options = list(i_class_comp.markerproteins.keys())
+    i_clusters_for_ranking.options = list(i_class_comp.markerproteins.keys())
+    i_clusters_for_ranking.value = list(i_class_comp.markerproteins.keys())
+    i_multi_choice.value = i_class_comp.exp_names
+
+
+@pn.depends(i_multi_choice.param.value, watch=True)
+def update_ExpOverview(multi_choice):
+    dict_analysis_parameters={}
+    for exp_name in multi_choice:
+        dict_analysis_parameters[exp_name] = i_class_comp.json_dict[exp_name]["Analysis parameters"]
+    i_ExpOverview[0] = pn.widgets.DataFrame(pd.DataFrame.from_dict(dict_analysis_parameters), height=300, disabled=True)
 @pn.depends(i_multi_choice.param.value, i_clusters_for_ranking.param.value,
             i_scatter_metric.param.value, i_scatter_consolidation.param.value, i_scatter_quantile.param.value,
             cache_run_json.param.value)
+
+
 def update_benchmark_overview(multi_choice, clusters,
                               metric, consolidation, quantile,
                               run_json):
@@ -1274,15 +1596,18 @@ def update_benchmark_overview(multi_choice, clusters,
     except:
         return traceback.format_exc()
 
+#### Callback output positioning
+################################
+
 
 comparison_tabs.clear()
 comparison_tabs.append(("Overview", pn.Column(
     "Once you have run the analysis you can find different benchmarking outputs here and dive into the data.",
     update_benchmark_overview
 )))
-comparison_tabs.append(("PCA maps", update_visualization_map_comparison))
-comparison_tabs.append(("Depth & Coverage", pn.Column(update_npr_ngg_nprDc, update_venn)))
-comparison_tabs.append(("Intermap scatter", update_global_scatter_comparison))
+comparison_tabs.append(("PCA maps", lo_benchmark_pca))
+comparison_tabs.append(("Depth & Coverage", lo_benchmark_depth))
+comparison_tabs.append(("Intermap scatter", lo_benchmark_intermap))
 comparison_tabs.append(("Intramap scatter", comparison_tab_bp))
 comparison_tabs.append(("SVM Analysis", lo_benchmark_SVMs))
 comparison_tabs.append(("Compare profiles", update_profile_comparison))
@@ -1292,16 +1617,35 @@ comparison_tabs.append(("Download data", lo_benchmark_download))
 # In[ ]:
 
 
+#### Dashboard structure
+########################
+
+#### Layout elements
+####################
+
+#### Append layout to dashboard
+###############################
+
+#### Callbacks
+##############
+# list
+# of
+# callbacks
+
+#### Callback output positioning
+################################
+
+
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## Benchmark tab upload section<a id="benchmarkupload"></a>
+
+# In[ ]:
+
+
 dashboard_benchmark.objects = [
     pn.Card(objects=[], header="## Manage data", name="manage_data", height_policy="fit"),
     pn.Row(objects=[], name="benchmark_output", height_policy="fit")
 ]
-
-## dataset collection analysed and displayed in the benchmarking tab
-mem_benchmark = None
-i_class_comp = None
-## currently available datasets to select for benchmarking
-mem_available_datasets = dict()
 
 #### Manage data Card layout
 # This accesses mem_available_datasets and mem_benchmark.
@@ -1361,7 +1705,7 @@ def set_status_datamanagement(x, append=False):
 set_status_datamanagement("Step 1: Add datasets")
 o_dynamic_collectionmanagement = pn.Row()
 lo_coll_interactions = pn.Column(objects=[lo_instructions_datamanagement,
-                                          lo_instructions_error_messages,
+                                          #lo_instructions_error_messages, # currently empty
                                           o_status_datamanagement,
                                           o_dynamic_collectionmanagement])
 
@@ -1370,7 +1714,10 @@ lo_manage_collection = pn.Row(objects=[lo_dfs_available, lo_coll_buttons, lo_col
 
 #### Append elements to manage data row
 dashboard_benchmark.objects[[i.name for i in dashboard_benchmark].index("manage_data")].objects = []
-for el in [lo_add_datasets, lo_manage_collection]:
+for el in [
+    pn.Pane(textfragments["benchmark_management_top"], widht=600),
+    lo_add_datasets, lo_manage_collection
+]:
     dashboard_benchmark.objects[[i.name for i in dashboard_benchmark].index("manage_data")].append(el)
 
 #### Management callbacks
@@ -1517,6 +1864,7 @@ def coll_runmain(event):
             update_multi_choice()
             set_status_datamanagement("Running PCA ...", append=True)
             i_class_comp.perform_pca_comparison()
+            i_pca_comp_ncomp.end=len(i_class_comp.df_01_filtered_combined.columns)
             i_compare_compartment.options = list(set(
                 i_class_comp.df_01_filtered_combined.index.get_level_values("Compartment")))
             loading_status_comparison.objects = []
@@ -1606,8 +1954,9 @@ def display_benchmark_output(run_json):
         return pn.Column(
             "## Benchmark results",
             "Select dataset overlap to plot:",
-            pn.Row(pn.Column(i_multi_choice, m_diverget_fractions), i_ExpOverview),
-            comparison_tabs
+            i_multi_choice,
+            comparison_tabs,
+            sizing_mode="stretch_width"
         )
     else:
         return "Select data and run analysis."
@@ -1617,6 +1966,9 @@ dashboard_benchmark.objects[[i.name for i in dashboard_benchmark].index("benchma
 for el in [display_benchmark_output]:
     dashboard_benchmark.objects[[i.name for i in dashboard_benchmark].index("benchmark_output")].append(el)
 
+
+# [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
+# ## Code interactions<a id="interactions"></a>
 
 # In[ ]:
 
@@ -1630,9 +1982,9 @@ for el in [display_benchmark_output]:
 
 
 #In case of loading a dingle file larger than 80 MB
-#i_file.filename = "filename.txt"
-#with open("pathtofile.txt", "br") as file:
-#    i_file.value = file.read()
+#i_FileConfig._content.file.filename = "proteinGroups.txt"
+#with open(r"path\proteinGroups.txt", "br") as file:
+#    i_FileConfig._content.file.value = file.read()
 
 
 # In[ ]:
