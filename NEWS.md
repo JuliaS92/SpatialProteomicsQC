@@ -7,11 +7,16 @@
  - Included install and testing action on github for python 3.7-3.10.
  - PCA visualization module including elbow and loading plots
  - Compatibility with custom organelle annotation and complex member annotations
+ - Expanded help texts significantly
+ - SVM misclassification upload now also for MetaMass and custom input
+ - Correlation heatmaps and pairwise scatter plots included
 
 ### Changes
  - Bumped version of underlying packages
+ - SVM interface now more flexible and including class size as parameter
 
 ### Fixes
+ - Tabs in the interface are no longer scrolling unnecessarily
 
 ### Known bugs
  - The reannotation of gene names from uniprot is currently disabled, as it needs to be adapted to the new Uniprot REST API
