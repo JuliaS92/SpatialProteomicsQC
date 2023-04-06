@@ -14,6 +14,7 @@
 ### Changes
  - Bumped version of underlying packages
  - SVM interface now more flexible and including class size as parameter
+ - Intramap scatter now always normalized and different representations available
 
 ### Fixes
  - Tabs in the interface are no longer scrolling unnecessarily
