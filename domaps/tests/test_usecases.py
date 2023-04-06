@@ -1,8 +1,10 @@
 from pandas import read_csv
 from pandas.testing import assert_frame_equal
-from domaps import SpatialDataSet
+from domaps import SpatialDataSet, SpatialDataSetComparison
 import domaps.gui as gui
 import os
+import pkg_resources
+import json
 
 class TestAnalysis:
     
@@ -57,3 +59,48 @@ class TestAnalysis:
     
     def test_DOM_DDA(self):
         self.run_analysis(self.filenames["DOM_DDA"])
+
+class TestBenchmark:
+
+    def run_benchmark(_, filenames, svm=False):
+        
+        # read files
+        data = dict()
+        for file in filenames:
+            with open(file) as file_input:
+                content = json.load(file_input)
+            data.update(content)
+        
+        # Set up class
+        multi_choice = [k for k in data.keys()]
+        
+        comp = SpatialDataSetComparison()
+        
+        # align data
+        comp.json_dict = {k: data[k] for k in multi_choice}
+        comp.read_jsonFile()
+        
+        # analyse data
+        comp.calc_biological_precision()
+        comp.get_complex_coverage()
+        comp.perform_pca_comparison()
+        comp.calculate_global_scatter(metric="manhattan distance to average profile", consolidation="average")
+        if svm:
+            comp.svm_processing()
+        
+        # run plotting functions
+        comp.quantity_pr_pg_barplot_comparison(multi_choice)
+        comp.coverage_comparison(multi_choice)
+        comp.venn_sections(multi_choice, omit_size=50)
+        comp.get_complex_coverage(5)
+        comp.plot_intramap_scatter(
+            multi_choice=multi_choice,
+            clusters_for_ranking=list(comp.coverage_lists[0].keys())
+        )
+        comp.plot_reproducibility_distribution(x_cut=0.2, show_full=False, q=0.7)
+        if svm:
+            comp.plot_svm_detail(multi_choice=multi_choice, orientation="h", score="F1 score")
+    
+    def test_referencedata_HeLa(self):
+        filenames = [os.path.join(os.path.dirname(__file__), "../referencedata/"+el) for el in pkg_resources.resource_listdir("domaps", "referencedata") if "HeLa" in el]
+        self.run_benchmark(filenames, svm=False)
