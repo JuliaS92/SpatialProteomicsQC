@@ -842,7 +842,7 @@ class SpatialDataSet:
         
         map_names = self.map_names
         df_pca_all_marker_cluster_maps = pd.DataFrame()
-        df_pca_filtered = df_pca.unstack("Map").dropna()
+        df_pca_filtered = df_pca.unstack("Map")
         for clusters in markerproteins:
             for marker in markerproteins[clusters]:
                 try:
