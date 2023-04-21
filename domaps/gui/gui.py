@@ -1931,7 +1931,9 @@ class ConfigureMR(Viewer):
     manualmatching = param.Boolean(default=False)
     mscore_prop = param.Number(default=0.75)
     mscore_iterations = param.Integer(default=11)
+    mscore_auto = param.Boolean(default=True)
     rscore_mode = param.Selector(default="median")
+    
     
     def __init__(self, **params):
         self.cond_ctrl = pn.widgets.Select(name="Condition 1 (Ctrl)", width=200)
@@ -1941,7 +1943,8 @@ class ConfigureMR(Viewer):
         self._mscore_prop = pn.widgets.FloatSlider(start=0.5, end=0.9, step=0.05,
                                                    name="Static proportion of data", width=200)
         self._mscore_iterations = pn.widgets.IntSlider(start=3, end=31,
-                                                       name="Iterations", width=200)
+                                                       name="Iterations", width=100)
+        self._mscore_auto = pn.widgets.Checkbox(name="Stop automatically if >99% change by <0.5%")
         self._rscore_mode = pn.widgets.Select(options=["median", "smallest correlation", "largest correlation"],
                                               width=200)
         super().__init__(**params)
@@ -1964,7 +1967,7 @@ median over multiple iterations is used. Replicate p-values are combined by the 
 and corrected for multiple hypotheses by the Benjamini-Hochberg method. If you want to run \
 more iterations, please run the tool locally rather than using the plublicly hosted site."""
                     )),
-                    pn.Row(self._mscore_prop, self._mscore_iterations),
+                    pn.Row(self._mscore_prop, self._mscore_iterations, self._mscore_auto),
                 ),
                 pn.Column(
                     pn.Row("**R-Score calculation**", help_icon(
@@ -1978,16 +1981,19 @@ required to correlate well) select largest correlation."""
         )
         self._sync_layout()
     
+    
     def __panel__(self):
         return self.layout
     
-    @param.depends('conditions', 'manualmatching', 'mscore_prop', 'mscore_iterations', 'rscore_mode', watch=True)
+    
+    @param.depends('conditions', 'manualmatching', 'mscore_prop', 'mscore_iterations', 'mscore_auto', 'rscore_mode', watch=True)
     def _sync_layout(self):
         self.cond_trt.options = self.conditions
         self.cond_ctrl.options = self.conditions
         self._matching.value = "manually" if self.manualmatching else "by names"
         self._mscore_prop.value = self.mscore_prop
         self._mscore_iterations.value = self.mscore_iterations
+        self._mscore_auto.value = self.mscore_auto
         self._rscore_mode.value = self.rscore_mode
     
     @param.depends('cond_ctrl.value', watch=True)
@@ -1995,10 +2001,12 @@ required to correlate well) select largest correlation."""
         if self.cond_ctrl.value == self.cond_trt.value:
             self.cond_trt.value = [el for el in self.cond_trt.options if el != self.cond_ctrl.value][0]
     
+    
     @param.depends('cond_trt.value', watch=True)
     def _same_cond_trt(self):
         if self.cond_ctrl.value == self.cond_trt.value:
             self.cond_ctrl.value = [el for el in self.cond_ctrl.options if el != self.cond_trt.value][0]
+    
     
     @param.depends('cond_ctrl.value', 'cond_trt.value', '_matching.value', 'maps')
     def _matching_interface(self):
@@ -2030,6 +2038,7 @@ required to correlate well) select largest correlation."""
                      if el[1] != "None"],
             proportion = self._mscore_prop.value,
             iterations = self._mscore_iterations.value,
+            stop_at_95_05 = self._mscore_auto.value,
             rmode = self._rscore_mode.value
         )
 
@@ -2058,9 +2067,9 @@ class MRPlot(Viewer):
         self._excludeoutliers = pn.widgets.Checkbox(name="Exclude individual small p-values")
         self._exclusion_n = pn.widgets.IntInput(start=1, width=60, value=2)
         self._exclusion_p = pn.widgets.FloatInput(start=0.0001, end=1, value=0.05, width=80, step=0.01)
-        self.label_hits = pn.widgets.CrossSelector(name="Label hits", width=370)
+        self.label_hits = pn.widgets.CrossSelector(name="Label hits", width=370, height=240)
         self.highlight_gene = pn.widgets.MultiChoice(
-            name="Highlight genes/protein ids", placeholder="Start typing for autocompletion")
+            name="Highlight genes", placeholder="Start typing for autocompletion")
         super().__init__(**params)
         self.layout = pn.Row(
             pn.WidgetBox(
@@ -2095,7 +2104,7 @@ class MRPlot(Viewer):
     def _sync_data(self):
         try:
             self._exclusion_n.end = len([el for el in self.data.columns if el.startswith("p")])
-            self.highlight_gene.options = list(set(np.array(self.data.index.to_list()).flatten()))
+            self.highlight_gene.options = list(set(self.data.index.get_level_values("Gene names")))
             self._filter_hits()
         except:
             self.status=traceback.format_exc()
@@ -2111,7 +2120,7 @@ class MRPlot(Viewer):
                    '_excludeoutliers.value', '_exclusion_n.value', '_exclusion_p.value', watch=True)
     def _filter_hits(self):
         try:
-            filtering = self.filtering.copy()
+            filtering = pd.DataFrame(index=self.data.index, columns=["Outlier", "Classification"])
             pcolumns = [el for el in self.data.columns if el.startswith("p")]
             if self._excludeoutliers.value == True:
                 exclusion = [sum([p<=self._exclusion_p.value for p in row]) < self._exclusion_n.value
@@ -2125,9 +2134,12 @@ class MRPlot(Viewer):
                 hit = ["moving" if m >= self._mscore.value and r >= self._rscore.value else "static"
                        for m,r in zip(self.data.M, self.data.R)]
                 filtering["Classification"] = hit
-            self.label_hits.options = list(filtering.index.get_level_values("Gene names")[filtering.Classification == "moving"])
+            self.label_hits.options = sorted(list(filtering.index.get_level_values("Gene names")[filtering.Classification == "moving"]))
             self.label_hits.value = [el for el in self.label_hits.value if el in self.label_hits.options]
             self.filtering = filtering.copy()
+            self.status=f"Data was filtered with M>{self._mscore.value}, R>{self._rscore.value}\
+            {'.' if self._excludeoutliers.value == False else f' and excluding outliers with less than {self._exclusion_n.value} points with p-values <= {self._exclusion_p.value}.'}\
+             This yields {len([el for el in hit if el=='moving'])} hits."
         except:
             self.status=traceback.format_exc()
     
@@ -2152,34 +2164,36 @@ class MRPlot(Viewer):
             figure = px.scatter(
                 df.reset_index(), x="M", y="R", color="Classification",
                 template="simple_white",
-                color_discrete_map={"moving": "red", "static":"grey"},
+                color_discrete_map={"moving": "red", "static":"grey", "highlight":"blue"},
                 text="Label", hover_data=df.index.names,
+                render_mode="svg",
                 title=self.title
             )
             
-            if len(self.highlight_gene.value) > 0:
-                highlight = df.loc[[any([el in self.highlight_gene.value for el in i])
-                                    for i in df.index.values],]
-                figure.add_scatter(x=highlight.M, y=highlight.R,
-                                   text=df.reset_index()["Gene names"],
-                                   marker_color="blue", marker_size=10, mode="markers+text",
-                                   name="highlight")
-            
             figure.add_vline(x=self._mscore.value, line_color="black", line_width=1, opacity=1)
             figure.add_hline(y=self._rscore.value, line_color="black", line_width=1, opacity=1)
+            figure.add_scatter(x=[0], y=[1], opacity=0, showlegend=False, hoverinfo='none')
+            
+            if len(self.highlight_gene.value) > 0:
+                highlight = pd.DataFrame()
+                for el in self.highlight_gene.value:
+                    highlight = pd.concat([highlight, df.xs(el, axis=0, level="Gene names", drop_level=False)], axis=0)
+                figure.add_scatter(x=highlight.M, y=highlight.R,
+                                   text=highlight.reset_index()["Gene names"],
+                                   marker_color="blue", mode="markers+text",
+                                   marker_size=10,
+                                   name="highlight")
             
             figure.update_traces(textposition="middle right")
-            figure.update_layout(xaxis_range=(0-0.05*max(df.M), max(df.M)*1.1),
-                                 xaxis_title="M-score",
-                                 yaxis_range=(min(df.R)-0.02,1.02),
+            figure.update_layout(xaxis_title="M-score",
                                  yaxis_title="R-score"
                                 )
             
-            return pn.Column(figure)
+            return pn.pane.Plotly(figure, config=plotly_config)
         except:
             return pn.Column(
                 pn.Pane(traceback.format_exc(), width=600),
-                df
+                df.head()
             )
     
     @param.depends('filtering')
@@ -2190,3 +2204,4 @@ class MRPlot(Viewer):
         sio.seek(0)
         button = pn.widgets.FileDownload(sio, embed=True, filename="MovementScoring.txt")
         return button
+

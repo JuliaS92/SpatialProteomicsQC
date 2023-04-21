@@ -26,6 +26,13 @@ import urllib.parse
 import urllib.request
 import bisect
 import inspect
+from sklearn.covariance import MinCovDet
+from scipy.stats import chisquare, chi2
+import warnings
+from itertools import cycle, combinations
+from sklearn.metrics.pairwise import cosine_similarity
+from statsmodels.stats.multitest import multipletests
+from scipy.stats import combine_pvalues
 
 def natsort_index_keys(x):
     order = natsort.natsorted(np.unique(x.values))
@@ -405,6 +412,8 @@ class SpatialDataSet:
             raise ValueError("Unknown input format")
         
         self.map_names = df_index.columns.get_level_values("Map").unique()
+        if "<cond>" in self.name_pattern:
+            self.conditions = list(set([el.split("_")[0] for el in self.map_names]))
         
         ## Reannotate genes
         if self.reannotate_genes:
@@ -1097,6 +1106,92 @@ class SpatialDataSet:
         
         df_distances_aggregated.columns.set_names(names="Map", inplace=True)
         return df_distances_aggregated, df_distances_individual
+    
+    
+    def run_outliertest(self, cond_1="", cond_2="", pairs=[], proportion=0, iterations=1, rmode="median", stop_at_95_05=True, canvas=None):
+        
+        mrhash = f"{cond_1}{cond_2}{''.join([''.join(p) for p in pairs])}{proportion}{iterations}{stop_at_95_05}"
+        try:
+            self.mr_results.keys()
+        except:
+            self.mr_results = dict()
+        if mrhash in self.mr_results.keys():
+            mr = self.mr_results[mrhash]
+            if canvas is not None:
+                canvas.objects = ["This analysis has already been run and is shown below. No temporary data collected during processing can be shown."]
+            return mr
+        
+        df01 = self.df_01_stacked["normalized profile"].unstack(["Map", "Fraction"])\
+            [[el for el in self.map_names if el.startswith(cond_1+"_") or el.startswith(cond_2+"_")]].dropna()
+        pvals = pd.DataFrame(index=pd.MultiIndex.from_tuples(
+            [], names=df01.index.names))
+        deltas = pd.DataFrame(index=pd.MultiIndex.from_tuples(
+            [], names=df01.index.names))
+        plot_it = px.scatter(template="simple_white", title="Approximation over iterations").update_layout(
+            xaxis_title="Iteration",
+            yaxis_title="95th percentile of delta(median)"
+        )
+        if canvas is not None:
+            canvas.objects=["Status", f"Number of proteins is {len(df01)}", plot_it]
+        
+        for p in pairs:
+            m1 = cond_1+"_"+p[0]
+            m2 = cond_2+"_"+p[1]
+            delta = df01[[m1, m2]].stack("Fraction")
+            delta = delta[m2] - delta[m1]
+            
+            if canvas is not None:
+                canvas.append(
+                    px.histogram(
+                        delta.reset_index(),
+                        x=0, facet_col="Fraction",
+                        title=f"Delta profile distribution {m2}-{m1}",
+                        template="simple_white",
+                        nbins=50
+                    ).update_layout(
+                        width=800, height=200, margin=dict(l=0,r=0,b=0,t=50)
+                    ).update_xaxes(title="delta"))
+            
+            delta = delta.unstack("Fraction")
+            delta.columns = [f"delta {m2}-{m1} {el}" for el in delta.columns]
+            if canvas is not None:
+                canvas.objects[0].object = f"**Calculating {m2}-{m1}**"
+            
+            pv, med = outlier_test(delta.values, iterations=iterations, support_fraction=proportion, stop_at_95_05=stop_at_95_05)
+            
+            pvals = pvals.join(pd.DataFrame(np.array(pv).T, index=delta.index, columns=[f"p-value {m2}-{m1}"]), how="outer")
+            deltas = deltas.join(delta, how="outer")
+            
+            plot_it.add_scatter(
+                x=[i for i in range(2,len(med)+1)],
+                y=[np.quantile(abs(med[i]-med[i-1])/med[i-1], 0.95) for i in range(1,len(med))],
+                name=f"{m2}-{m1}"
+            )
+        
+        fisherp = pvals.apply(lambda x: combine_pvalues(x, method="fisher")[1], axis=1)
+        mscore = -np.log10(multipletests(fisherp, method="fdr_bh")[1])
+        pvals.insert(0,"M",mscore)
+        
+        
+        if canvas is not None:
+            canvas.objects[0].object = "**Calculating R-scores**"
+        correlations = rscores_multi(df01, pairs=[[cond_1+"_"+p[0], cond_2+"_"+p[1]] for p in pairs])
+        correlations.columns = [f"correlation {col}" for col in correlations.columns]
+        
+        rscore = correlations.apply(lambda x: x.min() if rmode=="smallest correlation"\
+                                    else x.max() if rmode=="largest correlation"\
+                                    else x.median(), axis=1)
+        
+        correlations.insert(0,"R",rscore)
+        
+        mr = pvals.join(correlations).join(deltas)
+        
+        if canvas is not None:
+            canvas.objects[0].object = "**Done**"
+        
+        self.mr_results[mrhash] = mr.copy()
+            
+        return mr
     
     
     def profiles_plot(self, map_of_interest="Map1", cluster_of_interest="Proteasome"):
@@ -3838,3 +3933,87 @@ def calc_width_categorical(f, itemwidth=40, charwidth=7):
     legendwidth = 50+charwidth*legendlength
     width=xwidth+legendwidth
     return dict(width=width, xaxis_domain=[0,xwidth/width], legend_x=(xwidth+5)/width)
+
+
+def outlier_test(
+    delta: np.array,
+    support_fraction: float = 0.75,
+    iterations: int = 10,
+    record_medians: bool = True,
+    stop_at_95_05: bool = True
+):
+    mh = []
+    medians = []
+    for i in range(iterations):
+        with warnings.catch_warnings():
+            if i != 0:
+                warnings.simplefilter("ignore")
+            else:
+                warnings.simplefilter(action="ignore", category=RuntimeWarning)
+            cov = MinCovDet(support_fraction=support_fraction, random_state=i).fit(delta)
+            mh.append(cov.mahalanobis(delta))
+            if record_medians:
+                medians.append(np.median(np.asarray(mh), axis=0))
+                if stop_at_95_05 and i > 0:
+                    q95 = np.quantile(abs(medians[-1]-medians[-2])/medians[-2], 0.95)
+                    if q95 < 0.005:
+                        break
+    if not record_medians:
+        medians.append(np.median(np.asarray(mh), axis=0))
+    pvals = chi2.sf(medians[-1], delta.shape[1])
+    return pvals, medians
+
+
+def rscores_multi(
+    df: pd.DataFrame,
+    pairs: list = []
+):
+    paired_pvals = pd.DataFrame(index=df.index)
+    
+    if pairs == []:
+        if "Map" in df.columns.names:
+            pairs = [el for el in combinations(np.unique(df.columns.get_level_values("Map")), 2)]
+    print([el for el in pairs])
+    
+    fractions = df[pairs[0][0]].columns.get_level_values("Fraction")
+    delta = pd.DataFrame(
+        df[[p[0] for p in pairs]].values - df[[p[1] for p in pairs]].values,
+        columns = pd.MultiIndex.from_tuples([(p, f) for p,f in zip(np.repeat(["-".join(pair) for pair in pairs], len(fractions)), cycle(fractions))], names=["Pair", "Fraction"])
+    )
+    print(delta.head())
+
+    # Preparation of new dataframe
+    reshapedRow = reshapeRow(delta.iloc[0,:], replicates="Pair", variables="Fraction")
+    nameMatrix = np.array([["{}_{}".format(r1, r2) for r2 in np.unique(reshapedRow.index)] for r1 in np.unique(reshapedRow.index)])
+
+    # Calculation of correlations
+    correlations = delta.apply(lambda x: pd.Series(correlation_row(reshapeRow(x, replicates="Pair", variables="Fraction"), method="cosine")), axis=1)
+
+    # Returning output table
+    correlations.columns = nameMatrix[np.tril_indices(len(nameMatrix), k=-1)]
+    correlations.index = df.index
+    
+    return correlations
+
+def calculate_correlation(m, method='pearson'):
+    methods = {'pearson': lambda x: x.T.corr(method='pearson').values,
+               'spearman': lambda x: x.T.corr(method='spearman').values,
+               'kendall': lambda x: x.T.corr(method='kendall').values,
+               'cosine': lambda x: cosine_similarity(x)}
+    return methods[method](m)
+
+# get lower triangle from the correlation matrix
+def correlation_row(m, method='pearson'):
+    cm = calculate_correlation(m, method=method)
+    cv = cm[np.tril_indices(len(cm),k=-1)]
+    return cv
+
+# pivot a single df line for correlation matrix calculation
+def reshapeRow(x, replicates='Replicate', variables=['Condition', 'Fraction']):
+    x = x.reset_index()
+    x.columns = np.append(x.columns.values[0:-1],['value'])
+    if type(variables) == list:
+        x['variables'] = [i+"_"+j for i,j in zip(x[variables[0]], x[variables[1]])]
+        variables='variables'
+    x = x.pivot(index=replicates, columns=variables, values='value')
+    return x
