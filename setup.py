@@ -6,7 +6,7 @@ with open("requirements.txt") as requirements_file:
         requirements.append(line)
 
 setup(name='domaps',
-      version='0.2.0',
+      version='0.2.0p',
       description='Python library for dynamic organellar maps',
       url='https://github.com/JuliaS92/SpatialProteomicsQC',
       author='Julia Schessner, Vincent Albrecht',

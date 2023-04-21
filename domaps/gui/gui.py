@@ -1924,4 +1924,269 @@ class pca_plot(Viewer):
         return pca_plot(df_pca = coords, df_loadings = loadings, df_var = var, facet_col=None)
 
 
+class ConfigureMR(Viewer):
+    
+    conditions = param.List(default=[])
+    maps = param.Dict(dict())
+    manualmatching = param.Boolean(default=False)
+    mscore_prop = param.Number(default=0.75)
+    mscore_iterations = param.Integer(default=11)
+    rscore_mode = param.Selector(default="median")
+    
+    def __init__(self, **params):
+        self.cond_ctrl = pn.widgets.Select(name="Condition 1 (Ctrl)", width=200)
+        self.cond_trt = pn.widgets.Select(name="Condition 2", width=200)
+        self._matching = pn.widgets.RadioBoxGroup(options=["by names", "manually"],
+                                                     name="Replicate matching", inline=True)
+        self._mscore_prop = pn.widgets.FloatSlider(start=0.5, end=0.9, step=0.05,
+                                                   name="Static proportion of data", width=200)
+        self._mscore_iterations = pn.widgets.IntSlider(start=3, end=31,
+                                                       name="Iterations", width=200)
+        self._rscore_mode = pn.widgets.Select(options=["median", "smallest correlation", "largest correlation"],
+                                              width=200)
+        super().__init__(**params)
+        self.layout = pn.Column(
+            pn.Row("**M-R plot configuration**", help_icon(
+                """For delta profiles condition 1 will be subtracted from condition 2. \
+If replicates are matched automatically they have to be named exactly the same."""
+            )),
+            pn.Row(self.cond_ctrl, self.cond_trt, pn.Column(
+                pn.Pane(self._matching.name), self._matching
+            )),
+            self._matching_interface,
+            pn.Row(
+                pn.Column(
+                    pn.Row("**M-Score calculation**", help_icon(
+                        """The Movement-score is calculated from the Mahalanobis distance distributions \
+of the delta profiles. This is robust by only using a certain 'static' proportion of the data for \
+calculation of the minimum covariance determinant. The calculation is not deterministic, so the \
+median over multiple iterations is used. Replicate p-values are combined by the Fisher method \
+and corrected for multiple hypotheses by the Benjamini-Hochberg method. If you want to run \
+more iterations, please run the tool locally rather than using the plublicly hosted site."""
+                    )),
+                    pn.Row(self._mscore_prop, self._mscore_iterations),
+                ),
+                pn.Column(
+                    pn.Row("**R-Score calculation**", help_icon(
+                    """The Reproducibility-score is calculated from all pairwise replicate correlations \
+of delta profiles. For maximum stringency select smallest correlation, for minimal stringency (only two replicates \
+required to correlate well) select largest correlation."""
+                    )),
+                    self._rscore_mode
+                )
+            )
+        )
+        self._sync_layout()
+    
+    def __panel__(self):
+        return self.layout
+    
+    @param.depends('conditions', 'manualmatching', 'mscore_prop', 'mscore_iterations', 'rscore_mode', watch=True)
+    def _sync_layout(self):
+        self.cond_trt.options = self.conditions
+        self.cond_ctrl.options = self.conditions
+        self._matching.value = "manually" if self.manualmatching else "by names"
+        self._mscore_prop.value = self.mscore_prop
+        self._mscore_iterations.value = self.mscore_iterations
+        self._rscore_mode.value = self.rscore_mode
+    
+    @param.depends('cond_ctrl.value', watch=True)
+    def _same_cond_ctrl(self):
+        if self.cond_ctrl.value == self.cond_trt.value:
+            self.cond_trt.value = [el for el in self.cond_trt.options if el != self.cond_ctrl.value][0]
+    
+    @param.depends('cond_trt.value', watch=True)
+    def _same_cond_trt(self):
+        if self.cond_ctrl.value == self.cond_trt.value:
+            self.cond_ctrl.value = [el for el in self.cond_ctrl.options if el != self.cond_trt.value][0]
+    
+    @param.depends('cond_ctrl.value', 'cond_trt.value', '_matching.value', 'maps')
+    def _matching_interface(self):
+        matching_layout = pn.Column()
+        try:
+            for map_c in self.maps[self.cond_ctrl.value]:
+                map_t = map_c if map_c in self.maps[self.cond_trt.value] else "None"
+                row = pn.Row(
+                    pn.Pane(map_c, width=150, align="center"), 
+                    pn.Pane("matches", width=50, align="center"),
+                    pn.Pane(map_t if self._matching.value == "by names"\
+                            else pn.widgets.Select(options=self.maps[self.cond_trt.value]+["None"],
+                                                   value=map_t, width=200),
+                            width=170, align="center"),
+                    height=40, align="center"
+                )
+                matching_layout.append(row)
+            return matching_layout
+        except:
+            return traceback.format_exc()
+    
+    def get_settings(self):
+        return dict(
+            cond_1 = self.cond_ctrl.value,
+            cond_2 = self.cond_trt.value,
+            pairs = [el for el in 
+                     [(c.object, t.value if self._matching.value=="manually" else t.object)
+                      for r in self.layout[2] for c,_,t in r._pane]
+                     if el[1] != "None"],
+            proportion = self._mscore_prop.value,
+            iterations = self._mscore_iterations.value,
+            rmode = self._rscore_mode.value
+        )
 
+
+class MRPlot(Viewer):
+    mscore = param.Number(default=1.3)
+    rscore = param.Number(default=0.8)
+    excludeoutliers = param.Boolean(default=True)
+    exclusion_n = param.Integer(default=2)
+    exclusion_p = param.Number(default=0.05)
+    data = param.DataFrame(default=pd.DataFrame(data=[[0.9,5,0.05,0.02,0.1], [0.7,0.5,0.1,0.02,0.5]],
+                                                columns=["R", "M", "p1", "p2", "p3"],
+                                                index=pd.MultiIndex.from_tuples(
+                                                    [("P1123", "G1"), ("P234", "G42")], names=["Protein IDs", "Gene names"])
+                                                ))
+    filtering = param.DataFrame(default=pd.DataFrame(columns=["Classification", "Outlier"],
+                                                     index=pd.MultiIndex.from_tuples(
+                                                         [("P1123", "G1"), ("P234", "G42")], names=["Protein IDs", "Gene names"])
+                                                     ))
+    title = param.String("M-R plot indicating moving proteins")
+    status = param.String()
+    
+    def __init__(self, **params):
+        self._mscore = pn.widgets.FloatInput(name="M-score cutoff (inclusive)", start=0, step=0.1)
+        self._rscore = pn.widgets.FloatInput(name="R-score cutoff (inclusive)", start=0, end=1, step=0.05)
+        self._excludeoutliers = pn.widgets.Checkbox(name="Exclude individual small p-values")
+        self._exclusion_n = pn.widgets.IntInput(start=1, width=60, value=2)
+        self._exclusion_p = pn.widgets.FloatInput(start=0.0001, end=1, value=0.05, width=80, step=0.01)
+        self.label_hits = pn.widgets.CrossSelector(name="Label hits", width=370)
+        self.highlight_gene = pn.widgets.MultiChoice(
+            name="Highlight genes/protein ids", placeholder="Start typing for autocompletion")
+        super().__init__(**params)
+        self.layout = pn.Row(
+            pn.WidgetBox(
+                self._mscore,
+                self._rscore,
+                self._excludeoutliers,
+                self._exclusion_interface,
+                self.highlight_gene,
+                pn.pane.Markdown("Label significant hits", margin=(5,0,0,10)),
+                self.label_hits
+            ),
+            pn.Column(self.show_status,
+                      self.plot,
+                      self.download
+                     )
+        )
+        self._sync_layout()
+        self._sync_data()
+    
+    def __panel__(self):
+        return self.layout
+    
+    @param.depends('mscore', 'rscore', 'excludeoutliers', 'exclusion_n', 'exclusion_p', watch=True)
+    def _sync_layout(self):
+        self._mscore.value = self.mscore
+        self._rscore.value = self.rscore
+        self._excludeoutliers.value = self.excludeoutliers
+        self._exclusion_n.value = self.exclusion_n
+        self._exclusion_p.value = self.exclusion_p
+    
+    @param.depends('data', watch=True)
+    def _sync_data(self):
+        try:
+            self._exclusion_n.end = len([el for el in self.data.columns if el.startswith("p")])
+            self.highlight_gene.options = list(set(np.array(self.data.index.to_list()).flatten()))
+            self._filter_hits()
+        except:
+            self.status=traceback.format_exc()
+    
+    @param.depends('_excludeoutliers.value')
+    def _exclusion_interface(self):
+        if self._excludeoutliers.value == True:
+            return pn.Row("At least ", self._exclusion_n, " p-values have to be <= ", self._exclusion_p)
+        else:
+            return pn.Row()
+    
+    @param.depends('_mscore.value', '_rscore.value',
+                   '_excludeoutliers.value', '_exclusion_n.value', '_exclusion_p.value', watch=True)
+    def _filter_hits(self):
+        try:
+            filtering = self.filtering.copy()
+            pcolumns = [el for el in self.data.columns if el.startswith("p")]
+            if self._excludeoutliers.value == True:
+                exclusion = [sum([p<=self._exclusion_p.value for p in row]) < self._exclusion_n.value
+                             for row in self.data[pcolumns].values]
+                filtering["Outlier"] = exclusion
+                hit = ["moving" if m >= self._mscore.value and r >= self._rscore.value and ex == False else "static"
+                       for m,r,ex in zip(self.data.M, self.data.R, exclusion)]
+                filtering["Classification"] = hit
+            else:
+                filtering["Outlier"] = False
+                hit = ["moving" if m >= self._mscore.value and r >= self._rscore.value else "static"
+                       for m,r in zip(self.data.M, self.data.R)]
+                filtering["Classification"] = hit
+            self.label_hits.options = list(filtering.index.get_level_values("Gene names")[filtering.Classification == "moving"])
+            self.label_hits.value = [el for el in self.label_hits.value if el in self.label_hits.options]
+            self.filtering = filtering.copy()
+        except:
+            self.status=traceback.format_exc()
+    
+    @param.depends('status')
+    def show_status(self):
+        return pn.pane.Markdown(self.status, width=600)
+    
+    @param.depends('filtering', 'highlight_gene.value', 'label_hits.value')
+    def plot(self):
+        try:
+            df = self.data[["M", "R"]].join(self.filtering)
+            if len(self.label_hits.value) > 0:
+                df.insert(0, "Label",
+                          [str(g) if g in self.label_hits.value and g not in self.highlight_gene.value else ""
+                           for g in df.index.get_level_values("Gene names")])
+            else:
+                df.insert(0, "Label", "")
+        except:
+            return traceback.format_exc()
+        try:
+            #return df.reset_index().values
+            figure = px.scatter(
+                df.reset_index(), x="M", y="R", color="Classification",
+                template="simple_white",
+                color_discrete_map={"moving": "red", "static":"grey"},
+                text="Label", hover_data=df.index.names,
+                title=self.title
+            )
+            
+            if len(self.highlight_gene.value) > 0:
+                highlight = df.loc[[any([el in self.highlight_gene.value for el in i])
+                                    for i in df.index.values],]
+                figure.add_scatter(x=highlight.M, y=highlight.R,
+                                   text=df.reset_index()["Gene names"],
+                                   marker_color="blue", marker_size=10, mode="markers+text",
+                                   name="highlight")
+            
+            figure.add_vline(x=self._mscore.value, line_color="black", line_width=1, opacity=1)
+            figure.add_hline(y=self._rscore.value, line_color="black", line_width=1, opacity=1)
+            
+            figure.update_traces(textposition="middle right")
+            figure.update_layout(xaxis_range=(0-0.05*max(df.M), max(df.M)*1.1),
+                                 xaxis_title="M-score",
+                                 yaxis_range=(min(df.R)-0.02,1.02),
+                                 yaxis_title="R-score"
+                                )
+            
+            return pn.Column(figure)
+        except:
+            return pn.Column(
+                pn.Pane(traceback.format_exc(), width=600),
+                df
+            )
+    
+    @param.depends('filtering')
+    def download(self):
+        self.data.join(self.filtering)
+        sio = StringIO()
+        self.data.join(self.filtering).reset_index().to_csv(sio, index=False, sep="\t")
+        sio.seek(0)
+        button = pn.widgets.FileDownload(sio, embed=True, filename="MovementScoring.txt")
+        return button
