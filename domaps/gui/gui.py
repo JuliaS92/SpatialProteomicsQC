@@ -2054,17 +2054,14 @@ class MRPlot(Viewer):
                                                 index=pd.MultiIndex.from_tuples(
                                                     [("P1123", "G1"), ("P234", "G42")], names=["Protein IDs", "Gene names"])
                                                 ))
-    filtering = param.DataFrame(default=pd.DataFrame(columns=["Classification", "Outlier"],
-                                                     index=pd.MultiIndex.from_tuples(
-                                                         [("P1123", "G1"), ("P234", "G42")], names=["Protein IDs", "Gene names"])
-                                                     ))
+    filtering = param.DataFrame(default=pd.DataFrame())
     title = param.String("M-R plot indicating moving proteins")
     status = param.String()
     
     def __init__(self, **params):
         self._mscore = pn.widgets.FloatInput(name="M-score cutoff (inclusive)", start=0, step=0.1)
         self._rscore = pn.widgets.FloatInput(name="R-score cutoff (inclusive)", start=0, end=1, step=0.05)
-        self._excludeoutliers = pn.widgets.Checkbox(name="Exclude individual small p-values")
+        self._excludeoutliers = pn.widgets.Checkbox(name="Only include proteins significant in multiple replicates")
         self._exclusion_n = pn.widgets.IntInput(start=1, width=60, value=2)
         self._exclusion_p = pn.widgets.FloatInput(start=0.0001, end=1, value=0.05, width=80, step=0.01)
         self.label_hits = pn.widgets.CrossSelector(name="Label hits", width=370, height=240)
@@ -2120,25 +2117,23 @@ class MRPlot(Viewer):
                    '_excludeoutliers.value', '_exclusion_n.value', '_exclusion_p.value', watch=True)
     def _filter_hits(self):
         try:
-            filtering = pd.DataFrame(index=self.data.index, columns=["Outlier", "Classification"])
-            pcolumns = [el for el in self.data.columns if el.startswith("p")]
+            filtering = pd.DataFrame(index=self.data.index, columns=["Significant hit"])
+            hit = ["moving" if m >= self._mscore.value and r >= self._rscore.value else "static"
+                   for m,r in zip(self.data.M, self.data.R)]
+            filtering["Significant hit"] = hit
             if self._excludeoutliers.value == True:
+                pcolumns = [el for el in self.data.columns if el.startswith("p")]
                 exclusion = [sum([p<=self._exclusion_p.value for p in row]) < self._exclusion_n.value
                              for row in self.data[pcolumns].values]
-                filtering["Outlier"] = exclusion
                 hit = ["moving" if m >= self._mscore.value and r >= self._rscore.value and ex == False else "static"
                        for m,r,ex in zip(self.data.M, self.data.R, exclusion)]
-                filtering["Classification"] = hit
-            else:
-                filtering["Outlier"] = False
-                hit = ["moving" if m >= self._mscore.value and r >= self._rscore.value else "static"
-                       for m,r in zip(self.data.M, self.data.R)]
-                filtering["Classification"] = hit
-            self.label_hits.options = sorted(list(filtering.index.get_level_values("Gene names")[filtering.Classification == "moving"]))
+                filtering.rename({"Significant hit": "Significant hit without replicate filter"}, axis=1, inplace=True)
+                filtering["Significant hit"] = hit
+            self.label_hits.options = sorted(list(filtering.index.get_level_values("Gene names")[filtering["Significant hit"] == "moving"]))
             self.label_hits.value = [el for el in self.label_hits.value if el in self.label_hits.options]
             self.filtering = filtering.copy()
             self.status=f"Data was filtered with M>{self._mscore.value}, R>{self._rscore.value}\
-            {'.' if self._excludeoutliers.value == False else f' and excluding outliers with less than {self._exclusion_n.value} points with p-values <= {self._exclusion_p.value}.'}\
+            {'.' if self._excludeoutliers.value == False else f' and excluding outliers with less than {self._exclusion_n.value} profiles with p-values <= {self._exclusion_p.value}.'}\
              This yields {len([el for el in hit if el=='moving'])} hits."
         except:
             self.status=traceback.format_exc()
@@ -2162,7 +2157,7 @@ class MRPlot(Viewer):
         try:
             #return df.reset_index().values
             figure = px.scatter(
-                df.reset_index(), x="M", y="R", color="Classification",
+                df.reset_index(), x="M", y="R", color="Significant hit",
                 template="simple_white",
                 color_discrete_map={"moving": "red", "static":"grey", "highlight":"blue"},
                 text="Label", hover_data=df.index.names,
@@ -2198,10 +2193,13 @@ class MRPlot(Viewer):
     
     @param.depends('filtering')
     def download(self):
-        self.data.join(self.filtering)
-        sio = StringIO()
-        self.data.join(self.filtering).reset_index().to_csv(sio, index=False, sep="\t")
-        sio.seek(0)
-        button = pn.widgets.FileDownload(sio, embed=True, filename="MovementScoring.txt")
-        return button
+        try:
+            self.data.join(self.filtering)
+            sio = StringIO()
+            self.data.join(self.filtering).reset_index().to_csv(sio, index=False, sep="\t")
+            sio.seek(0)
+            button = pn.widgets.FileDownload(sio, embed=True, filename="MovementScoring.txt")
+            return button
+        except:
+            return traceback.format_exc()
 

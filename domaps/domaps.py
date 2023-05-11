@@ -102,7 +102,7 @@ class SpatialDataSet:
                     "Only identified by site": ["!=", "'+'"],
                     "Reverse": ["!=", "'+'"]
                 },
-                annotation_columns=["Protein names", "Q-value", "Score", "id"]
+                annotation_columns=["Protein names", "id"]
             ),
             MaxQuant_peptides_pivot=None,
             Spectronaut_proteins_long=dict(
