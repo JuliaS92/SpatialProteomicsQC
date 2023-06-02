@@ -2802,76 +2802,73 @@ class SpatialDataSetComparison:
         df_clusterPerformance_global = pd.DataFrame()
         df_AvgClusterPerformance_global = pd.DataFrame()
         
-        for exp in self.exp_names:
+        for exp in self.svm_results.keys():
             
-            #confusion = pd.DataFrame([[5,0,1],[1,6,0],[0,0,6]], columns=["P1", "P2", "P3"], index=["T1", "T2", "T3"])
-            try:
-                confusion = self.svm_results[exp]["default"]["misclassification"].copy()
-            except:
-                continue
+            for svmset in self.svm_results[exp].keys():
+                confusion = self.svm_results[exp][svmset]["misclassification"].copy().fillna(0)
             
-            true_positives = np.diag(confusion)
-            class_sizes = confusion.sum(axis=1)
-            mask_true = np.ones(confusion.shape)
-            mask_true[np.diag_indices(confusion.shape[0])] = 0
-            false_predicitons = confusion * mask_true
-            false_positives = false_predicitons.sum(axis=0)
-            false_negatives = false_predicitons.sum(axis=1)
-            recall = true_positives/(true_positives+false_negatives)
-            precision = true_positives/(true_positives+false_positives)
-            F1_scores = pd.Series([statistics.harmonic_mean([p,r]) for p,r in zip(precision, recall)], index=confusion.index)
-            df_clusterPerformance = pd.DataFrame(
-                [recall.values, precision.values, F1_scores.values, class_sizes],
-                columns=pd.MultiIndex.from_arrays([np.repeat(exp, len(recall)), confusion.index],
-                                                names=["Experiment", "Type"]),
-                index=["Recall", "Precision", "F1 score", "Class size"]
-            )
-            df_clusterPerformance_global = pd.concat([df_clusterPerformance_global, df_clusterPerformance], axis=1)
-            
-            # Performance of SVMs across all predictions
-            overall = [
-                true_positives.sum()/(true_positives.sum()+false_negatives.sum()),
-                true_positives.sum()/(true_positives.sum()+false_positives.sum())
-            ]
-            overall.append(statistics.harmonic_mean(overall))
-            overall.append(class_sizes.sum())
-            
-            # Average performance across all classes
-            average = [
-                recall.mean(),
-                precision.mean(),
-                F1_scores.mean(),
-                class_sizes.mean()
-            ]
-            
-            # Average performance across membranous organelles
-            organelles = [
-                "Plasma membrane",
-                "Peroxisome",
-                "Mitochondrion",
-                "Lysosome",
-                "ER",
-                "Endosome",
-                "Golgi",
-                "Ergic/cisGolgi",
-                "ER_high_curvature",
-                "PM",
-                "endosome",
-                "Nucleus"
-            ]
-            organelle = [
-                recall[[el in organelles for el in confusion.index]].mean(),
-                precision[[el in organelles for el in confusion.index]].mean(),
-                F1_scores[[el in organelles for el in confusion.index]].mean(),
-                class_sizes[[el in organelles for el in confusion.index]].mean()
-            ]
-            df_AvgClusterPerformance = pd.DataFrame([overall, average, organelle],
-                        index=pd.MultiIndex.from_arrays(
-                            [np.repeat(exp, 3),
-                            ["Overall performance", "Average all classes", "Average membraneous organelles"]],
-                            names=["Experiment", "Type"]),
-                        columns=["Recall", "Precision", "F1 score", "Class size"]).T
-            df_AvgClusterPerformance_global = pd.concat([df_AvgClusterPerformance_global, df_AvgClusterPerformance], axis=1)
+                true_positives = np.diag(confusion)
+                class_sizes = confusion.sum(axis=1)
+                mask_true = np.ones(confusion.shape)
+                mask_true[np.diag_indices(confusion.shape[0])] = 0
+                false_predicitons = confusion * mask_true
+                false_positives = false_predicitons.sum(axis=0)
+                false_negatives = false_predicitons.sum(axis=1)
+                recall = true_positives/(true_positives+false_negatives)
+                precision = true_positives/(true_positives+false_positives)
+                F1_scores = pd.Series([statistics.harmonic_mean([p,r]) for p,r in zip(precision, recall)], index=confusion.index)
+                df_clusterPerformance = pd.DataFrame(
+                    [recall.values, precision.values, F1_scores.values, class_sizes],
+                    columns=pd.MultiIndex.from_arrays([np.repeat(exp, len(recall)), np.repeat(svmset, len(recall)), confusion.index],
+                                                    names=["Experiment", "Set", "Type"]),
+                    index=["Recall", "Precision", "F1 score", "Class size"]
+                )
+                df_clusterPerformance_global = pd.concat([df_clusterPerformance_global, df_clusterPerformance], axis=1)
+                
+                # Performance of SVMs across all predictions
+                overall = [
+                    true_positives.sum()/(true_positives.sum()+false_negatives.sum()),
+                    true_positives.sum()/(true_positives.sum()+false_positives.sum())
+                ]
+                overall.append(statistics.harmonic_mean(overall))
+                overall.append(class_sizes.sum())
+                
+                # Average performance across all classes
+                average = [
+                    recall.mean(),
+                    precision.mean(),
+                    F1_scores.mean(),
+                    class_sizes.mean()
+                ]
+                
+                # Average performance across membranous organelles
+                organelles = [
+                    "Plasma membrane",
+                    "Peroxisome",
+                    "Mitochondrion",
+                    "Lysosome",
+                    "ER",
+                    "Endosome",
+                    "Golgi",
+                    "Ergic/cisGolgi",
+                    "ER_high_curvature",
+                    "PM",
+                    "endosome",
+                    "Nucleus"
+                ]
+                organelle = [
+                    recall[[el in organelles for el in confusion.index]].mean(),
+                    precision[[el in organelles for el in confusion.index]].mean(),
+                    F1_scores[[el in organelles for el in confusion.index]].mean(),
+                    class_sizes[[el in organelles for el in confusion.index]].mean()
+                ]
+                df_AvgClusterPerformance = pd.DataFrame([overall, average, organelle],
+                            index=pd.MultiIndex.from_arrays(
+                                [np.repeat(exp, 3),np.repeat(svmset, 3),
+                                ["Overall performance", "Average all classes", "Average membraneous organelles"]],
+                                names=["Experiment", "Set", "Type"]),
+                            columns=["Recall", "Precision", "F1 score", "Class size"]).T
+                df_AvgClusterPerformance_global = pd.concat([df_AvgClusterPerformance_global, df_AvgClusterPerformance], axis=1)
         
         self.df_clusterPerformance_global = df_clusterPerformance_global
         self.df_AvgClusterPerformance_global = df_AvgClusterPerformance_global
@@ -2880,6 +2877,7 @@ class SpatialDataSetComparison:
     
     
     def plot_svm_summary(self,
+                         svmset="default",
                          multi_choice=[],
                          score="F1 score",
                          orientation="v"):
@@ -2888,7 +2886,7 @@ class SpatialDataSetComparison:
             multi_choice = self.exp_names
         
         try:
-            df = pd.DataFrame(self.df_AvgClusterPerformance_global.loc[score,])
+            df = pd.DataFrame(self.df_AvgClusterPerformance_global.loc[score,]).xs(svmset, level="Set", axis=0)
         except KeyError:
             raise KeyError(f"{score} is not among the criteria calculated for classification performance.")
         
@@ -2909,6 +2907,7 @@ class SpatialDataSetComparison:
         return plot
     
     def plot_svm_detail(self,
+                        svmset="default",
                         multi_choice=[],
                         score="F1 score",
                         orientation="v"):
@@ -2917,7 +2916,7 @@ class SpatialDataSetComparison:
             multi_choice = self.exp_names
         
         try:
-            df = pd.DataFrame(self.df_clusterPerformance_global.loc[score,])
+            df = pd.DataFrame(self.df_clusterPerformance_global.loc[score,]).xs(svmset, level="Set", axis=0)
         except KeyError:
             raise KeyError(f"{score} is not among the criteria calculated for classification performance.")
         
