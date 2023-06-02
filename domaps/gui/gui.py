@@ -1929,6 +1929,7 @@ class ConfigureMR(Viewer):
     conditions = param.List(default=[])
     maps = param.Dict(dict())
     manualmatching = param.Boolean(default=False)
+    prefilter = param.Number(default=0.9)
     mscore_prop = param.Number(default=0.75)
     mscore_iterations = param.Integer(default=11)
     mscore_auto = param.Boolean(default=True)
@@ -1940,6 +1941,8 @@ class ConfigureMR(Viewer):
         self.cond_trt = pn.widgets.Select(name="Condition 2", width=200)
         self._matching = pn.widgets.RadioBoxGroup(options=["by names", "manually"],
                                                      name="Replicate matching", inline=True)
+        self._prefilter = pn.widgets.FloatSlider(start=-1, end=1, step=0.05,
+                                                   name="Prefilter data by removing proteins with any replicate cosine correlation <", width=410)
         self._mscore_prop = pn.widgets.FloatSlider(start=0.5, end=0.9, step=0.05,
                                                    name="Static proportion of data", width=200)
         self._mscore_iterations = pn.widgets.IntSlider(start=3, end=31,
@@ -1957,6 +1960,7 @@ If replicates are matched automatically they have to be named exactly the same."
                 pn.Pane(self._matching.name), self._matching
             )),
             self._matching_interface,
+            self._prefilter,
             pn.Row(
                 pn.Column(
                     pn.Row("**M-Score calculation**", help_icon(
@@ -1986,10 +1990,11 @@ required to correlate well) select largest correlation."""
         return self.layout
     
     
-    @param.depends('conditions', 'manualmatching', 'mscore_prop', 'mscore_iterations', 'mscore_auto', 'rscore_mode', watch=True)
+    @param.depends('conditions', 'manualmatching', 'prefilter', 'mscore_prop', 'mscore_iterations', 'mscore_auto', 'rscore_mode', watch=True)
     def _sync_layout(self):
         self.cond_trt.options = self.conditions
         self.cond_ctrl.options = self.conditions
+        self._prefilter.value = self.prefilter
         self._matching.value = "manually" if self.manualmatching else "by names"
         self._mscore_prop.value = self.mscore_prop
         self._mscore_iterations.value = self.mscore_iterations
@@ -2036,6 +2041,7 @@ required to correlate well) select largest correlation."""
                      [(c.object, t.value if self._matching.value=="manually" else t.object)
                       for r in self.layout[2] for c,_,t in r._pane]
                      if el[1] != "None"],
+            prefilter = self._prefilter.value,
             proportion = self._mscore_prop.value,
             iterations = self._mscore_iterations.value,
             stop_at_95_05 = self._mscore_auto.value,

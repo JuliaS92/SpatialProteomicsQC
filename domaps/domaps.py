@@ -341,6 +341,8 @@ class SpatialDataSet:
         self.perform_pca()
         setprogress("Calculating Manhattan Distance ...")
         self.calc_biological_precision()
+        setprogress("Calculating replicate correlations ... ")
+        self.calculate_pairwise_correlations()
         setprogress("Assembling analysis output ...")
         self.results_overview_table()
         setprogress("Analysis finished.")
@@ -414,6 +416,8 @@ class SpatialDataSet:
         self.map_names = df_index.columns.get_level_values("Map").unique()
         if "<cond>" in self.name_pattern:
             self.conditions = list(set([el.split("_")[0] for el in self.map_names]))
+        else:
+            self.conditions = [""]
         
         ## Reannotate genes
         if self.reannotate_genes:
@@ -1108,9 +1112,9 @@ class SpatialDataSet:
         return df_distances_aggregated, df_distances_individual
     
     
-    def run_outliertest(self, cond_1="", cond_2="", pairs=[], proportion=0, iterations=1, rmode="median", stop_at_95_05=True, canvas=None):
+    def run_outliertest(self, cond_1="", cond_2="", pairs=[], proportion=0, iterations=1, rmode="median", stop_at_95_05=True, prefilter=0.9, canvas=None):
         
-        mrhash = f"{cond_1}{cond_2}{''.join([''.join(p) for p in pairs])}{proportion}{iterations}{stop_at_95_05}"
+        mrhash = f"{cond_1}{cond_2}{''.join([''.join(p) for p in pairs])}{proportion}{iterations}{stop_at_95_05}{rmode}{prefilter}"
         try:
             self.mr_results.keys()
         except:
@@ -1121,8 +1125,26 @@ class SpatialDataSet:
                 canvas.objects = ["This analysis has already been run and is shown below. No temporary data collected during processing can be shown."]
             return mr
         
+        cols = []
+        for col in self.correlations.columns:
+            colel = col.split("_")
+            if colel[0] == cond_1:
+                reps = [el[0] for el in pairs]
+                if colel[1] in reps and colel[3] in reps:
+                    cols.append(col)
+            elif colel[0] == cond_2:
+                reps = [el[1] for el in pairs]
+                if colel[1] in reps and colel[3] in reps:
+                    cols.append(col)
+        
+        min_correl = self.correlations[cols].min(axis=1)
+        
         df01 = self.df_01_stacked["normalized profile"].unstack(["Map", "Fraction"])\
-            [[el for el in self.map_names if el.startswith(cond_1+"_") or el.startswith(cond_2+"_")]].dropna()
+            [[el for el in self.map_names if el.startswith(cond_1+"_") or el.startswith(cond_2+"_")]].dropna()\
+            .stack(["Fraction"])
+        df01 = pd.DataFrame(df01).join(pd.Series(min_correl[min_correl>0.8], name="filter"), how="left").dropna()\
+            .query("filter >= @prefilter").drop("filter", axis=1).unstack(["Fraction"])
+        
         pvals = pd.DataFrame(index=pd.MultiIndex.from_tuples(
             [], names=df01.index.names))
         deltas = pd.DataFrame(index=pd.MultiIndex.from_tuples(
@@ -1364,6 +1386,60 @@ class SpatialDataSet:
         except:
             self.cache_cluster_quantified = False
             
+    def calculate_pairwise_correlations(self, metric="cosine correlation"):
+        """
+        A distribution plot of the profile scatter in each experiment is generated, with variable distance metric and consolidation of replicates.
+        
+        Args:
+            self:
+                df_01_stacked: df, indexed
+            metric: 'cosine correlation', 'pearson correlation'
+        
+        Returns:
+            self attribute correlations with one column per within condition pair of correlation values
+        """
+        
+        # Option dictionaries
+        
+        metrics = {
+            "cosine correlation": "cosine",
+            "pearson correlation": lambda x,y: np.corrcoef(x,y)[0][1]
+        }
+        
+        # Option assertion
+        assert metric in metrics.keys()
+        
+        df = self.df_01_stacked.unstack("Map").xs("normalized profile", axis=1, level="Set").copy()
+        df.index = df.index.droplevel(["Gene names", "Compartment"])
+        
+        # Calculate and consolidate distances
+        distances = pd.DataFrame()
+        for cond in self.conditions:
+            cond += "_" if cond != "" else ""
+            df_m = df[[el for el in self.map_names if el.startswith(cond)]].dropna().stack(["Map"]).unstack("Fraction")
+            maps = list(set(df_m.index.get_level_values("Map")))
+            
+            distances_m = pd.DataFrame()
+            
+            # loop over pairs of maps
+            for i, mapi in enumerate(maps):
+                for j, mapj in enumerate(maps):
+                    # only look at each comparison once
+                    if j <= i:
+                        continue
+                    dist = pw.paired_distances(df_m.xs(mapi, level="Map", axis=0).values,
+                                            df_m.xs(mapj, level="Map", axis=0).values,
+                                            metric = metrics[metric])
+                    dist = pd.Series(dist, name="_".join([mapi,mapj]))
+                    if metric=="cosine correlation":
+                        dist = 1-dist
+                    distances_m = pd.concat([distances_m, dist], axis=1)
+            distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
+            
+            distances = pd.concat([distances, distances_m], axis=1)
+        
+        self.correlations = distances
+    
     
     def distance_to_median_boxplot(self, cluster_of_interest="Proteasome"):
         """
