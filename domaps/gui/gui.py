@@ -2209,3 +2209,35 @@ class MRPlot(Viewer):
         except:
             return traceback.format_exc()
 
+
+class ConfigureSVMClasses(Viewer):
+    
+    classes = param.List(default=[])
+    train = param.DataFrame(default=pd.DataFrame(columns=["Compartment"]))
+    test = param.DataFrame(default=pd.DataFrame(columns=["Compartment"]))
+    class_counts = param.Series(default=pd.Series())
+    
+    def __init__(self, **params):
+        self._classes = pn.widgets.CheckBoxGroup(width=200)
+        super().__init__(**params)
+        self.layout = pn.Row(self.get_selection_table,
+                             pn.Column("Select classes for training:", self._classes)
+                            )
+    
+    def __panel__(self):
+        return self.layout
+    
+    @param.depends('train', 'test', 'classes', 'class_counts')
+    def get_selection_table(self):
+        
+        train_count = self.train["Compartment"].value_counts()
+        test_count = self.test["Compartment"].value_counts()
+        self._classes.options = list(self.class_counts.index)
+        self._classes.value = [el for el in self._classes.options if el in self.classes]
+        return pn.widgets.DataFrame(pd.DataFrame([self.class_counts, train_count, test_count],
+                                          index=["Total count", "Training count", "Test count"]).T, row_height=19, width=400)
+    
+    @param.depends('_classes.value', watch=True)
+    def update_classes(self):
+        self.classes = self._classes.value
+
