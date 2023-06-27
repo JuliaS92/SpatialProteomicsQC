@@ -1775,11 +1775,12 @@ class pca_plot(Viewer):
         self._component1 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC1", name="X-axis", width=100)
         self._component2 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC3", name="Y-axis", width=100)
         self._component3 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC2", name="Z-axis", width=100)
+        self._fix_aspect = pn.widgets.Checkbox(name="Fix aspect ratio by variability", width=200, value=True)
         self._highlight = pn.widgets.Select(options=["None"], value="None", name="Highlight", width=150)
         self._facet = pn.widgets.Select(options=["a", "b"], value="a", width=150)
         super().__init__(**params)
         self._layout = pn.Column(
-            pn.Row(self._dimensions, self._layout_components),
+            pn.Row(self._dimensions, self._layout_components, self._fix_aspect),
             pn.Row(self._layout_highlight, self._layout_facet),
             pn.Row(self._variability, self._loadings),
             self._pca_plot
@@ -1828,66 +1829,101 @@ class pca_plot(Viewer):
     @param.depends('_dimensions.value',
                    '_component1.value', '_component2.value', '_component3.value',
                    'title', 'color', 'color_map', '_highlight.value',
-                   '_facet.value', 'facet_col', 'facet_col_number')
+                   '_facet.value', 'facet_col', 'facet_col_number','_fix_aspect.value')
     def _pca_plot(self):
-        
-        if self._dimensions.value == "2D":
-            data_frame=self.df_pca.reset_index()
-            color_map = self.color_map
-            if self._highlight.value != "None":
-                data_frame.loc[data_frame["Protein IDs"]\
-                               .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
-                color_map[self._highlight.value] = "black"
-            plot = px.scatter(
-                data_frame=data_frame,
-                x=self._component1.value,
-                y=self._component2.value,
-                color=self.color,
-                color_discrete_map=color_map,
-                title=self.title, 
-                hover_data=self.df_pca.index.names,
-                template="simple_white",
-                opacity=0.9,
-                facet_col=self.facet_col,
-                facet_col_wrap=self.facet_col_number
-                )
+        try:
+            if self._dimensions.value == "2D":
+                data_frame=self.df_pca.reset_index()
+                color_map = self.color_map
+                if self._highlight.value != "None":
+                    data_frame.loc[data_frame["Protein IDs"]\
+                                   .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
+                    color_map[self._highlight.value] = "black"
+                plot = px.scatter(
+                    data_frame=data_frame,
+                    x=self._component1.value,
+                    y=self._component2.value,
+                    color=self.color,
+                    color_discrete_map=color_map,
+                    title=self.title, 
+                    hover_data=self.df_pca.index.names,
+                    template="simple_white",
+                    opacity=0.9,
+                    facet_col=self.facet_col,
+                    facet_col_wrap=self.facet_col_number
+                    )
+                
+                if len(self.df_var) != 0:
+                    var = self.df_var.set_index("Component")
+                    plot.update_xaxes(title_text="{} ({}%)".format(
+                        self._component1.value,
+                        str(np.round(var.loc[self._component1.value].values[0]*100, 2))
+                    ))
+                    plot.update_yaxes(title_text="{} ({}%)".format(
+                        self._component2.value,
+                        str(np.round(var.loc[self._component2.value].values[0]*100, 2))
+                    ), selector=dict(anchor="x"))
+                    if self._fix_aspect.value == True:
+                        plot.update_xaxes(scaleanchor="y", scaleratio=var.loc[self._component1.value].values[0]/var.loc[self._component2.value].values[0])
+                
+                plot.update_layout(width=200+self.facet_width*self.facet_col_number if self.facet_col is not None else 200+self.facet_width,
+                                   height=self.facet_height*np.ceil(len(set(self.df_pca.index.get_level_values(self.facet_col)))/self.facet_col_number) if self.facet_col is not None else self.facet_height)
             
-            plot.update_layout(width=200+self.facet_width*self.facet_col_number if self.facet_col is not None else 200+self.facet_width,
-                               height=self.facet_height*np.ceil(len(set(self.df_pca.index.get_level_values(self.facet_col)))/self.facet_col_number) if self.facet_col is not None else self.facet_height)
-        
-        else:
-            xlim = np.array([min(self.df_pca[self._component1.value]), max(self.df_pca[self._component1.value])])
-            ylim = np.array([min(self.df_pca[self._component2.value]), max(self.df_pca[self._component2.value])])
-            zlim = np.array([min(self.df_pca[self._component3.value]), max(self.df_pca[self._component3.value])])
-            xlim = xlim+((xlim[1]-xlim[0])*np.array([-0.05,0.05]))
-            ylim = ylim+((ylim[1]-ylim[0])*np.array([-0.05,0.05]))
-            zlim = zlim+((zlim[1]-zlim[0])*np.array([-0.05,0.05]))
+            else:
+                xlim = np.array([min(self.df_pca[self._component1.value]), max(self.df_pca[self._component1.value])])
+                ylim = np.array([min(self.df_pca[self._component2.value]), max(self.df_pca[self._component2.value])])
+                zlim = np.array([min(self.df_pca[self._component3.value]), max(self.df_pca[self._component3.value])])
+                xlim = xlim+((xlim[1]-xlim[0])*np.array([-0.05,0.05]))
+                ylim = ylim+((ylim[1]-ylim[0])*np.array([-0.05,0.05]))
+                zlim = zlim+((zlim[1]-zlim[0])*np.array([-0.05,0.05]))
+                
+                data_frame=self.df_pca.reset_index()
+                color_map = self.color_map
+                if self._highlight.value != "None":
+                    data_frame.loc[data_frame["Protein IDs"]\
+                                   .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
+                    color_map[self._highlight.value] = "black"
+                
+                plot = px.scatter_3d(
+                    data_frame=data_frame.loc[data_frame[self.facet_col] == self._facet.value,:] if self.facet_col is not None else data_frame,
+                    x=self._component1.value,
+                    y=self._component2.value,
+                    z=self._component3.value,
+                    color=self.color,
+                    color_discrete_map=color_map,
+                    title=self.title+" "+self._facet.value if self.facet_col is not None else self.title, 
+                    hover_data=self.df_pca.index.names,
+                    template="simple_white",
+                    opacity=0.9
+                    )
+                if len(self.df_var) != 0:
+                    var = self.df_var.set_index("Component")
+                    plot.update_layout(scene = dict(xaxis_title="{} ({}%)".format(
+                        self._component1.value,
+                        str(np.round(var.loc[self._component1.value].values[0]*100, 2))
+                    ),
+                                       yaxis_title="{} ({}%)".format(
+                        self._component2.value,
+                        str(np.round(var.loc[self._component2.value].values[0]*100, 2))
+                    ),
+                                       zaxis_title="{} ({}%)".format(
+                        self._component3.value,
+                        str(np.round(var.loc[self._component3.value].values[0]*100, 2))
+                    )))
+                    if self._fix_aspect.value == True:
+                        plot.update_scenes(aspectmode='manual',
+                                           aspectratio=dict(x=var.loc[self._component1.value].values[0],
+                                                                  y=var.loc[self._component2.value].values[0],
+                                                                  z=var.loc[self._component3.value].values[0]))
+                        
+                plot.update_layout(scene_xaxis_range=xlim, scene_yaxis_range=ylim, scene_zaxis_range=zlim,
+                                   width=self.facet_width+200, height=self.facet_height)\
+                    .update_scenes(camera_eye=dict(x=1.75, y=1.75, z=1)).update_layout(margin=dict(l=0,r=0,t=50,b=0))\
+                    .update_traces(marker_size=3)
             
-            data_frame=self.df_pca.reset_index()
-            color_map = self.color_map
-            if self._highlight.value != "None":
-                data_frame.loc[data_frame["Protein IDs"]\
-                               .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
-                color_map[self._highlight.value] = "black"
-            
-            plot = px.scatter_3d(
-                data_frame=data_frame.loc[data_frame[self.facet_col] == self._facet.value,:] if self.facet_col is not None else data_frame,
-                x=self._component1.value,
-                y=self._component2.value,
-                z=self._component3.value,
-                color=self.color,
-                color_discrete_map=color_map,
-                title=self.title+" "+self._facet.value if self.facet_col is not None else self.title, 
-                hover_data=self.df_pca.index.names,
-                template="simple_white",
-                opacity=0.9
-                )
-            plot.update_layout(scene_xaxis_range=xlim, scene_yaxis_range=ylim, scene_zaxis_range=zlim,
-                               width=self.facet_width+200, height=self.facet_height)\
-                .update_scenes(camera_eye=dict(x=1.75, y=1.75, z=1)).update_layout(margin=dict(l=0,r=0,t=50,b=0))\
-                .update_traces(marker_size=3)
-        
-        return pn.Pane(plot, config=plotly_config)
+            return pn.panel(plot, config=plotly_config)
+        except:
+            return pn.panel(traceback.format_exc())
     
     @param.depends('show_variability', 'df_var')
     def _variability(self):
@@ -1895,7 +1931,7 @@ class pca_plot(Viewer):
             fig = px.bar(self.df_var, x="Component", y="variance explained",
                          template="simple_white", title="Component variance")
             fig.update_layout(height=350, width=200+(self.df_var.shape[0]*50))
-            return pn.Pane(fig, config=plotly_config)
+            return pn.panel(fig, config=plotly_config)
         else:
             return pn.Column()
     
@@ -1910,7 +1946,7 @@ class pca_plot(Viewer):
                                    axref="x", ayref="y", text="",
                                    arrowhead=1, arrowwidth=2, showarrow=True, arrowcolor="black")
             fig.update_layout(height=350, width=350)
-            return pn.Pane(fig, config=plotly_config)
+            return pn.panel(fig, config=plotly_config)
         else:
             return pn.Column()
     
@@ -1957,7 +1993,7 @@ class ConfigureMR(Viewer):
 If replicates are matched automatically they have to be named exactly the same."""
             )),
             pn.Row(self.cond_ctrl, self.cond_trt, pn.Column(
-                pn.Pane(self._matching.name), self._matching
+                pn.panel(self._matching.name), self._matching
             )),
             self._matching_interface,
             self._prefilter,
@@ -2020,9 +2056,9 @@ required to correlate well) select largest correlation."""
             for map_c in self.maps[self.cond_ctrl.value]:
                 map_t = map_c if map_c in self.maps[self.cond_trt.value] else "None"
                 row = pn.Row(
-                    pn.Pane(map_c, width=150, align="center"), 
-                    pn.Pane("matches", width=50, align="center"),
-                    pn.Pane(map_t if self._matching.value == "by names"\
+                    pn.panel(map_c, width=150, align="center"), 
+                    pn.panel("matches", width=50, align="center"),
+                    pn.panel(map_t if self._matching.value == "by names"\
                             else pn.widgets.Select(options=self.maps[self.cond_trt.value]+["None"],
                                                    value=map_t, width=200),
                             width=170, align="center"),
@@ -2193,7 +2229,7 @@ class MRPlot(Viewer):
             return pn.pane.Plotly(figure, config=plotly_config)
         except:
             return pn.Column(
-                pn.Pane(traceback.format_exc(), width=600),
+                pn.panel(traceback.format_exc(), width=600),
                 df.head()
             )
     
