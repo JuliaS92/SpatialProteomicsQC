@@ -2773,6 +2773,7 @@ class SpatialDataSetComparison:
                                 comment=svmcomp.hash_data+"___"+svmcomp.hash_parameters, name=svmset,
                                 prediction=svmcomp.predictions[exp].join(svmcomp.probabilities[exp]).dropna())
         svmcomp.df = pd.DataFrame()
+        self.svm_runs[hash_data] = svmcomp
         return svmcomp.predictions
     
     
@@ -3443,6 +3444,7 @@ class SVMComp():
             p_e = probabilities[exp].dropna()
             p_max = p_e.max(axis=1)
             p_max.name = "Max probability"
+            conf = pd.Series(["best guess" if p <= min_p else "very high confidence" if p > 0.95 else "high confidence" if p > 0.8 else "medium confidence" if p > 0.65 else "low confidence" if p > 0.4 else "best guess" for p in p_max], name="Confidence", index=p_max.index)
             winner = p_e.idxmax(axis=1)
             winner.name = "Winner"
             winners = p_e.apply(lambda y: ";".join(y.index[np.where(y>min_p)]), axis=1)
@@ -3454,19 +3456,19 @@ class SVMComp():
             prediction.name = "Classification"
             if len(predictions) == 0:
                 predictions = pd.DataFrame(
-                    [p_max, winner, winners, prediction],
+                    [p_max, winner, winners, prediction, conf],
                     index = pd.MultiIndex.from_arrays([
-                        np.repeat(exp, 4),
-                        ["Max probability","Winner","Winners","Classification"]
+                        np.repeat(exp, 5),
+                        ["Max probability","Winner","Winners","Classification","Confidence"]
                     ], names=["Experiment", "Score"])
                 ).T
             else:
                 predictions = predictions.join(
                     pd.DataFrame(
-                        [p_max, winner, winners, prediction],
+                        [p_max, winner, winners, prediction, conf],
                         index = pd.MultiIndex.from_arrays([
-                            np.repeat(exp, 4),
-                            ["Max probability","Winner","Winners","Classification"]
+                            np.repeat(exp, 5),
+                            ["Max probability","Winner","Winners","Classification","Confidence"]
                         ], names=["Experiment", "Score"])
                     ).T,
                     how="outer")
