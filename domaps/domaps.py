@@ -1929,17 +1929,17 @@ class SpatialDataSetComparison:
 
         markerproteins = self.markerproteins.copy()
         
-        df_zscore = self.df_01_filtered_combined.apply(zscore, axis=0).replace(np.nan, 0)
         df_mean = pd.DataFrame()
         for exp in self.exp_names:
-            df_exp = df_zscore.stack("Fraction").unstack(["Experiment", "Map","Exp_Map"])[exp].mean(axis=1).to_frame(name=exp)
+            df_exp = self.df_01_filtered_combined.stack("Fraction").unstack(["Experiment", "Map","Exp_Map"])[exp].mean(axis=1).to_frame(name=exp)
             df_mean = pd.concat([df_mean, df_exp], axis=1)
         df_mean = df_mean.rename_axis("Experiment", axis="columns").stack("Experiment").unstack("Fraction")
+        df_zscore = df_mean.apply(zscore, axis=0).replace(np.nan, 0)
         
         pca = PCA(n_components=n)
         
-        df_pca = pd.DataFrame(pca.fit_transform(df_mean), columns=[f"PC{el+1}" for el in range(n)], index=df_mean.index)
-        self.df_pca_loadings = pd.DataFrame(pca.components_, columns = df_mean.columns, index=df_pca.columns).T.reset_index()
+        df_pca = pd.DataFrame(pca.fit_transform(df_zscore), columns=[f"PC{el+1}" for el in range(n)], index=df_zscore.index)
+        self.df_pca_loadings = pd.DataFrame(pca.components_, columns = df_zscore.columns, index=df_pca.columns).T.reset_index()
         self.df_pca_var = pd.DataFrame(pca.explained_variance_ratio_, index = df_pca.columns)\
             .reset_index().rename({"index":"Component", 0:"variance explained"}, axis=1)
         

@@ -1769,6 +1769,7 @@ class pca_plot(Viewer):
     enable_highlight = param.Boolean(default=True)
     show_variability = param.Boolean(default=True)
     show_loadings = param.Boolean(default=True)
+    renderer = param.String(default="webgl")
     
     def __init__(self, **params):
         self._dimensions = pn.widgets.Select(options=["2D", "3D"], value="2D", name="Switch view", width=100)
@@ -1829,7 +1830,7 @@ class pca_plot(Viewer):
     @param.depends('_dimensions.value',
                    '_component1.value', '_component2.value', '_component3.value',
                    'title', 'color', 'color_map', '_highlight.value',
-                   '_facet.value', 'facet_col', 'facet_col_number','_fix_aspect.value')
+                   '_facet.value', 'facet_col', 'facet_col_number','_fix_aspect.value', 'renderer')
     def _pca_plot(self):
         try:
             if self._dimensions.value == "2D":
@@ -1850,7 +1851,8 @@ class pca_plot(Viewer):
                     template="simple_white",
                     opacity=0.9,
                     facet_col=self.facet_col,
-                    facet_col_wrap=self.facet_col_number
+                    facet_col_wrap=self.facet_col_number,
+                    render_mode=self.renderer
                     )
                 
                 if len(self.df_var) != 0:
