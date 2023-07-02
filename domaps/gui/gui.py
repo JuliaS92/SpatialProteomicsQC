@@ -1769,17 +1769,19 @@ class pca_plot(Viewer):
     enable_highlight = param.Boolean(default=True)
     show_variability = param.Boolean(default=True)
     show_loadings = param.Boolean(default=True)
+    renderer = param.String(default="webgl")
     
     def __init__(self, **params):
         self._dimensions = pn.widgets.Select(options=["2D", "3D"], value="2D", name="Switch view", width=100)
         self._component1 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC1", name="X-axis", width=100)
         self._component2 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC3", name="Y-axis", width=100)
         self._component3 = pn.widgets.Select(options=["PC1", "PC2", "PC3"], value="PC2", name="Z-axis", width=100)
+        self._fix_aspect = pn.widgets.Checkbox(name="Fix aspect ratio by variability", width=200, value=True)
         self._highlight = pn.widgets.Select(options=["None"], value="None", name="Highlight", width=150)
         self._facet = pn.widgets.Select(options=["a", "b"], value="a", width=150)
         super().__init__(**params)
         self._layout = pn.Column(
-            pn.Row(self._dimensions, self._layout_components),
+            pn.Row(self._dimensions, self._layout_components, self._fix_aspect),
             pn.Row(self._layout_highlight, self._layout_facet),
             pn.Row(self._variability, self._loadings),
             self._pca_plot
@@ -1828,66 +1830,102 @@ class pca_plot(Viewer):
     @param.depends('_dimensions.value',
                    '_component1.value', '_component2.value', '_component3.value',
                    'title', 'color', 'color_map', '_highlight.value',
-                   '_facet.value', 'facet_col', 'facet_col_number')
+                   '_facet.value', 'facet_col', 'facet_col_number','_fix_aspect.value', 'renderer')
     def _pca_plot(self):
-        
-        if self._dimensions.value == "2D":
-            data_frame=self.df_pca.reset_index()
-            color_map = self.color_map
-            if self._highlight.value != "None":
-                data_frame.loc[data_frame["Protein IDs"]\
-                               .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
-                color_map[self._highlight.value] = "black"
-            plot = px.scatter(
-                data_frame=data_frame,
-                x=self._component1.value,
-                y=self._component2.value,
-                color=self.color,
-                color_discrete_map=color_map,
-                title=self.title, 
-                hover_data=self.df_pca.index.names,
-                template="simple_white",
-                opacity=0.9,
-                facet_col=self.facet_col,
-                facet_col_wrap=self.facet_col_number
-                )
+        try:
+            if self._dimensions.value == "2D":
+                data_frame=self.df_pca.reset_index()
+                color_map = self.color_map
+                if self._highlight.value != "None":
+                    data_frame.loc[data_frame["Protein IDs"]\
+                                   .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
+                    color_map[self._highlight.value] = "black"
+                plot = px.scatter(
+                    data_frame=data_frame,
+                    x=self._component1.value,
+                    y=self._component2.value,
+                    color=self.color,
+                    color_discrete_map=color_map,
+                    title=self.title, 
+                    hover_data=self.df_pca.index.names,
+                    template="simple_white",
+                    opacity=0.9,
+                    facet_col=self.facet_col,
+                    facet_col_wrap=self.facet_col_number,
+                    render_mode=self.renderer
+                    )
+                
+                if len(self.df_var) != 0:
+                    var = self.df_var.set_index("Component")
+                    plot.update_xaxes(title_text="{} ({}%)".format(
+                        self._component1.value,
+                        str(np.round(var.loc[self._component1.value].values[0]*100, 2))
+                    ))
+                    plot.update_yaxes(title_text="{} ({}%)".format(
+                        self._component2.value,
+                        str(np.round(var.loc[self._component2.value].values[0]*100, 2))
+                    ), selector=dict(anchor="x"))
+                    if self._fix_aspect.value == True:
+                        plot.update_xaxes(scaleanchor="y", scaleratio=var.loc[self._component1.value].values[0]/var.loc[self._component2.value].values[0])
+                
+                plot.update_layout(width=200+self.facet_width*self.facet_col_number if self.facet_col is not None else 200+self.facet_width,
+                                   height=self.facet_height*np.ceil(len(set(self.df_pca.index.get_level_values(self.facet_col)))/self.facet_col_number) if self.facet_col is not None else self.facet_height)
             
-            plot.update_layout(width=200+self.facet_width*self.facet_col_number if self.facet_col is not None else 200+self.facet_width,
-                               height=self.facet_height*np.ceil(len(set(self.df_pca.index.get_level_values(self.facet_col)))/self.facet_col_number) if self.facet_col is not None else self.facet_height)
-        
-        else:
-            xlim = np.array([min(self.df_pca[self._component1.value]), max(self.df_pca[self._component1.value])])
-            ylim = np.array([min(self.df_pca[self._component2.value]), max(self.df_pca[self._component2.value])])
-            zlim = np.array([min(self.df_pca[self._component3.value]), max(self.df_pca[self._component3.value])])
-            xlim = xlim+((xlim[1]-xlim[0])*np.array([-0.05,0.05]))
-            ylim = ylim+((ylim[1]-ylim[0])*np.array([-0.05,0.05]))
-            zlim = zlim+((zlim[1]-zlim[0])*np.array([-0.05,0.05]))
+            else:
+                xlim = np.array([min(self.df_pca[self._component1.value]), max(self.df_pca[self._component1.value])])
+                ylim = np.array([min(self.df_pca[self._component2.value]), max(self.df_pca[self._component2.value])])
+                zlim = np.array([min(self.df_pca[self._component3.value]), max(self.df_pca[self._component3.value])])
+                xlim = xlim+((xlim[1]-xlim[0])*np.array([-0.05,0.05]))
+                ylim = ylim+((ylim[1]-ylim[0])*np.array([-0.05,0.05]))
+                zlim = zlim+((zlim[1]-zlim[0])*np.array([-0.05,0.05]))
+                
+                data_frame=self.df_pca.reset_index()
+                color_map = self.color_map
+                if self._highlight.value != "None":
+                    data_frame.loc[data_frame["Protein IDs"]\
+                                   .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
+                    color_map[self._highlight.value] = "black"
+                
+                plot = px.scatter_3d(
+                    data_frame=data_frame.loc[data_frame[self.facet_col] == self._facet.value,:] if self.facet_col is not None else data_frame,
+                    x=self._component1.value,
+                    y=self._component2.value,
+                    z=self._component3.value,
+                    color=self.color,
+                    color_discrete_map=color_map,
+                    title=self.title+" "+self._facet.value if self.facet_col is not None else self.title, 
+                    hover_data=self.df_pca.index.names,
+                    template="simple_white",
+                    opacity=0.9
+                    )
+                if len(self.df_var) != 0:
+                    var = self.df_var.set_index("Component")
+                    plot.update_layout(scene = dict(xaxis_title="{} ({}%)".format(
+                        self._component1.value,
+                        str(np.round(var.loc[self._component1.value].values[0]*100, 2))
+                    ),
+                                       yaxis_title="{} ({}%)".format(
+                        self._component2.value,
+                        str(np.round(var.loc[self._component2.value].values[0]*100, 2))
+                    ),
+                                       zaxis_title="{} ({}%)".format(
+                        self._component3.value,
+                        str(np.round(var.loc[self._component3.value].values[0]*100, 2))
+                    )))
+                    if self._fix_aspect.value == True:
+                        plot.update_scenes(aspectmode='manual',
+                                           aspectratio=dict(x=var.loc[self._component1.value].values[0],
+                                                                  y=var.loc[self._component2.value].values[0],
+                                                                  z=var.loc[self._component3.value].values[0]))
+                        
+                plot.update_layout(scene_xaxis_range=xlim, scene_yaxis_range=ylim, scene_zaxis_range=zlim,
+                                   width=self.facet_width+200, height=self.facet_height)\
+                    .update_scenes(camera_eye=dict(x=1.75, y=1.75, z=1)).update_layout(margin=dict(l=0,r=0,t=50,b=0))\
+                    .update_traces(marker_size=3)
             
-            data_frame=self.df_pca.reset_index()
-            color_map = self.color_map
-            if self._highlight.value != "None":
-                data_frame.loc[data_frame["Protein IDs"]\
-                               .isin(self.highlight_dict[self._highlight.value]).values,self.color] = self._highlight.value
-                color_map[self._highlight.value] = "black"
-            
-            plot = px.scatter_3d(
-                data_frame=data_frame.loc[data_frame[self.facet_col] == self._facet.value,:] if self.facet_col is not None else data_frame,
-                x=self._component1.value,
-                y=self._component2.value,
-                z=self._component3.value,
-                color=self.color,
-                color_discrete_map=color_map,
-                title=self.title+" "+self._facet.value if self.facet_col is not None else self.title, 
-                hover_data=self.df_pca.index.names,
-                template="simple_white",
-                opacity=0.9
-                )
-            plot.update_layout(scene_xaxis_range=xlim, scene_yaxis_range=ylim, scene_zaxis_range=zlim,
-                               width=self.facet_width+200, height=self.facet_height)\
-                .update_scenes(camera_eye=dict(x=1.75, y=1.75, z=1)).update_layout(margin=dict(l=0,r=0,t=50,b=0))\
-                .update_traces(marker_size=3)
-        
-        return pn.Pane(plot, config=plotly_config)
+            return pn.panel(plot, config=plotly_config)
+        except:
+            return pn.panel(traceback.format_exc())
     
     @param.depends('show_variability', 'df_var')
     def _variability(self):
@@ -1895,7 +1933,7 @@ class pca_plot(Viewer):
             fig = px.bar(self.df_var, x="Component", y="variance explained",
                          template="simple_white", title="Component variance")
             fig.update_layout(height=350, width=200+(self.df_var.shape[0]*50))
-            return pn.Pane(fig, config=plotly_config)
+            return pn.panel(fig, config=plotly_config)
         else:
             return pn.Column()
     
@@ -1910,7 +1948,7 @@ class pca_plot(Viewer):
                                    axref="x", ayref="y", text="",
                                    arrowhead=1, arrowwidth=2, showarrow=True, arrowcolor="black")
             fig.update_layout(height=350, width=350)
-            return pn.Pane(fig, config=plotly_config)
+            return pn.panel(fig, config=plotly_config)
         else:
             return pn.Column()
     
@@ -1924,4 +1962,320 @@ class pca_plot(Viewer):
         return pca_plot(df_pca = coords, df_loadings = loadings, df_var = var, facet_col=None)
 
 
+class ConfigureMR(Viewer):
+    
+    conditions = param.List(default=[])
+    maps = param.Dict(dict())
+    manualmatching = param.Boolean(default=False)
+    prefilter = param.Number(default=0.9)
+    mscore_prop = param.Number(default=0.75)
+    mscore_iterations = param.Integer(default=11)
+    mscore_auto = param.Boolean(default=True)
+    rscore_mode = param.Selector(default="median")
+    
+    
+    def __init__(self, **params):
+        self.cond_ctrl = pn.widgets.Select(name="Condition 1 (Ctrl)", width=200)
+        self.cond_trt = pn.widgets.Select(name="Condition 2", width=200)
+        self._matching = pn.widgets.RadioBoxGroup(options=["by names", "manually"],
+                                                     name="Replicate matching", inline=True)
+        self._prefilter = pn.widgets.FloatSlider(start=-1, end=1, step=0.05,
+                                                   name="Prefilter data by removing proteins with any replicate cosine correlation <", width=410)
+        self._mscore_prop = pn.widgets.FloatSlider(start=0.5, end=0.9, step=0.05,
+                                                   name="Static proportion of data", width=200)
+        self._mscore_iterations = pn.widgets.IntSlider(start=3, end=31,
+                                                       name="Iterations", width=100)
+        self._mscore_auto = pn.widgets.Checkbox(name="Stop automatically if >99% change by <0.5%")
+        self._rscore_mode = pn.widgets.Select(options=["median", "smallest correlation", "largest correlation"],
+                                              width=200)
+        super().__init__(**params)
+        self.layout = pn.Column(
+            pn.Row("**M-R plot configuration**", help_icon(
+                """For delta profiles condition 1 will be subtracted from condition 2. \
+If replicates are matched automatically they have to be named exactly the same."""
+            )),
+            pn.Row(self.cond_ctrl, self.cond_trt, pn.Column(
+                pn.panel(self._matching.name), self._matching
+            )),
+            self._matching_interface,
+            self._prefilter,
+            pn.Row(
+                pn.Column(
+                    pn.Row("**M-Score calculation**", help_icon(
+                        """The Movement-score is calculated from the Mahalanobis distance distributions \
+of the delta profiles. This is robust by only using a certain 'static' proportion of the data for \
+calculation of the minimum covariance determinant. The calculation is not deterministic, so the \
+median over multiple iterations is used. Replicate p-values are combined by the Fisher method \
+and corrected for multiple hypotheses by the Benjamini-Hochberg method. If you want to run \
+more iterations, please run the tool locally rather than using the plublicly hosted site."""
+                    )),
+                    pn.Row(self._mscore_prop, self._mscore_iterations, self._mscore_auto),
+                ),
+                pn.Column(
+                    pn.Row("**R-Score calculation**", help_icon(
+                    """The Reproducibility-score is calculated from all pairwise replicate correlations \
+of delta profiles. For maximum stringency select smallest correlation, for minimal stringency (only two replicates \
+required to correlate well) select largest correlation."""
+                    )),
+                    self._rscore_mode
+                )
+            )
+        )
+        self._sync_layout()
+    
+    
+    def __panel__(self):
+        return self.layout
+    
+    
+    @param.depends('conditions', 'manualmatching', 'prefilter', 'mscore_prop', 'mscore_iterations', 'mscore_auto', 'rscore_mode', watch=True)
+    def _sync_layout(self):
+        self.cond_trt.options = self.conditions
+        self.cond_ctrl.options = self.conditions
+        self._prefilter.value = self.prefilter
+        self._matching.value = "manually" if self.manualmatching else "by names"
+        self._mscore_prop.value = self.mscore_prop
+        self._mscore_iterations.value = self.mscore_iterations
+        self._mscore_auto.value = self.mscore_auto
+        self._rscore_mode.value = self.rscore_mode
+    
+    @param.depends('cond_ctrl.value', watch=True)
+    def _same_cond_ctrl(self):
+        if self.cond_ctrl.value == self.cond_trt.value:
+            self.cond_trt.value = [el for el in self.cond_trt.options if el != self.cond_ctrl.value][0]
+    
+    
+    @param.depends('cond_trt.value', watch=True)
+    def _same_cond_trt(self):
+        if self.cond_ctrl.value == self.cond_trt.value:
+            self.cond_ctrl.value = [el for el in self.cond_ctrl.options if el != self.cond_trt.value][0]
+    
+    
+    @param.depends('cond_ctrl.value', 'cond_trt.value', '_matching.value', 'maps')
+    def _matching_interface(self):
+        matching_layout = pn.Column()
+        try:
+            for map_c in self.maps[self.cond_ctrl.value]:
+                map_t = map_c if map_c in self.maps[self.cond_trt.value] else "None"
+                row = pn.Row(
+                    pn.panel(map_c, width=150, align="center"), 
+                    pn.panel("matches", width=50, align="center"),
+                    pn.panel(map_t if self._matching.value == "by names"\
+                            else pn.widgets.Select(options=self.maps[self.cond_trt.value]+["None"],
+                                                   value=map_t, width=200),
+                            width=170, align="center"),
+                    height=40, align="center"
+                )
+                matching_layout.append(row)
+            return matching_layout
+        except:
+            return traceback.format_exc()
+    
+    def get_settings(self):
+        return dict(
+            cond_1 = self.cond_ctrl.value,
+            cond_2 = self.cond_trt.value,
+            pairs = [el for el in 
+                     [(c.object, t.value if self._matching.value=="manually" else t.object)
+                      for r in self.layout[2] for c,_,t in r._pane]
+                     if el[1] != "None"],
+            prefilter = self._prefilter.value,
+            proportion = self._mscore_prop.value,
+            iterations = self._mscore_iterations.value,
+            stop_at_95_05 = self._mscore_auto.value,
+            rmode = self._rscore_mode.value
+        )
+
+
+class MRPlot(Viewer):
+    mscore = param.Number(default=1.3)
+    rscore = param.Number(default=0.8)
+    excludeoutliers = param.Boolean(default=True)
+    exclusion_n = param.Integer(default=2)
+    exclusion_p = param.Number(default=0.05)
+    data = param.DataFrame(default=pd.DataFrame(data=[[0.9,5,0.05,0.02,0.1], [0.7,0.5,0.1,0.02,0.5]],
+                                                columns=["R", "M", "p1", "p2", "p3"],
+                                                index=pd.MultiIndex.from_tuples(
+                                                    [("P1123", "G1"), ("P234", "G42")], names=["Protein IDs", "Gene names"])
+                                                ))
+    filtering = param.DataFrame(default=pd.DataFrame())
+    title = param.String("M-R plot indicating moving proteins")
+    status = param.String()
+    
+    def __init__(self, **params):
+        self._mscore = pn.widgets.FloatInput(name="M-score cutoff (inclusive)", start=0, step=0.1)
+        self._rscore = pn.widgets.FloatInput(name="R-score cutoff (inclusive)", start=0, end=1, step=0.05)
+        self._excludeoutliers = pn.widgets.Checkbox(name="Only include proteins significant in multiple replicates")
+        self._exclusion_n = pn.widgets.IntInput(start=1, width=60, value=2)
+        self._exclusion_p = pn.widgets.FloatInput(start=0.0001, end=1, value=0.05, width=80, step=0.01)
+        self.label_hits = pn.widgets.CrossSelector(name="Label hits", width=370, height=240)
+        self.highlight_gene = pn.widgets.MultiChoice(
+            name="Highlight genes", placeholder="Start typing for autocompletion")
+        super().__init__(**params)
+        self.layout = pn.Row(
+            pn.WidgetBox(
+                self._mscore,
+                self._rscore,
+                self._excludeoutliers,
+                self._exclusion_interface,
+                self.highlight_gene,
+                pn.pane.Markdown("Label significant hits", margin=(5,0,0,10)),
+                self.label_hits
+            ),
+            pn.Column(self.show_status,
+                      self.plot,
+                      self.download
+                     )
+        )
+        self._sync_layout()
+        self._sync_data()
+    
+    def __panel__(self):
+        return self.layout
+    
+    @param.depends('mscore', 'rscore', 'excludeoutliers', 'exclusion_n', 'exclusion_p', watch=True)
+    def _sync_layout(self):
+        self._mscore.value = self.mscore
+        self._rscore.value = self.rscore
+        self._excludeoutliers.value = self.excludeoutliers
+        self._exclusion_n.value = self.exclusion_n
+        self._exclusion_p.value = self.exclusion_p
+    
+    @param.depends('data', watch=True)
+    def _sync_data(self):
+        try:
+            self._exclusion_n.end = len([el for el in self.data.columns if el.startswith("p")])
+            self.highlight_gene.options = list(set(self.data.index.get_level_values("Gene names")))
+            self._filter_hits()
+        except:
+            self.status=traceback.format_exc()
+    
+    @param.depends('_excludeoutliers.value')
+    def _exclusion_interface(self):
+        if self._excludeoutliers.value == True:
+            return pn.Row("At least ", self._exclusion_n, " p-values have to be <= ", self._exclusion_p)
+        else:
+            return pn.Row()
+    
+    @param.depends('_mscore.value', '_rscore.value',
+                   '_excludeoutliers.value', '_exclusion_n.value', '_exclusion_p.value', watch=True)
+    def _filter_hits(self):
+        try:
+            filtering = pd.DataFrame(index=self.data.index, columns=["Significant hit"])
+            hit = ["moving" if m >= self._mscore.value and r >= self._rscore.value else "static"
+                   for m,r in zip(self.data.M, self.data.R)]
+            filtering["Significant hit"] = hit
+            if self._excludeoutliers.value == True:
+                pcolumns = [el for el in self.data.columns if el.startswith("p")]
+                exclusion = [sum([p<=self._exclusion_p.value for p in row]) < self._exclusion_n.value
+                             for row in self.data[pcolumns].values]
+                hit = ["moving" if m >= self._mscore.value and r >= self._rscore.value and ex == False else "static"
+                       for m,r,ex in zip(self.data.M, self.data.R, exclusion)]
+                filtering.rename({"Significant hit": "Significant hit without replicate filter"}, axis=1, inplace=True)
+                filtering["Significant hit"] = hit
+            self.label_hits.options = sorted(list(filtering.index.get_level_values("Gene names")[filtering["Significant hit"] == "moving"]))
+            self.label_hits.value = [el for el in self.label_hits.value if el in self.label_hits.options]
+            self.filtering = filtering.copy()
+            self.status=f"Data was filtered with M>{self._mscore.value}, R>{self._rscore.value}\
+            {'.' if self._excludeoutliers.value == False else f' and excluding outliers with less than {self._exclusion_n.value} profiles with p-values <= {self._exclusion_p.value}.'}\
+             This yields {len([el for el in hit if el=='moving'])} hits."
+        except:
+            self.status=traceback.format_exc()
+    
+    @param.depends('status')
+    def show_status(self):
+        return pn.pane.Markdown(self.status, width=600)
+    
+    @param.depends('filtering', 'highlight_gene.value', 'label_hits.value')
+    def plot(self):
+        try:
+            df = self.data[["M", "R"]].join(self.filtering)
+            if len(self.label_hits.value) > 0:
+                df.insert(0, "Label",
+                          [str(g) if g in self.label_hits.value and g not in self.highlight_gene.value else ""
+                           for g in df.index.get_level_values("Gene names")])
+            else:
+                df.insert(0, "Label", "")
+        except:
+            return traceback.format_exc()
+        try:
+            #return df.reset_index().values
+            figure = px.scatter(
+                df.reset_index(), x="M", y="R", color="Significant hit",
+                template="simple_white",
+                color_discrete_map={"moving": "red", "static":"grey", "highlight":"blue"},
+                text="Label", hover_data=df.index.names,
+                render_mode="svg",
+                title=self.title
+            )
+            
+            figure.add_vline(x=self._mscore.value, line_color="black", line_width=1, opacity=1)
+            figure.add_hline(y=self._rscore.value, line_color="black", line_width=1, opacity=1)
+            figure.add_scatter(x=[0], y=[1], opacity=0, showlegend=False, hoverinfo='none')
+            
+            if len(self.highlight_gene.value) > 0:
+                highlight = pd.DataFrame()
+                for el in self.highlight_gene.value:
+                    highlight = pd.concat([highlight, df.xs(el, axis=0, level="Gene names", drop_level=False)], axis=0)
+                figure.add_scatter(x=highlight.M, y=highlight.R,
+                                   text=highlight.reset_index()["Gene names"],
+                                   marker_color="blue", mode="markers+text",
+                                   marker_size=10,
+                                   name="highlight")
+            
+            figure.update_traces(textposition="middle right")
+            figure.update_layout(xaxis_title="M-score",
+                                 yaxis_title="R-score"
+                                )
+            
+            return pn.pane.Plotly(figure, config=plotly_config)
+        except:
+            return pn.Column(
+                pn.panel(traceback.format_exc(), width=600),
+                df.head()
+            )
+    
+    @param.depends('filtering')
+    def download(self):
+        try:
+            self.data.join(self.filtering)
+            sio = StringIO()
+            self.data.join(self.filtering).reset_index().to_csv(sio, index=False, sep="\t")
+            sio.seek(0)
+            button = pn.widgets.FileDownload(sio, embed=True, filename="MovementScoring.txt")
+            return button
+        except:
+            return traceback.format_exc()
+
+
+class ConfigureSVMClasses(Viewer):
+    
+    classes = param.List(default=[])
+    train = param.DataFrame(default=pd.DataFrame(columns=["Compartment"]))
+    test = param.DataFrame(default=pd.DataFrame(columns=["Compartment"]))
+    class_counts = param.Series(default=pd.Series())
+    
+    def __init__(self, **params):
+        self._classes = pn.widgets.CheckBoxGroup(width=200)
+        super().__init__(**params)
+        self.layout = pn.Row(self.get_selection_table,
+                             pn.Column("Select classes for training:", self._classes)
+                            )
+    
+    def __panel__(self):
+        return self.layout
+    
+    @param.depends('train', 'test', 'classes', 'class_counts')
+    def get_selection_table(self):
+        
+        train_count = self.train["Compartment"].value_counts()
+        test_count = self.test["Compartment"].value_counts()
+        self._classes.options = list(self.class_counts.index)
+        self._classes.value = [el for el in self._classes.options if el in self.classes]
+        return pn.widgets.DataFrame(pd.DataFrame([self.class_counts, train_count, test_count],
+                                          index=["Total count", "Training count", "Test count"]).T, row_height=19, width=400)
+    
+    @param.depends('_classes.value', watch=True)
+    def update_classes(self):
+        self.classes = self._classes.value
 

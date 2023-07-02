@@ -12,6 +12,13 @@ import traceback
 from io import BytesIO, StringIO
 from sklearn.decomposition import PCA
 from sklearn.metrics import pairwise as pw
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn import svm
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.covariance import MinCovDet
+from scipy.stats import chisquare, chi2
+from statsmodels.stats.multitest import multipletests
+from scipy.stats import combine_pvalues
 import json
 import statistics 
 import matplotlib.pyplot as plt
@@ -26,6 +33,8 @@ import urllib.parse
 import urllib.request
 import bisect
 import inspect
+import warnings
+from itertools import cycle, combinations
 
 def natsort_index_keys(x):
     order = natsort.natsorted(np.unique(x.values))
@@ -95,7 +104,7 @@ class SpatialDataSet:
                     "Only identified by site": ["!=", "'+'"],
                     "Reverse": ["!=", "'+'"]
                 },
-                annotation_columns=["Protein names", "Q-value", "Score", "id"]
+                annotation_columns=["Protein names", "id"]
             ),
             MaxQuant_peptides_pivot=None,
             Spectronaut_proteins_long=dict(
@@ -334,6 +343,8 @@ class SpatialDataSet:
         self.perform_pca()
         setprogress("Calculating Manhattan Distance ...")
         self.calc_biological_precision()
+        setprogress("Calculating replicate correlations ... ")
+        self.calculate_pairwise_correlations()
         setprogress("Assembling analysis output ...")
         self.results_overview_table()
         setprogress("Analysis finished.")
@@ -405,6 +416,10 @@ class SpatialDataSet:
             raise ValueError("Unknown input format")
         
         self.map_names = df_index.columns.get_level_values("Map").unique()
+        if "<cond>" in self.name_pattern:
+            self.conditions = list(set([el.split("_")[0] for el in self.map_names]))
+        else:
+            self.conditions = [""]
         
         ## Reannotate genes
         if self.reannotate_genes:
@@ -842,7 +857,7 @@ class SpatialDataSet:
         
         map_names = self.map_names
         df_pca_all_marker_cluster_maps = pd.DataFrame()
-        df_pca_filtered = df_pca.unstack("Map").dropna()
+        df_pca_filtered = df_pca.unstack("Map")
         for clusters in markerproteins:
             for marker in markerproteins[clusters]:
                 try:
@@ -1099,6 +1114,110 @@ class SpatialDataSet:
         return df_distances_aggregated, df_distances_individual
     
     
+    def run_outliertest(self, cond_1="", cond_2="", pairs=[], proportion=0, iterations=1, rmode="median", stop_at_95_05=True, prefilter=0.9, canvas=None):
+        
+        mrhash = f"{cond_1}{cond_2}{''.join([''.join(p) for p in pairs])}{proportion}{iterations}{stop_at_95_05}{rmode}{prefilter}"
+        try:
+            self.mr_results.keys()
+        except:
+            self.mr_results = dict()
+        if mrhash in self.mr_results.keys():
+            mr = self.mr_results[mrhash]
+            if canvas is not None:
+                canvas.objects = ["This analysis has already been run and is shown below. No temporary data collected during processing can be shown."]
+            return mr
+        
+        cols = []
+        for col in self.correlations.columns:
+            colel = col.split("_")
+            if colel[0] == cond_1:
+                reps = [el[0] for el in pairs]
+                if colel[1] in reps and colel[3] in reps:
+                    cols.append(col)
+            elif colel[0] == cond_2:
+                reps = [el[1] for el in pairs]
+                if colel[1] in reps and colel[3] in reps:
+                    cols.append(col)
+        
+        min_correl = self.correlations[cols].min(axis=1)
+        
+        df01 = self.df_01_stacked["normalized profile"].unstack(["Map", "Fraction"])\
+            [[el for el in self.map_names if el.startswith(cond_1+"_") or el.startswith(cond_2+"_")]].dropna()\
+            .stack(["Fraction"])
+        df01 = pd.DataFrame(df01).join(pd.Series(min_correl[min_correl>0.8], name="filter"), how="left").dropna()\
+            .query("filter >= @prefilter").drop("filter", axis=1).unstack(["Fraction"])
+        
+        pvals = pd.DataFrame(index=pd.MultiIndex.from_tuples(
+            [], names=df01.index.names))
+        deltas = pd.DataFrame(index=pd.MultiIndex.from_tuples(
+            [], names=df01.index.names))
+        plot_it = px.scatter(template="simple_white", title="Approximation over iterations").update_layout(
+            xaxis_title="Iteration",
+            yaxis_title="95th percentile of delta(median)"
+        )
+        if canvas is not None:
+            canvas.objects=["Status", f"Number of proteins is {len(df01)}", plot_it]
+        
+        for p in pairs:
+            m1 = cond_1+"_"+p[0]
+            m2 = cond_2+"_"+p[1]
+            delta = df01[[m1, m2]].stack("Fraction")
+            delta = delta[m2] - delta[m1]
+            
+            if canvas is not None:
+                canvas.append(
+                    px.histogram(
+                        delta.reset_index(),
+                        x=0, facet_col="Fraction",
+                        title=f"Delta profile distribution {m2}-{m1}",
+                        template="simple_white",
+                        nbins=50
+                    ).update_layout(
+                        width=800, height=200, margin=dict(l=0,r=0,b=0,t=50)
+                    ).update_xaxes(title="delta"))
+            
+            delta = delta.unstack("Fraction")
+            delta.columns = [f"delta {m2}-{m1} {el}" for el in delta.columns]
+            if canvas is not None:
+                canvas.objects[0].object = f"**Calculating {m2}-{m1}**"
+            
+            pv, med = outlier_test(delta.values, iterations=iterations, support_fraction=proportion, stop_at_95_05=stop_at_95_05)
+            
+            pvals = pvals.join(pd.DataFrame(np.array(pv).T, index=delta.index, columns=[f"p-value {m2}-{m1}"]), how="outer")
+            deltas = deltas.join(delta, how="outer")
+            
+            plot_it.add_scatter(
+                x=[i for i in range(2,len(med)+1)],
+                y=[np.quantile(abs(med[i]-med[i-1])/med[i-1], 0.95) for i in range(1,len(med))],
+                name=f"{m2}-{m1}"
+            )
+        
+        fisherp = pvals.apply(lambda x: combine_pvalues(x, method="fisher")[1], axis=1)
+        mscore = -np.log10(multipletests(fisherp, method="fdr_bh")[1])
+        pvals.insert(0,"M",mscore)
+        
+        
+        if canvas is not None:
+            canvas.objects[0].object = "**Calculating R-scores**"
+        correlations = rscores_multi(df01, pairs=[[cond_1+"_"+p[0], cond_2+"_"+p[1]] for p in pairs])
+        correlations.columns = [f"correlation {col}" for col in correlations.columns]
+        
+        rscore = correlations.apply(lambda x: x.min() if rmode=="smallest correlation"\
+                                    else x.max() if rmode=="largest correlation"\
+                                    else x.median(), axis=1)
+        
+        correlations.insert(0,"R",rscore)
+        
+        mr = pvals.join(correlations).join(deltas)
+        
+        if canvas is not None:
+            canvas.objects[0].object = "**Done**"
+        
+        self.mr_results[mrhash] = mr.copy()
+            
+        return mr
+    
+    
     def profiles_plot(self, map_of_interest="Map1", cluster_of_interest="Proteasome"):
         """
         The function allows the plotting of filtered and normalized spatial proteomic data using plotly.express.
@@ -1269,6 +1388,60 @@ class SpatialDataSet:
         except:
             self.cache_cluster_quantified = False
             
+    def calculate_pairwise_correlations(self, metric="cosine correlation"):
+        """
+        A distribution plot of the profile scatter in each experiment is generated, with variable distance metric and consolidation of replicates.
+        
+        Args:
+            self:
+                df_01_stacked: df, indexed
+            metric: 'cosine correlation', 'pearson correlation'
+        
+        Returns:
+            self attribute correlations with one column per within condition pair of correlation values
+        """
+        
+        # Option dictionaries
+        
+        metrics = {
+            "cosine correlation": "cosine",
+            "pearson correlation": lambda x,y: np.corrcoef(x,y)[0][1]
+        }
+        
+        # Option assertion
+        assert metric in metrics.keys()
+        
+        df = self.df_01_stacked.unstack("Map").xs("normalized profile", axis=1, level="Set").copy()
+        df.index = df.index.droplevel(["Gene names", "Compartment"])
+        
+        # Calculate and consolidate distances
+        distances = pd.DataFrame()
+        for cond in self.conditions:
+            cond += "_" if cond != "" else ""
+            df_m = df[[el for el in self.map_names if el.startswith(cond)]].dropna().stack(["Map"]).unstack("Fraction")
+            maps = list(set(df_m.index.get_level_values("Map")))
+            
+            distances_m = pd.DataFrame()
+            
+            # loop over pairs of maps
+            for i, mapi in enumerate(maps):
+                for j, mapj in enumerate(maps):
+                    # only look at each comparison once
+                    if j <= i:
+                        continue
+                    dist = pw.paired_distances(df_m.xs(mapi, level="Map", axis=0).values,
+                                            df_m.xs(mapj, level="Map", axis=0).values,
+                                            metric = metrics[metric])
+                    dist = pd.Series(dist, name="_".join([mapi,mapj]))
+                    if metric=="cosine correlation":
+                        dist = 1-dist
+                    distances_m = pd.concat([distances_m, dist], axis=1)
+            distances_m.index = df_m.xs(maps[0], level="Map", axis=0).index
+            
+            distances = pd.concat([distances, distances_m], axis=1)
+        
+        self.correlations = distances
+    
     
     def distance_to_median_boxplot(self, cluster_of_interest="Proteasome"):
         """
@@ -1454,8 +1627,9 @@ class SpatialDataSetComparison:
         
         self.df_01_filtered_combined, self.df_distance_comp = pd.DataFrame(), pd.DataFrame()
         self.df_quantity_pr_pg_combined = pd.DataFrame()
+        self.df_svm_performance = pd.DataFrame()
         self.svm_results = dict()
-        
+        self.svm_runs = dict()
         self.parameters = dict()
         
 
@@ -1715,6 +1889,16 @@ class SpatialDataSetComparison:
             "misclassification": misclassification,
             "prediction": prediction
         }
+        
+        try:
+            self.df_svm_performance = self.df_svm_performance.query('Experiment != @experiment or Set != @name')
+        except:
+            pass
+        self.df_svm_performance = self.df_svm_performance.append(process_mc_errorbars(misclassification).set_index(pd.MultiIndex.from_arrays(
+            [np.repeat(experiment, 3*(len(misclassification)+3)),
+             np.repeat(name, 3*(len(misclassification)+3))],
+            names=["Experiment", "Set"]), append=True))
+        
     
     
     def perform_pca_comparison(self, n=3):
@@ -1745,17 +1929,17 @@ class SpatialDataSetComparison:
 
         markerproteins = self.markerproteins.copy()
         
-        df_zscore = self.df_01_filtered_combined.apply(zscore, axis=0).replace(np.nan, 0)
         df_mean = pd.DataFrame()
         for exp in self.exp_names:
-            df_exp = df_zscore.stack("Fraction").unstack(["Experiment", "Map","Exp_Map"])[exp].mean(axis=1).to_frame(name=exp)
+            df_exp = self.df_01_filtered_combined.stack("Fraction").unstack(["Experiment", "Map","Exp_Map"])[exp].mean(axis=1).to_frame(name=exp)
             df_mean = pd.concat([df_mean, df_exp], axis=1)
         df_mean = df_mean.rename_axis("Experiment", axis="columns").stack("Experiment").unstack("Fraction")
+        df_zscore = df_mean.apply(zscore, axis=0).replace(np.nan, 0)
         
         pca = PCA(n_components=n)
         
-        df_pca = pd.DataFrame(pca.fit_transform(df_mean), columns=[f"PC{el+1}" for el in range(n)], index=df_mean.index)
-        self.df_pca_loadings = pd.DataFrame(pca.components_, columns = df_mean.columns, index=df_pca.columns).T.reset_index()
+        df_pca = pd.DataFrame(pca.fit_transform(df_zscore), columns=[f"PC{el+1}" for el in range(n)], index=df_zscore.index)
+        self.df_pca_loadings = pd.DataFrame(pca.components_, columns = df_zscore.columns, index=df_pca.columns).T.reset_index()
         self.df_pca_var = pd.DataFrame(pca.explained_variance_ratio_, index = df_pca.columns)\
             .reset_index().rename({"index":"Component", 0:"variance explained"}, axis=1)
         
@@ -2553,6 +2737,45 @@ class SpatialDataSetComparison:
         
         return plot
     
+
+    def train_svm(self, experiments, random_state, test_split, classes, output, canvas, rounds, C0,C1,g0,g1,overwrite=False):
+        
+        hash_data = SVMComp._construct_hash_data(
+            experiments=experiments, random_state=random_state, test_split=test_split, classes=classes
+        )
+        if hash_data in self.svm_runs.keys() and overwrite == False:
+            raise RuntimeError("Confirm retraining")
+        
+        svmcomp = SVMComp(hash_data)
+        svmcomp.set_df(self.df_01_filtered_combined)
+        svmcomp.train_svm(C0=C0,C1=C1,g0=g0,g1=g1,canvas=canvas, output=output, rounds=rounds)
+        svmcomp.df = pd.DataFrame()
+        self.svm_runs[hash_data] = svmcomp
+        
+        return svmcomp.C, svmcomp.gamma
+    
+    
+    def predict_svm(self, experiments, random_state, test_split, classes, C, gamma, min_p, min_diff, svmset):
+        
+        hash_data = SVMComp._construct_hash_data(
+            experiments=experiments, random_state=random_state, test_split=test_split, classes=classes
+        )
+        if hash_data in self.svm_runs.keys():
+            svmcomp = self.svm_runs[hash_data]
+        else:
+            svmcomp = SVMComp(hash_data)
+        svmcomp.set_df(self.df_01_filtered_combined)
+        svmcomp.set_parameters(C=C, gamma=gamma)
+        svmcomp._predict_svm()
+        svmcomp._score_predictions(min_p=min_p, min_diff=min_diff)
+        for exp in svmcomp.experiments:
+            self.add_svm_result(misclassification=svmcomp._get_confusion(exp), source="direct", experiment=exp,
+                                comment=svmcomp.hash_data+"___"+svmcomp.hash_parameters, name=svmset,
+                                prediction=svmcomp.predictions[exp].join(svmcomp.probabilities[exp]).dropna())
+        svmcomp.df = pd.DataFrame()
+        self.svm_runs[hash_data] = svmcomp
+        return svmcomp.predictions
+    
     
     def plot_overview(self, multi_choice, clusters, quantile):
     
@@ -2598,117 +2821,115 @@ class SpatialDataSetComparison:
                           title="Overview of benchmarking output")
         return fig
     
-    def svm_processing(self):
-        """
-        The misclassification matrix, generated by Perseus, will be used for Recall/Precision calculation of each individual cluster and on a global level. 
-        Data will be stored in a local dictionary that will be assigned to the global dictionary. 
-        
-        Args:
-            self.df_SVM: dataframe, provided by Perseus, no index; 
-                        Column names: e.g. "Predicted: ER", "Predicted: NPC"
-                        Rows: e.g. "True: ER", "True: NPC"
-        
-        Returns:
-            self.analysed_datasets_dict:
-                local dictionary (SVM_dict) will be assigned to the global dictionary self.analysed_datasets_dict, that is available for downloading
-                {"Experiment name" : {see read_jsonFile(self) [below]}
-                                     {"Misclassification Analysis": 
-                                         {
-                                          "True: ER" : {
-                                                       "Recall": int,
-                                                       "FDR": int,
-                                                       "Precision": int,
-                                                       "F1": int
-                                                       }
-                                           "True: NPC" : {...}
-                                            ...          
-                                           "Summary": {...}
-                                           }
-                                        }
-                }
-        """
-        
-        df_clusterPerformance_global = pd.DataFrame()
-        df_AvgClusterPerformance_global = pd.DataFrame()
-        
-        for exp in self.exp_names:
-            
-            #confusion = pd.DataFrame([[5,0,1],[1,6,0],[0,0,6]], columns=["P1", "P2", "P3"], index=["T1", "T2", "T3"])
-            try:
-                confusion = self.svm_results[exp]["default"]["misclassification"].copy()
-            except:
-                continue
-            
-            true_positives = np.diag(confusion)
-            class_sizes = confusion.sum(axis=1)
-            mask_true = np.ones(confusion.shape)
-            mask_true[np.diag_indices(confusion.shape[0])] = 0
-            false_predicitons = confusion * mask_true
-            false_positives = false_predicitons.sum(axis=0)
-            false_negatives = false_predicitons.sum(axis=1)
-            recall = true_positives/(true_positives+false_negatives)
-            precision = true_positives/(true_positives+false_positives)
-            F1_scores = pd.Series([statistics.harmonic_mean([p,r]) for p,r in zip(precision, recall)], index=confusion.index)
-            df_clusterPerformance = pd.DataFrame(
-                [recall.values, precision.values, F1_scores.values, class_sizes],
-                columns=pd.MultiIndex.from_arrays([np.repeat(exp, len(recall)), confusion.index],
-                                                names=["Experiment", "Type"]),
-                index=["Recall", "Precision", "F1 score", "Class size"]
-            )
-            df_clusterPerformance_global = pd.concat([df_clusterPerformance_global, df_clusterPerformance], axis=1)
-            
-            # Performance of SVMs across all predictions
-            overall = [
-                true_positives.sum()/(true_positives.sum()+false_negatives.sum()),
-                true_positives.sum()/(true_positives.sum()+false_positives.sum())
-            ]
-            overall.append(statistics.harmonic_mean(overall))
-            overall.append(class_sizes.sum())
-            
-            # Average performance across all classes
-            average = [
-                recall.mean(),
-                precision.mean(),
-                F1_scores.mean(),
-                class_sizes.mean()
-            ]
-            
-            # Average performance across membranous organelles
-            organelles = [
-                "Plasma membrane",
-                "Peroxisome",
-                "Mitochondrion",
-                "Lysosome",
-                "ER",
-                "Endosome",
-                "Golgi",
-                "Ergic/cisGolgi",
-                "ER_high_curvature",
-                "PM",
-                "endosome",
-                "Nucleus"
-            ]
-            organelle = [
-                recall[[el in organelles for el in confusion.index]].mean(),
-                precision[[el in organelles for el in confusion.index]].mean(),
-                F1_scores[[el in organelles for el in confusion.index]].mean(),
-                class_sizes[[el in organelles for el in confusion.index]].mean()
-            ]
-            df_AvgClusterPerformance = pd.DataFrame([overall, average, organelle],
-                        index=pd.MultiIndex.from_arrays(
-                            [np.repeat(exp, 3),
-                            ["Overall performance", "Average all classes", "Average membraneous organelles"]],
-                            names=["Experiment", "Type"]),
-                        columns=["Recall", "Precision", "F1 score", "Class size"]).T
-            df_AvgClusterPerformance_global = pd.concat([df_AvgClusterPerformance_global, df_AvgClusterPerformance], axis=1)
-        
-        self.df_clusterPerformance_global = df_clusterPerformance_global
-        self.df_AvgClusterPerformance_global = df_AvgClusterPerformance_global
-        
-        return
+#    def svm_processing(self):
+#        """
+#        The misclassification matrix, generated by Perseus, will be used for Recall/Precision calculation of each individual cluster and on a global level. 
+#        Data will be stored in a local dictionary that will be assigned to the global dictionary. 
+#        
+#        Args:
+#            self.df_SVM: dataframe, provided by Perseus, no index; 
+#                        Column names: e.g. "Predicted: ER", "Predicted: NPC"
+#                        Rows: e.g. "True: ER", "True: NPC"
+#        
+#        Returns:
+#            self.analysed_datasets_dict:
+#                local dictionary (SVM_dict) will be assigned to the global dictionary self.analysed_datasets_dict, that is available for downloading
+#                {"Experiment name" : {see read_jsonFile(self) [below]}
+#                                     {"Misclassification Analysis": 
+#                                         {
+#                                          "True: ER" : {
+#                                                       "Recall": int,
+#                                                       "FDR": int,
+#                                                       "Precision": int,
+#                                                       "F1": int
+#                                                       }
+#                                           "True: NPC" : {...}
+#                                            ...          
+#                                           "Summary": {...}
+#                                           }
+#                                        }
+#                }
+#        """
+#        
+#        df_clusterPerformance_global = pd.DataFrame()
+#        df_AvgClusterPerformance_global = pd.DataFrame()
+#        
+#        for exp in self.svm_results.keys():
+#            
+#            for svmset in self.svm_results[exp].keys():
+#                confusion = self.svm_results[exp][svmset]["misclassification"].copy().fillna(0)
+#            
+#                true_positives = np.diag(confusion)
+#                class_sizes = confusion.sum(axis=1)
+#                mask_true = np.ones(confusion.shape)
+#                mask_true[np.diag_indices(confusion.shape[0])] = 0
+#                false_predicitons = confusion * mask_true
+#                false_positives = false_predicitons.sum(axis=0)
+#                false_negatives = false_predicitons.sum(axis=1)
+#                recall = true_positives/(true_positives+false_negatives)
+#                precision = true_positives/(true_positives+false_positives)
+#                F1_scores = pd.Series([statistics.harmonic_mean([p,r]) for p,r in zip(precision, recall)], index=confusion.index)
+#                df_clusterPerformance = pd.DataFrame(
+#                    [recall.values, precision.values, F1_scores.values, class_sizes],
+#                    columns=pd.MultiIndex.from_arrays([np.repeat(exp, len(recall)), np.repeat(svmset, len(recall)), confusion.index],
+#                                                    names=["Experiment", "Set", "Type"]),
+#                    index=["Recall", "Precision", "F1 score", "Class size"]
+#                )
+#                df_clusterPerformance_global = pd.concat([df_clusterPerformance_global, df_clusterPerformance], axis=1)
+#                
+#                # Performance of SVMs across all predictions
+#                overall = [
+#                    true_positives.sum()/(true_positives.sum()+false_negatives.sum()),
+#                    true_positives.sum()/(true_positives.sum()+false_positives.sum())
+#                ]
+#                overall.append(statistics.harmonic_mean(overall))
+#                overall.append(class_sizes.sum())
+#                
+#                # Average performance across all classes
+#                average = [
+#                    recall.mean(),
+#                    precision.mean(),
+#                    F1_scores.mean(),
+#                    class_sizes.mean()
+#                ]
+#                
+#                # Average performance across membranous organelles
+#                organelles = [
+#                    "Plasma membrane",
+#                    "Peroxisome",
+#                    "Mitochondrion",
+#                    "Lysosome",
+#                    "ER",
+#                    "Endosome",
+#                    "Golgi",
+#                    "Ergic/cisGolgi",
+#                    "ER_high_curvature",
+#                    "PM",
+#                    "endosome",
+#                    "Nucleus"
+#                ]
+#                organelle = [
+#                    recall[[el in organelles for el in confusion.index]].mean(),
+#                    precision[[el in organelles for el in confusion.index]].mean(),
+#                    F1_scores[[el in organelles for el in confusion.index]].mean(),
+#                    class_sizes[[el in organelles for el in confusion.index]].mean()
+#                ]
+#                df_AvgClusterPerformance = pd.DataFrame([overall, average, organelle],
+#                            index=pd.MultiIndex.from_arrays(
+#                                [np.repeat(exp, 3),np.repeat(svmset, 3),
+#                                ["Overall performance", "Average all classes", "Average membraneous organelles"]],
+#                                names=["Experiment", "Set", "Type"]),
+#                            columns=["Recall", "Precision", "F1 score", "Class size"]).T
+#                df_AvgClusterPerformance_global = pd.concat([df_AvgClusterPerformance_global, df_AvgClusterPerformance], axis=1)
+#        
+#        self.df_clusterPerformance_global = df_clusterPerformance_global
+#        self.df_AvgClusterPerformance_global = df_AvgClusterPerformance_global
+#        
+#        return
     
     
     def plot_svm_summary(self,
+                         svmset="default",
                          multi_choice=[],
                          score="F1 score",
                          orientation="v"):
@@ -2717,27 +2938,41 @@ class SpatialDataSetComparison:
             multi_choice = self.exp_names
         
         try:
-            df = pd.DataFrame(self.df_AvgClusterPerformance_global.loc[score,])
+            df = self.df_svm_performance[score].xs(svmset, level="Set", axis=0)
         except KeyError:
             raise KeyError(f"{score} is not among the criteria calculated for classification performance.")
         
-        df.index.names=["Experiment", "Aggregation"]
-        df.reset_index(inplace=True)
+        df = df.unstack("value").reset_index()
         df = df.loc[df.Experiment.isin(multi_choice)]
+        df = df.loc[df.Compartment.isin(["Overall performance", "Average all classes", "Average membraneous organelles"])]
+        df.rename({"Compartment": "Aggregation"}, axis=1, inplace=True)
         df = df.sort_values("Experiment", key=lambda x: [multi_choice.index(el) for el in x])
         
-        plot = px.bar(df,
-                    x="Aggregation" if orientation == "v" else score,
-                    y=score if orientation == "v" else "Aggregation",
-                    orientation=orientation,
-                    color="Experiment",
-                    template="simple_white",
-                    barmode="group"
-                    )
+        if score != "Class size":
+            plot = px.bar(df,
+                        x="Aggregation" if orientation == "v" else "mean",
+                        y="mean" if orientation == "v" else "Aggregation",
+                        error_x=None if orientation == "v" else "std",
+                        error_y="std" if orientation == "v" else None,
+                        orientation=orientation,
+                        color="Experiment",
+                        template="simple_white",
+                        barmode="group"
+                        ).update_yaxes(title=score)
+        else:
+            plot = px.bar(df,
+                        x="Aggregation" if orientation == "v" else "direct",
+                        y="direct" if orientation == "v" else "Aggregation",
+                        orientation=orientation,
+                        color="Experiment",
+                        template="simple_white",
+                        barmode="group"
+                        ).update_yaxes(title=score)
         
         return plot
     
     def plot_svm_detail(self,
+                        svmset="default",
                         multi_choice=[],
                         score="F1 score",
                         orientation="v"):
@@ -2746,29 +2981,528 @@ class SpatialDataSetComparison:
             multi_choice = self.exp_names
         
         try:
-            df = pd.DataFrame(self.df_clusterPerformance_global.loc[score,])
+            df = self.df_svm_performance[score].xs(svmset, level="Set", axis=0)\
+            .drop(["Overall performance", "Average all classes", "Average membraneous organelles"], level="Compartment", axis=0)
         except KeyError:
             raise KeyError(f"{score} is not among the criteria calculated for classification performance.")
         
-        df.index.names=["Experiment", "Compartment"]
-        df.reset_index(inplace=True)
+        df = df.unstack("value").reset_index()
         df = df.loc[df.Experiment.isin(multi_choice)]
         df = df.sort_values("Experiment", key=lambda x: [multi_choice.index(el) for el in x])
-        
-        plot = px.bar(df,
-                    x="Compartment" if orientation == "v" else score,
-                    y=score if orientation == "v" else "Compartment",
-                    orientation=orientation,
-                    color="Experiment",
-                    template="simple_white",
-                    barmode="group"
-                    )
+        if score != "Class size":
+            plot = px.bar(df,
+                        x="Compartment" if orientation == "v" else "mean",
+                        y="mean" if orientation == "v" else "Compartment",
+                        orientation=orientation,
+                        error_x=None if orientation == "v" else "std",
+                        error_y="std" if orientation == "v" else None,
+                        color="Experiment",
+                        template="simple_white",
+                        barmode="group"
+                        ).update_yaxes(title=score)
+        else:
+            plot = px.bar(df,
+                        x="Compartment" if orientation == "v" else "direct",
+                        y="direct" if orientation == "v" else "Compartment",
+                        orientation=orientation,
+                        color="Experiment",
+                        template="simple_white",
+                        barmode="group"
+                        ).update_yaxes(title=score)
         
         return plot
     
     def __repr__(self):
         return str(self.__dict__)
     
+
+class SVMComp():
+    '''
+    This is a class meant to operate on the data from a SpatialDataSetComparison object and holds all functionality for configuring and training SVMs for orgenellar assignments.
+    '''
+    
+    def __init__(self, hash_data, **kwargs):
+        '''
+        hash_data can be constructed using _construct_hash_data.
+        '''
+        # extract main parameters from the data hash
+        self.hash_data = hash_data
+        self.experiments = hash_data.split("__")[0].split(";")
+        self.random_state = int(hash_data.split("__")[1])
+        self.test_split = float(hash_data.split("__")[2])
+        self.classes = hash_data.split("__")[3].split(";")
+        
+        # If accuracies have oreviously determined and are passed, set them.
+        if "accuracies" in kwargs.keys():
+            self.accuracies = kwargs["accuracies"]
+        else:
+            self.accuracies = pd.DataFrame(columns=pd.MultiIndex.from_tuples(
+                [(el, s) for el in self.experiments for s in ["C", "gamma", "Accuracy"]],
+                names=["Experiment", "Score"]
+            ))
+        
+        # Currently not used, but additional interfaceparameters like the configuration for training could be saved here.
+        if "interfaceparameters" in kwargs.keys():
+            self.interfaceparameters = kwargs["interfaceparameters"]
+        else:
+            self.interfaceparameters = dict()
+        
+        # Set default parameters C and gamma
+        self.set_parameters(C=5, gamma=25)
+        
+        # Initialize empty dataframes for probabilities, predictions and input data
+        self.probabilities, self.predictions, self.df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        
+    def _construct_hash_data(
+        experiments: list,
+        random_state: int = 42,
+        test_split: float = 0.2,
+        classes: list = [],
+    ):
+        '''
+        This constructs the data hash for a SVMComp class, which can then be used to initialize it.
+        '''
+        return "__".join([
+            ";".join(experiments),
+            str(random_state),
+            str(test_split),
+            ";".join(classes)
+        ])
+    
+    def _construct_hash_parameters(
+        C: float = 5,
+        gamma: float = 25
+    ):
+        '''
+        This constructs the parameter hash for a SVMComp class, which can be used to uniquely identify the SVM
+        '''
+        return "__".join([
+            str(C),
+            str(gamma)
+        ])
+    
+    def set_df(
+        self,
+        df_01_filtered_combined
+    ):
+        '''
+        Reduce the input dataframe from the SpatialDatasetComparison class to the required experiments.
+        '''
+        df = df_01_filtered_combined.reset_index(
+            [el for el in df_01_filtered_combined.index.names\
+             if el not in ["Experiment", "Map", "Protein IDs", "Compartment"]],
+            drop=True
+        )
+        df = df[df.index.get_level_values("Experiment").isin(self.experiments)]
+        self.df = df
+        
+    
+    def set_parameters(
+        self,
+        C: float = 5,
+        gamma: float = 25
+    ):
+        '''
+        Set parameters for the SVM and store the constructed hash
+        '''
+        self.C = C
+        self.gamma = gamma
+        self.hash_parameters = SVMComp._construct_hash_parameters(C=C, gamma=gamma)
+    
+    def __repr__(self):
+        text = '''This is an SVM object for comparing several spatial datasets.
+
+ Experiments:  {}
+ Test split:   {}
+ Random state: {}
+ Classes:      {}
+ 
+ C:     {}
+ gamma: {}
+ 
+ DataFrame dimensions are:
+ Input data:          {}
+ Grid accuracies:     {}
+ Class probabilities: {}
+ Class assignments:   {}'''.format(
+            ", ".join(self.experiments),
+            self.test_split,
+            self.random_state,
+            ", ".join(self.classes),
+            self.C,
+            self.gamma,
+            " x ".join([str(el) for el in self.df.shape]),
+            " x ".join([str(el) for el in self.accuracies.shape]),
+            " x ".join([str(el) for el in self.probabilities.shape]),
+            " x ".join([str(el) for el in self.predictions.shape]),
+        )
+        return text
+    
+    
+    def _get_markers(self, which="shared"):
+        '''
+        Retrieve marker subsets across experiments, for classes specified in the classes attribute.
+        Arguments:
+            which: one of shared, unshared
+        '''
+        
+        if which == 'shared':
+            shared = self.df.unstack(["Experiment","Map"]).dropna()\
+            .index.to_frame(index=False)[["Protein IDs", "Compartment"]]
+            return shared[shared["Compartment"].isin(self.classes)]
+        else:
+            unshared = self.df.unstack(["Experiment","Map"])\
+            .drop(self.df_01_filtered_combined.unstack(["Experiment","Map"]).dropna().index, axis=0)\
+            .index.to_frame(index=False)[["Protein IDs", "Compartment"]]
+            return unshared[unshared["Compartment"].isin(self.classes)]
+    
+    
+    def _train_test_split(self, test_unshared=False, test_percent=None, random_state=None):
+        '''
+        
+        Arguments:
+            test_unshared: Whether to include unshared markers in the test sets
+            test_percent: Percentage of shared markers to set aside as a testset
+            random_state: Random state passed to train_test_split from sklearn
+        
+        Returns:
+            train: pd.DataFrame, columns = ["Protein IDs", "Comaprtment"]
+            test: pd.DataFrame, columns = ["Protein IDs", "Comaprtment"]
+        '''
+        
+        shared = self._get_markers(which="shared")
+        if test_percent is None:
+            test_percent = self.test_split
+        if random_state is None:
+            random_state = self.random_state
+        
+        if test_percent != 0:
+            train, test = train_test_split(shared, test_size=test_percent,
+                                           random_state=random_state, stratify=shared["Compartment"])
+        else:
+            train = shared
+            test = shared
+        
+        if test_unshared == True:
+            test = pd.concat([test, self._get_markers(which="unshared")], axis=0, ignore_index=True)
+        
+        return train, test
+    
+    
+    def _get_grid(C0=1, C1=60, Cn=4, g0=0.01, g1=60, gn=4):
+        '''
+        Return dictionary suitable as input for GridSearchCV, using np.geomspace for spacing.
+        '''
+        return {'C': np.geomspace(C0, C1, Cn).round(5), 'gamma': np.geomspace(g0, g1, gn).round(5)}
+    
+    
+    def _grid_search(self, train=pd.DataFrame(columns=["Protein IDs", "Compartment"]),
+                     parameters={'C': np.logspace(0, 1.7, 4), 'gamma': np.logspace(0, 2, 4)},
+                     random_state=None):
+        '''
+        This runs the specified gridsearch for each experiment and returns the best parameters per experiment and all accuracies.
+        Arguments:
+            train: training ids and labels
+            parameters: search space for C and gamma
+        '''
+        accuracies = dict()
+        best_params = dict()
+        
+        if random_state == None:
+            random_state = self.random_state
+        
+        labels = train["Compartment"]
+        svc = svm.SVC(probability=False, random_state=random_state)
+        
+        for exp in self.experiments:
+            # Only use full coverage data and retrieve training set
+            data = self.df.xs(exp, level="Experiment", axis=0).unstack("Map").dropna()
+            data = data.reset_index(level=["Compartment"], drop=True).loc[train["Protein IDs"],:]
+            
+            # COnfigure and run gridsearch
+            clf = GridSearchCV(svc, parameters)
+            clf.fit(data.values, labels)
+            
+            # Store results
+            best_params[exp] = clf.best_params_
+            accuracies[exp] = pd.DataFrame(
+                [[k["C"], k["gamma"],v] for k,v in zip(
+                    clf.cv_results_["params"], clf.cv_results_["mean_test_score"]
+                )], columns=["C", "gamma", "accuracy"]
+            ).set_index(["C", "gamma"])
+        
+        accuracies = pd.concat(accuracies, axis=1)
+        accuracies.columns.names = ["Experiment", "Value"]
+        return best_params, accuracies
+    
+    
+    def _best_estimator(accuracies=pd.DataFrame(
+        columns=pd.MultiIndex.from_tuples([(".*", "accuracy")], names=["Experiment", "Value"]),
+        index=pd.MultiIndex.from_tuples([], names=["C", "gamma"])),
+                        mode="maxsum"):
+        '''
+        Determine the best estimator from an accuracies table, as returned by _grid_search.
+        Only valid mode right now is 'maxsum'.
+        '''
+        
+        if mode == "maxsum":
+            sums = accuracies.sum(axis=1)
+            return accuracies.index[np.where(sums == max(sums))].to_list()[0]
+    
+    
+    def _plot_training(accuracies):
+        accuracies = accuracies.stack(["Experiment"]).reset_index()
+        return px.scatter_3d(accuracies, x="C", y="gamma", color="Experiment", z="accuracy",
+                             log_x=True, log_y=True)
+    
+    
+    def train_svm(self, train=pd.DataFrame(columns=["Protein IDs", "Compartment"]),
+                  rounds=5, autoselect="maxsum", output="print", canvas=None,
+                  C0=1, C1=30, g0=1, g1=50):
+        '''
+        To find the best SVM parameters C and gamma several rounds of a gridsearch are run, employing 5 fold training validation.
+        In the first round the initially given range (default C[1,30], gamma[1,50]) is searched with 36 grid points.
+        For every next round the grid is determined based on the minimum and maximum best parameters across the experiments.
+        How the grid is expanded depends on the round and the agreement (agreed := (max-min)/max < 0.2) of the experiments.
+        Rounds 2 and 3:
+            agreement -> 5 points sampled from [0.7*min,max/0.7]
+            disagreement -> 6 points sampled from [min-0.5*(max-min),max+0.5(max-min)]
+            During these round the best parameters are only taken from the newly added grid points, to ensure sampling of many different points first.
+        Round 4+:
+            agreement -> 3 points sampled from [0.9*min,max/0.9]
+            disagreement -> 4 points sampled from [min-0.3*(max-min),max+0.3(max-min)]
+            The best parameters are now taken from all gridpoints sampled in any round.
+            If the calculated grid has been sampled before (because the best parameters didn't change), the limits are slightly expanded and more poitns are sampled (up to 6).
+        
+        If all expriments agree after at least 4 rounds, training is stopped early.
+        
+        In a final step the average best and the overall best parameters (maxizing the summed accuracy) are compared.
+        '''
+        if len(train) == 0:
+            train = self._train_test_split(test_percent=self.test_split, random_state=self.random_state)[0]
+        
+        n = 0
+        best_params = pd.Series()
+        accuracies = pd.DataFrame()
+        while rounds > n:
+            if n == 0:
+                grid = SVMComp._get_grid(C0=C0, C1=C1, Cn=6, g0=g0, g1=g1, gn=6)
+            else:
+                if n <= 2:
+                    agreed_expansion = 0.7
+                    disagreed_expansion = 0.5
+                    n_agreed=5
+                    n_disagreed=6
+                if n > 2:
+                    agreed_expansion = 0.9
+                    disagreed_expansion = 0.3
+                    n_agreed=3
+                    n_disagreed=4
+                
+                c0 = min([el['C'] for el in best_params.values()])
+                c1 = max([el['C'] for el in best_params.values()])
+                if (c1-c0)/c1 < 0.2:
+                    c0 = agreed_expansion*c0
+                    c1= min(c1/agreed_expansion, 95)
+                    cn=n_agreed
+                else:
+                    c0 = max(c0-disagreed_expansion*(c1-c0), 0.01)
+                    c1 = min(c1+disagreed_expansion*(c1-c0), 95)
+                    cn=n_disagreed
+                    
+                g0 = min([el['gamma'] for el in best_params.values()])
+                g1 = max([el['gamma'] for el in best_params.values()])
+                if (g1-g0)/g1 < 0.2:
+                    g0 = agreed_expansion*g0
+                    g1 = min(g1/agreed_expansion, 500)
+                    gn=n_agreed
+                else:
+                    g0 = max(g0-disagreed_expansion*(g1-g0), 0.0001)
+                    g1 = min(g1+disagreed_expansion*(g1-g0), 500)
+                    gn=n_disagreed
+                
+                grid_new = SVMComp._get_grid(Cn=cn, gn=gn, C0=c0, C1=c1, g0=g0, g1=g1)
+                ng = 1
+                while all([(ii,jj) in list(accuracies.index.values) for i,j in zip(*np.meshgrid(*grid_new.values())) for ii,jj in zip(i,j)]):
+                    if output == "print":
+                        print("Calculated grid was already searched. Resampling from larger range...")
+                    elif output == "canvas":
+                        canvas.append("Calculated grid was already searched. Resampling from larger range...")
+                    grid_new = SVMComp._get_grid(Cn=min(cn+ng, 6), gn=min(gn+ng, 6),
+                                                 C0=c0*(1-ng*0.1), C1=c1/(1-ng*0.1),
+                                                 g0=g0*(1-ng*0.1), g1=g1/(1-ng*0.1))
+                    ng += 1
+                
+                grid = grid_new
+            
+            if n > 3:
+                if gn==n_agreed and cn==n_agreed:
+                    n=rounds
+            
+            # Actual training
+            best_params, accuracies_n = self._grid_search(
+                train=train,
+                parameters=grid)
+            
+            # Store results
+            if n == 0:
+                accuracies = accuracies_n
+                if output == "canvas":
+                    canvas[0] = SVMComp._plot_training(accuracies)
+            else:
+                accuracies = pd.concat([accuracies, accuracies_n])
+                accuracies = accuracies[~accuracies.index.duplicated(keep='first')]
+                if output == "canvas":
+                    canvas[0] = SVMComp._plot_training(accuracies)
+                if n > 2:
+                    for k in best_params.keys():
+                        best_params[k] = {n:v for n,v in zip(accuracies.index.names,
+                                                             accuracies[k].idxmax(axis=0)[0])}
+            best_scoring = SVMComp._best_estimator(accuracies, mode=autoselect)
+            if output == "print" and n <= 2:
+                print(f"Round {str(n+1)} gave the following optimal parameters:\n{pd.DataFrame(best_params)},\nfrom this grid:\nC    :{grid['C']}\ngamma:{grid['gamma']}")
+                print(f"The best scoring parameter set now is:\n{pd.DataFrame(best_scoring)}\n-----\n")
+            elif output == "canvas" and n<= 2:
+                canvas.append(f"Round {str(n+1)} gave the following optimal parameters:\n{pd.DataFrame(best_params)},\nfrom this grid:\nC    :{grid['C']}\ngamma:{grid['gamma']}")
+                canvas.append(f"The best scoring parameter set now is:\n{pd.DataFrame(best_scoring)}\n-----\n")
+            if output == "print" and n > 2:
+                print(f"Round {str(n+1)} gave the following optimal parameters:\n{pd.DataFrame(best_params)},\nfrom this grid and all previous iterations:\nC    :{grid['C']}\ngamma:{grid['gamma']}")
+                print(f"The best scoring parameter set now is:\n{pd.DataFrame(best_scoring)}\n-----\n")
+            elif output == "canvas" and n > 2:
+                canvas.append(f"Round {str(n+1)} gave the following optimal parameters:\n{pd.DataFrame(best_params)},\nfrom this grid and all previous iterations:\nC    :{grid['C']}\ngamma:{grid['gamma']}")
+                canvas.append(f"The best scoring parameter set now is:\n{pd.DataFrame(best_scoring)}\n-----\n")
+            n+=1
+        
+        # Final comparison
+        grid={'C': [best_scoring[0], pd.DataFrame(best_params).mean(axis=1)[0]],
+                            'gamma': [best_scoring[1], pd.DataFrame(best_params).mean(axis=1)[1]]}
+        best_params, accuracies_n = self._grid_search(
+                train=train,
+                parameters=grid)
+        accuracies = pd.concat([accuracies, accuracies_n])
+        accuracies = accuracies[~accuracies.index.duplicated(keep='first')]
+        if output == "canvas":
+            canvas[0] = SVMComp._plot_training(accuracies)
+        best_scoring = SVMComp._best_estimator(accuracies, mode=autoselect)
+        if output == "print":
+            print(f"Comparison of mean and best scoring parameters gave the following optimal parameters:\n{pd.DataFrame(best_params)},\nfrom this grid:\nC    :{grid['C']}\ngamma:{grid['gamma']}")
+            print(f"The best scoring parameter set now is:\n{pd.DataFrame(best_scoring)}")
+        elif output == "canvas":
+            canvas.append(f"Comparison of mean and best scoring parameters gave the following optimal parameters:\n{pd.DataFrame(best_params)},\nfrom this grid:\nC    :{grid['C']}\ngamma:{grid['gamma']}")
+            canvas.append(f"The best scoring parameter set now is:\n{pd.DataFrame(best_scoring)}")
+            
+        # Store accuracies and set C and gamma
+        self.accuracies = accuracies
+        self.set_parameters(C=best_scoring[0], gamma=best_scoring[1])
+    
+    
+    def _predict_svm(self, train=pd.DataFrame(columns=["Protein IDs", "Compartment"]),
+                     C=-1, gamma=-1, random_state=None):
+        '''
+        Apply C and gamma to the training set and get predictions for df using the predict_proba parameter of sklearn SVC.
+        '''
+        if len(train) == 0:
+            train = self._train_test_split(test_percent=self.test_split, random_state=self.random_state)[0]
+        
+        if C == -1:
+            C = self.C
+        if gamma == -1:
+            gamma = self.gamma
+        if random_state == None:
+            random_state = self.random_state
+        
+        labels = train["Compartment"]
+        
+        results = pd.DataFrame()
+        
+        for exp in self.experiments:
+            svc = svm.SVC(probability=True, C=C, gamma=gamma, random_state=random_state)
+            data_all = self.df.xs(exp, level="Experiment", axis=0).unstack("Map").dropna()
+            data = data_all.reset_index(level=["Compartment"], drop=True).loc[train["Protein IDs"],:]
+            svc.fit(data.values, labels)
+            proba = svc.predict_proba(data_all.values)
+            proba = pd.DataFrame(proba,
+                                 columns=pd.MultiIndex.from_tuples(
+                                     [(exp, el) for el in svc.classes_], names=["Experiment", "Compartment"]),
+                                 index=data_all.index)
+            if len(results) == 0:
+                results = proba.copy()
+            else:
+                results = results.join(proba, how="outer")
+        self.probabilities = results.copy()
+    
+    
+    def _score_predictions(self, probabilities=pd.DataFrame(), min_p=0.4, min_diff=0.15):
+        '''
+        To draw actual predictions from the probabilities, take the highest probability (Winner) and handle it according to the cutoffs.
+        All probabilities > min_p are considered (Winners). If the difference between two such winners is at least min_diff only the larger one is the classification. If the difference is smaller, they are combined with an ' OR '. By the default values e.g. two predicitons with 0.45 probability will be '1 OR 2', two probabilities 0.57 and 0.41 will just be classified as '1', but winners '1,2'.
+        '''
+        predictions = pd.DataFrame()
+        if len(probabilities) == 0:
+            probabilities = self.probabilities.copy()
+        
+        for exp in set(probabilities.columns.get_level_values("Experiment")):
+            print(exp)
+            p_e = probabilities[exp].dropna()
+            p_max = p_e.max(axis=1)
+            p_max.name = "Max probability"
+            conf = pd.Series(["best guess" if p <= min_p else "very high confidence" if p > 0.95 else "high confidence" if p > 0.8 else "medium confidence" if p > 0.65 else "low confidence" if p > 0.4 else "best guess" for p in p_max], name="Confidence", index=p_max.index)
+            winner = p_e.idxmax(axis=1)
+            winner.name = "Winner"
+            winners = p_e.apply(lambda y: ";".join(y.index[np.where(y>min_p)]), axis=1)
+            winners.name = "Winners"
+            prediction = p_e.apply(lambda y: winners[y.name] if ";" not in winners[y.name]\
+                                            else winner[y.name] if\
+                                            y[winner[y.name]] - y.drop(winner[y.name]).max() > min_diff else\
+                                            winners[y.name].replace(";", " OR "), axis=1)
+            prediction.name = "Classification"
+            if len(predictions) == 0:
+                predictions = pd.DataFrame(
+                    [p_max, winner, winners, prediction, conf],
+                    index = pd.MultiIndex.from_arrays([
+                        np.repeat(exp, 5),
+                        ["Max probability","Winner","Winners","Classification","Confidence"]
+                    ], names=["Experiment", "Score"])
+                ).T
+            else:
+                predictions = predictions.join(
+                    pd.DataFrame(
+                        [p_max, winner, winners, prediction, conf],
+                        index = pd.MultiIndex.from_arrays([
+                            np.repeat(exp, 5),
+                            ["Max probability","Winner","Winners","Classification","Confidence"]
+                        ], names=["Experiment", "Score"])
+                    ).T,
+                    how="outer")
+        self.predictions = predictions
+        return predictions
+    
+    
+    def _get_confusion(self, experiment:str, predictions=pd.DataFrame(),
+                       test=pd.DataFrame(columns=["Protein IDs", "Compartment"])):
+        '''
+        For whatever subset of df get the confusion matrix. This is absed on the wunner column, regardless of the probability cutoffs used for classification.
+        '''
+        if len(predictions) == 0:
+            predictions = self.predictions.copy()
+        if len(test) == 0:
+            test = self._train_test_split(test_percent=self.test_split)[1]
+        
+        test_predictions = predictions.loc[[el in test["Protein IDs"].values\
+                                            for el in predictions.index.get_level_values("Protein IDs")],:]
+        winner = test_predictions[(experiment, "Winner")].dropna()
+        confusion = winner.groupby("Compartment").value_counts().unstack("Compartment").T
+        confusion_formatted = pd.DataFrame(index=set(test["Compartment"].values),
+                                           columns=set(test["Compartment"].values))
+        for i in confusion_formatted.columns:
+            for j in confusion_formatted.index:
+                try:
+                    confusion_formatted.loc[j,i] = confusion.loc[j,i]
+                except:
+                    pass
+        
+        return confusion_formatted
+
 
 def svm_heatmap(df_SVM):
     """
@@ -3838,3 +4572,177 @@ def calc_width_categorical(f, itemwidth=40, charwidth=7):
     legendwidth = 50+charwidth*legendlength
     width=xwidth+legendwidth
     return dict(width=width, xaxis_domain=[0,xwidth/width], legend_x=(xwidth+5)/width)
+
+
+def outlier_test(
+    delta: np.array,
+    support_fraction: float = 0.75,
+    iterations: int = 10,
+    record_medians: bool = True,
+    stop_at_95_05: bool = True
+):
+    mh = []
+    medians = []
+    for i in range(iterations):
+        with warnings.catch_warnings():
+            if i != 0:
+                warnings.simplefilter("ignore")
+            else:
+                warnings.simplefilter(action="ignore", category=RuntimeWarning)
+            cov = MinCovDet(support_fraction=support_fraction, random_state=i).fit(delta)
+            mh.append(cov.mahalanobis(delta))
+            if record_medians:
+                medians.append(np.median(np.asarray(mh), axis=0))
+                if stop_at_95_05 and i > 0:
+                    q95 = np.quantile(abs(medians[-1]-medians[-2])/medians[-2], 0.95)
+                    if q95 < 0.005:
+                        break
+    if not record_medians:
+        medians.append(np.median(np.asarray(mh), axis=0))
+    pvals = chi2.sf(medians[-1], delta.shape[1])
+    return pvals, medians
+
+
+def rscores_multi(
+    df: pd.DataFrame,
+    pairs: list = []
+):
+    paired_pvals = pd.DataFrame(index=df.index)
+    
+    if pairs == []:
+        if "Map" in df.columns.names:
+            pairs = [el for el in combinations(np.unique(df.columns.get_level_values("Map")), 2)]
+    print([el for el in pairs])
+    
+    fractions = df[pairs[0][0]].columns.get_level_values("Fraction")
+    delta = pd.DataFrame(
+        df[[p[0] for p in pairs]].values - df[[p[1] for p in pairs]].values,
+        columns = pd.MultiIndex.from_tuples([(p, f) for p,f in zip(np.repeat(["-".join(pair) for pair in pairs], len(fractions)), cycle(fractions))], names=["Pair", "Fraction"])
+    )
+    print(delta.head())
+
+    # Preparation of new dataframe
+    reshapedRow = reshapeRow(delta.iloc[0,:], replicates="Pair", variables="Fraction")
+    nameMatrix = np.array([["{}_{}".format(r1, r2) for r2 in np.unique(reshapedRow.index)] for r1 in np.unique(reshapedRow.index)])
+
+    # Calculation of correlations
+    correlations = delta.apply(lambda x: pd.Series(correlation_row(reshapeRow(x, replicates="Pair", variables="Fraction"), method="cosine")), axis=1)
+
+    # Returning output table
+    correlations.columns = nameMatrix[np.tril_indices(len(nameMatrix), k=-1)]
+    correlations.index = df.index
+    
+    return correlations
+
+def calculate_correlation(m, method='pearson'):
+    methods = {'pearson': lambda x: x.T.corr(method='pearson').values,
+               'spearman': lambda x: x.T.corr(method='spearman').values,
+               'kendall': lambda x: x.T.corr(method='kendall').values,
+               'cosine': lambda x: cosine_similarity(x)}
+    return methods[method](m)
+
+# get lower triangle from the correlation matrix
+def correlation_row(m, method='pearson'):
+    cm = calculate_correlation(m, method=method)
+    cv = cm[np.tril_indices(len(cm),k=-1)]
+    return cv
+
+# pivot a single df line for correlation matrix calculation
+def reshapeRow(x, replicates='Replicate', variables=['Condition', 'Fraction']):
+    x = x.reset_index()
+    x.columns = np.append(x.columns.values[0:-1],['value'])
+    if type(variables) == list:
+        x['variables'] = [i+"_"+j for i,j in zip(x[variables[0]], x[variables[1]])]
+        variables='variables'
+    x = x.pivot(index=replicates, columns=variables, values='value')
+    return x
+
+def subsample_misclassifcation(mc, sample_size=0.75, random_state=42):
+    
+    mc = mc.copy()
+    mc.index.name = "correct"
+    mc.columns.name = "predicted"
+    
+    prots = pd.DataFrame(columns = ["correct", "predicted"])
+    for el in mc.stack("predicted").iteritems():
+        for _ in range(int(el[1])):
+            prots.loc[len(prots),:] = [el[0][0], el[0][1]]
+    
+    if sample_size != 1:
+        _, sample = train_test_split(prots, stratify=prots["correct"],
+                                    test_size=sample_size, random_state=random_state)
+    else:
+        sample = prots.copy()
+    mc1 = sample.groupby(["correct", "predicted"]).size().unstack("predicted")
+    confusion_formatted = pd.DataFrame(index=mc.index.values,
+                                    columns=mc.index.values)
+    for i in confusion_formatted.columns:
+        for j in confusion_formatted.index:
+            try:
+                confusion_formatted.loc[j,i] = mc1.loc[j,i]
+            except:
+                pass
+    return confusion_formatted
+
+def process_mc(confusion):
+    true_positives = np.diag(confusion)
+    class_sizes = confusion.sum(axis=1)
+    mask_true = np.ones(confusion.shape)
+    mask_true[np.diag_indices(confusion.shape[0])] = 0
+    false_predicitons = confusion * mask_true
+    false_positives = false_predicitons.sum(axis=0)
+    false_negatives = false_predicitons.sum(axis=1)
+    recall = true_positives/(true_positives+false_negatives)
+    precision = true_positives/(true_positives+false_positives)
+    F1_scores = pd.Series([statistics.harmonic_mean([p,r]) for p,r in zip(precision, recall)], index=confusion.index)
+    overall = true_positives.sum()/(true_positives.sum()+false_negatives.sum())
+    recall["Average all classes"]=recall.mean()
+    precision["Average all classes"]=precision.mean()
+    F1_scores["Average all classes"]=F1_scores.mean()
+    class_sizes["Average all classes"]=class_sizes.mean()
+    recall["Overall performance"]=overall
+    precision["Overall performance"]=overall
+    F1_scores["Overall performance"]=overall
+    class_sizes["Overall performance"]=class_sizes.sum()
+    # Average performance across membranous organelles
+    organelles = [
+        "Plasma membrane",
+        "Peroxisome",
+        "Mitochondrion",
+        "Lysosome",
+        "ER",
+        "Endosome",
+        "Golgi",
+        "Ergic/cisGolgi",
+        "ER_high_curvature",
+        "PM",
+        "endosome",
+        "Nucleus"
+    ]
+    recall["Average membraneous organelles"]=recall[[el in organelles for el in recall.index]].mean()
+    precision["Average membraneous organelles"]=precision[[el in organelles for el in precision.index]].mean()
+    F1_scores["Average membraneous organelles"]=F1_scores[[el in organelles for el in F1_scores.index]].mean()
+    class_sizes["Average membraneous organelles"]=class_sizes[[el in organelles for el in class_sizes.index]].mean()
+    return pd.DataFrame(
+        np.array([F1_scores, recall, precision, class_sizes]).T,
+        columns=["F1 score", "Recall", "Precision", "Class size"],
+        index=pd.Index(F1_scores.index, name="Compartment")
+    )
+
+def process_mc_errorbars(mc,n=10,sample_size=0.75):
+    
+    score_iterations = pd.DataFrame(columns = ["F1 score", "Recall", "Precision", "Class size"],
+                                    index = pd.MultiIndex.from_tuples(
+                                        [], names=["Compartment","iteration"]
+                                    ))
+    
+    for i in range(n):
+        confusion = subsample_misclassifcation(mc=mc, random_state=i, sample_size=sample_size).fillna(0)
+        score_iterations = score_iterations.append(process_mc(confusion).set_index(
+            pd.Index(np.repeat(i, len(confusion)+3), name="iteration"), append=True))
+    
+    scores = score_iterations.fillna(0).groupby(["Compartment"])\
+    .apply(lambda x: pd.DataFrame([x.mean(), x.std()], index=pd.Index(["mean", "std"], name="value")))
+    scores = scores.append(process_mc(mc).set_index(
+            pd.Index(np.repeat("direct", len(confusion)+3), name="value"), append=True))
+    return scores
