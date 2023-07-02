@@ -150,6 +150,7 @@ with open("textfragments.json", "r") as file:
 DEBUG = False
 MAX_SIZE_MB = 80
 CONTENT_WIDTH = 1000
+HOSTING = "online" #switch to local to remove limits on iterations and cross-validation
 
 
 # [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
@@ -382,7 +383,7 @@ def execution(event):
         i_class.run_pipeline(content=BytesIO(i_FileConfig._content.file.value), progressbar=analysis_status)
         
         analysis_status.object = "Analysis finished!"
-        update_object_selector(i_mapwidget, i_clusterwidget)
+        update_object_selector()
         loading_status.objects = []
         dashboard_analysis.objects[output_layoutpos].append(analysis_tabs)
         mem_available_datasets[i_class.expname] = i_class.analysed_datasets_dict[i_class.expname]
@@ -496,7 +497,7 @@ def show_correlation_single(mode, measure, selection, level, run):
             return traceback.format_exc()
 lo_corr = pn.Row(lo_corr_widgets, show_correlation_single)
 
-def update_object_selector(i_mapwidget, i_clusterwidget):
+def update_object_selector():
     i_mapwidget.options = list(i_class.map_names)
     i_clusterwidget.options = list(i_class.markerproteins.keys())
     i_pca_ncomp.end = len(i_class.fractions)
@@ -563,7 +564,7 @@ def update_cluster_overview(clusterwidget, mapwidget, run):
                 return pn.Column(
                     pn.Row(
                         pn.Pane(textfragments["analysis_intramap_top"], width=600),
-                        pn.layout.HSpacer(width=30),
+                        pn.Column(width=30),
                         pn.Column(i_clusterwidget,i_mapwidget)
                     ),
                     "This protein cluster was not quantified"
@@ -582,7 +583,7 @@ def update_cluster_overview(clusterwidget, mapwidget, run):
                 cluster_overview = pn.Column(
                     pn.Row(
                         pn.Pane(textfragments["analysis_intramap_top"], width=600),
-                        pn.layout.HSpacer(width=30),
+                        pn.Column(width=30),
                         pn.Column(i_clusterwidget,i_mapwidget)
                     ),
                     pn.Row(pca_plot,
@@ -606,7 +607,7 @@ def update_cluster_overview(clusterwidget, mapwidget, run):
         update_status = pn.Column(
             pn.Row(
                 pn.Pane(textfragments["analysis_intramap_top"], width=600),
-                pn.layout.HSpacer(width=30),
+                pn.Column(width=30),
                 pn.Column(i_clusterwidget,i_mapwidget)
             ),
             pn.Pane(traceback.format_exc(), width=600)
@@ -734,12 +735,62 @@ def table_download(run):
     sio.seek(0)
     return sio
 
+#### Dashboard structure
+#### Movement analysis
+########################
+
+lo_movement_analysis = pn.Column(
+    pn.panel(textfragments["mr_top"], width=600),
+    name="movement_analysis", sizing_mode="stretch_width")
+btn_calc_mr = pn.widgets.Button(name="Calculate/display MR-plot", width=300, button_type="success")
+
+def calculate_mr(event):
+    lo_movement_analysis.objects = lo_movement_analysis.objects[0:3]
+    MRstatus = pn.Card(title="Temporary processing data")
+    lo_movement_analysis.append(MRstatus)
+    try:
+        mr = i_class.run_outliertest(**i_MRConfig.get_settings(), canvas = MRstatus)
+    except:
+        MRstatus.append(traceback.format_exc())
+    try:
+        MRstatus.append("Loading M-R plot display ...")
+        lo_movement_analysis.append(gui.MRPlot(data=mr))
+        MRstatus.pop(-1)
+    except:
+        MRstatus.append(traceback.format_exc())
+
+btn_calc_mr.on_click(calculate_mr)
+
+@pn.depends(cache_run.param.value)
+def update_MRConfig(run):
+    if run:
+        try:
+            global i_MRConfig
+            i_MRConfig = gui.ConfigureMR(
+                conditions=i_class.conditions,
+                maps = {c:[el.split("_")[1] for el in i_class.map_names if el.startswith(c)]\
+                           for c in i_class.conditions})
+            return i_MRConfig
+        except:
+            return pn.Column(
+                i_class.conditions, type(i_class.condition),
+                traceback.format_exc(),
+                "**This analysis does not contain any conditions**"
+            )
+    else:
+        lo_movement_analysis.objects = lo_movement_analysis.objects[0:2]
+        return "Run analysis first"
+
+lo_movement_analysis.append(update_MRConfig)
+lo_movement_analysis.append(btn_calc_mr)
+
 #### Callback output positioning
 ################################
 analysis_tabs.clear()
 analysis_tabs.append(("Data overview", update_data_overview))
 analysis_tabs.append(("Depth and Coverage", update_quantity))
 analysis_tabs.append(("Intramap Scatter", update_cluster_overview))
+analysis_tabs.append(("Movement analysis", lo_movement_analysis))
 analysis_tabs.append(("Download", show_tabular_overview))
 
 
@@ -1024,11 +1075,16 @@ comparison_tab_bp = pn.Column(
 #### Dashboard structure
 #### SMV analysis
 ########################
+lo_benchmark_SVMs_tabs = pn.Tabs()
 lo_benchmark_SVMs = pn.Column(
     pn.Pane(textfragments["benchmark_SVM_top"], width=600),
-    pn.Card(header="###Add misclassification matrix", name="add_mcmatrix"),
+    lo_benchmark_SVMs_tabs,
     pn.Row(name="svm_output")
 )
+lo_benchmark_SVMs_addmcm = pn.Column(name="add_mcmatrix")
+lo_benchmark_SVMs_runsvm = pn.Column(name="run_svm")
+lo_benchmark_SVMs_tabs.append(("Upload misclassification", lo_benchmark_SVMs_addmcm))
+lo_benchmark_SVMs_tabs.append(("Run SVMs", lo_benchmark_SVMs_runsvm))
 
 #### Layout elements
 #### SVM analysis
@@ -1037,19 +1093,21 @@ SVM_status = pn.pane.Markdown(width=400)
 lo_SVM_heatmap = pn.Column(SVM_status)
 i_SVMmatrix = pn.widgets.input.TextAreaInput(name="Misclassification matrix", placeholder="Copy matrix here...")
 i_SVMsource = pn.widgets.Select(options=["Perseus", "MetaMass", "direct"], value="Perseus", name="Select source of misclassification matrix")
+i_SVMname = pn.widgets.TextInput(name="Set name", value="default", placeholder="Identify the set of misclassification matrices (e.g. rbf_SVM)")
 lo_SVM_source = pn.Row(i_SVMsource, gui.help_icon("For Perseus, copy whole matrix via Ctrl-A, Ctrl-C. For MetaMass copy matrix including column headings, but without row labels. Direct assumes true classes in rows and predicted classes in columns, with column headings only."))
 i_SVMcomment = pn.widgets.TextInput(name="Comment", placeholder="Add comments here...")
 i_SVMexp = pn.widgets.Select(name="Select experiments for the assignment of a misclassification matrix", options=["a", "b", "c"])
 btn_SVM_addmatrix = pn.widgets.Button(name="Update misclassification matrix",
                                       button_type="success", width=400, height=50,
                                       css_classes=["button-main"])
+i_svm_set = pn.widgets.Select(options=["default"], name="Select set")
 i_svm_score = pn.widgets.Select(options=["F1 score", "Precision", "Recall", "Class size"], value="F1 score")
 
 #### Append layout to dashboard
 #### SVM analysis
 ###############################
-for el in [i_SVMexp, lo_SVM_source, i_SVMcomment, i_SVMmatrix, lo_SVM_heatmap, btn_SVM_addmatrix]:
-    lo_benchmark_SVMs.objects[[el.name for el in lo_benchmark_SVMs.objects].index("add_mcmatrix")].append(el)
+for el in [i_SVMexp, lo_SVM_source, i_SVMname, i_SVMcomment, i_SVMmatrix, lo_SVM_heatmap, btn_SVM_addmatrix]:
+    lo_benchmark_SVMs_addmcm.append(el)
 
 #### Callbacks
 # update_SVMexp
@@ -1067,12 +1125,12 @@ def add_SVM_result(event):
     """
     # 1. Get input from interface
     
-    experiment, SVMsource, SVMcomment = i_SVMexp.value, i_SVMsource.value, i_SVMcomment.value
+    experiment, SVMname, SVMsource, SVMcomment = i_SVMexp.value, i_SVMname.value, i_SVMsource.value, i_SVMcomment.value
     
     # change comment of a stored dataset
     try:
-        if i_SVMmatrix.value == "" and i_class_comp.svm_results[experiment]["default"]["misclassification"] is not None:
-            SVMmatrix = i_class_comp.svm_results[experiment]["default"]["misclassification"]
+        if i_SVMmatrix.value == "" and i_class_comp.svm_results[experiment][SVMname]["misclassification"] is not None:
+            SVMmatrix = i_class_comp.svm_results[experiment][SVMname]["misclassification"]
         # return error if no misclassification  is uploaded or no comment is changed
         #if i_SVMmatrix.value == "":
         #    SVM_status.object = "No misclassification matrix is uploaded"
@@ -1084,7 +1142,9 @@ def add_SVM_result(event):
 # 
     # 2. Add to i_class_comp
     # defaults to name="default" and overwrite=True
-    i_class_comp.add_svm_result(experiment, SVMmatrix, source=SVMsource, comment=SVMcomment)
+    i_class_comp.add_svm_result(experiment, SVMmatrix, name=SVMname, source=SVMsource, comment=SVMcomment)
+    if SVMname not in i_svm_set.options:
+        i_svm_set.options = i_svm_set.options+[SVMname]
     # 3. Add to mem_available_datasets so it can be downloaded together with the data
     mem_available_datasets[experiment]["SVM results"] = copy.deepcopy(i_class_comp.svm_results[experiment])
     for k in i_class_comp.svm_results[experiment].keys():
@@ -1101,34 +1161,31 @@ def add_SVM_result(event):
 
 btn_SVM_addmatrix.on_click(add_SVM_result)
     
-@pn.depends(i_SVMexp.param.value, i_SVMmatrix.param.value, watch=True)
-def fill_svm_comment(SVMexp, SVMmatrix):
+@pn.depends(i_SVMexp.param.value, i_SVMname.param.value, i_SVMmatrix.param.value, watch=True)
+def fill_svm_comment(SVMexp, SVMname, SVMmatrix):
     """
     Acess stored comment if possible and no new matrix was uploaded.
     """
     try: 
-        comment = i_class_comp.svm_results[SVMexp]["default"]["comment"]
+        comment = i_class_comp.svm_results[SVMexp][SVMname]["comment"]
         if SVMmatrix != "" or comment == "":
             timestampStr = datetime.now().strftime("%d-%b-%Y (%H:%M:%S)")
-            comment = "Matrix added on {date}".format(date=timestampStr)
+            comment = "Matrix added to set {} on {}".format(SVMname, timestampStr)
         else:
             pass
     except Exception:
             timestampStr = datetime.now().strftime("%d-%b-%Y (%H:%M:%S)")
-            comment = "Matrix added on {date}".format(date=timestampStr)
+            comment = "Matrix added to set {} on {}".format(SVMname, timestampStr)
     i_SVMcomment.value = comment
-    #except Exception:
-    #    update_status = traceback.format_exc()
-    #    SVM_status.object = update_status
         
-@pn.depends(i_SVMexp.param.value, i_SVMmatrix.param.value)
-def show_misclassification(SVMexp, SVMmatrix):
+@pn.depends(i_SVMexp.param.value, i_SVMname.param.value, i_SVMmatrix.param.value)
+def show_misclassification(SVMexp, SVMname, SVMmatrix):
     """
     Display heatmap of freshly uploaded or reloaded SVM misclassification matrix
     """
     if SVMmatrix == "":
         try: 
-            df_SVM = i_class_comp.svm_results[SVMexp]["default"]["misclassification"]
+            df_SVM = i_class_comp.svm_results[SVMexp][SVMname]["misclassification"]
             SVMheatmap = domaps.svm_heatmap(df_SVM)
         except: 
             SVMheatmap = "No misclassification matrix is uploaded"
@@ -1137,39 +1194,38 @@ def show_misclassification(SVMexp, SVMmatrix):
         SVMheatmap = domaps.svm_heatmap(df_SVM)
     return SVMheatmap
 
-@pn.depends(i_SVMexp.param.value)
-def load_matrix(SVMexp):
+@pn.depends(i_SVMexp.param.value, i_SVMname.param.value)
+def load_matrix(SVMexp, SVMname):
     """
     Load data if new experiment is selected 
     """
     try:
-        SVMmatrix = i_class_comp.svm_results[SVMexp]["default"]["misclassification"]
+        SVMmatrix = i_class_comp.svm_results[SVMexp][SVMname]["misclassification"]
         SVM_status.object = "Misclassification Matrix from class"
     except:
         SVM_status.object = "Upload missclassificationmatrix first"
 
     
-@pn.depends(i_multi_choice.param.value, i_svm_score.param.value)
-def show_svm_results(multi_choice, score):
+@pn.depends(i_multi_choice.param.value, i_svm_set.param.value, i_svm_score.param.value)
+def show_svm_results(multi_choice, svmset, score):
     try:
         if len(i_class_comp.svm_results) == 0:
             return "Please upload SVM results first"
-        plot_detail = i_class_comp.plot_svm_detail(multi_choice=multi_choice, score=score)
-        plot_summary = i_class_comp.plot_svm_summary(multi_choice=multi_choice, score=score)
+        plot_detail = i_class_comp.plot_svm_detail(multi_choice=multi_choice, score=score, svmset=svmset)
+        plot_summary = i_class_comp.plot_svm_summary(multi_choice=multi_choice, score=score, svmset=svmset)
         return pn.Column(pn.Pane(plot_summary, config=plotly_config), pn.Pane(plot_detail, config=plotly_config))
     except:
         return traceback.format_exc()
 
-@pn.depends(i_multi_choice.param.value, watch=True)        
-def update_SVM_Analysis(multi_choice):     
+@pn.depends(i_multi_choice.param.value, watch=True)
+def update_SVM_Analysis(multi_choice):
     #empty lo if available
     lo_benchmark_SVMs.objects[[i.name for i in lo_benchmark_SVMs].index("svm_output")].objects = []
     try:
         if multi_choice == []:
             lo = pn.Column(pn.Row("Please select experiments for comparison"))
         else:
-            i_class_comp.svm_processing()
-            lo = pn.Column(i_svm_score, show_svm_results)
+            lo = pn.Column(i_svm_set, i_svm_score, show_svm_results)
     except Exception:
         update_status = traceback.format_exc()
         lo = update_status
@@ -1180,6 +1236,193 @@ def update_SVM_Analysis(multi_choice):
 ################################
 lo_SVM_heatmap.append(show_misclassification)
 #lo_benchmark_SVMs.objects[[el.name for el in lo_benchmark_SVMs.objects].index("svm_output")].append(update_SVM_Analysis())
+
+
+i_svm_svmcomp = domaps.SVMComp("exp1;exp2__42__0.2__cl1;cl2")
+i_svm_randomstate = pn.widgets.IntInput(value=42, width=150, name="Seed for randomization")
+i_svm_testsplit = pn.widgets.FloatInput(start=0, end=1, step=0.05, value=0.2, width=150,
+                                        name="Test set proportion")
+i_svm_classes = gui.ConfigureSVMClasses()
+i_svm_Crange = pn.widgets.IntRangeSlider(start=1,end=50,step=1,value=(1,30), name="C (% misclassification)", width=250)
+i_svm_gammarange = pn.widgets.IntRangeSlider(start=1,end=100,step=1,value=(1,50), name="gamma (RBF diameter)", width=250)
+i_svm_trainingrounds = pn.widgets.IntSlider(start=3, end=10, value=5, name="Training iterations", width=150)
+btn_svm_train = pn.widgets.Button(name="Run training", width=150, button_type="success")
+i_svm_canvas = pn.Column(pn.Row())
+i_svm_C = pn.widgets.FloatInput(name="C", background="salmon", width=150)
+i_svm_gamma = pn.widgets.FloatInput(name="gamma", background="salmon", width=150)
+i_svm_nameprediction = pn.widgets.TextInput(name="Name prediction set", width=150, value="SVM run")
+i_svm_minp = pn.widgets.FloatInput(start=0.1, end=1.0, step=0.05, value=0.4, width=150, name="Minimum SVM probability")
+i_svm_minpdiff = pn.widgets.FloatInput(start=0.00, end=0.9, step=0.05, value=0.15, width=150, name="Minimum difference to second")
+btn_svm_predict = pn.widgets.Button(name="Run predictions", width=150)
+i_svm_canvas_prediction = pn.Column()
+
+for el in [
+    pn.panel(textfragments["benchmark_SVM_internal"], width=600),
+    "**Define classes and training/test split for SVMs**",
+    pn.Row(
+        i_svm_classes,
+        pn.Column(
+            i_svm_randomstate,
+            i_svm_testsplit
+        ),
+        gui.help_icon("The seed for randomization is used for defining the test-split, as well as the folds for crossvalidation. By setting this the analysis can be exactly repeated at any time.")
+    ),
+    "**Configure training for hyperparameter optimization**",
+    pn.Row(
+        i_svm_Crange,
+        i_svm_gammarange,
+        i_svm_trainingrounds,
+        btn_svm_train,
+        gui.help_icon("The hyper parameter optimization is done in an iterative grid search. These paramters define where the search starts and how many iterations it should run.")
+    ),
+    pn.Card(i_svm_canvas, header=pn.pane.Markdown("**Training output**", width=860), width=860),
+    "**Select hyper parameters and run predictions**",
+    pn.Row(
+        i_svm_C,
+        i_svm_gamma,
+    ),
+    pn.Row(
+        i_svm_minp,
+        i_svm_minpdiff,
+        i_svm_nameprediction,
+        btn_svm_predict,
+        gui.help_icon("The minimum probability is used to determine whether any organelle matches the protein well. The minimum difference determines the labelling if more than one class matches the minimum probability.")
+    ),
+    i_svm_canvas_prediction
+]:
+    lo_benchmark_SVMs_runsvm.append(el)
+
+@pn.depends(i_multi_choice.param.value, watch=True)
+def update_svm_class(multi_choice):
+    try:
+        i_svm_svmcomp.experiments = multi_choice
+        available_classes = list(set(i_class_comp.df_01_filtered_combined.drop("undefined", axis=0, level="Compartment").index.get_level_values("Compartment")))
+        i_svm_svmcomp.classes = available_classes
+        i_svm_svmcomp.set_df(i_class_comp.df_01_filtered_combined)
+        class_counts = i_svm_svmcomp._get_markers("shared").value_counts("Compartment")
+        i_svm_classes.class_counts = class_counts
+        i_svm_classes.classes = list(class_counts.index)
+        train, test = i_svm_svmcomp._train_test_split(test_percent=i_svm_testsplit.value, random_state=i_svm_randomstate.value)
+        i_svm_classes.train = train
+        i_svm_classes.test = test
+        update_canvas_hash()
+    except:
+        lo_benchmark_SVMs_runsvm.append(traceback.format_exc())
+
+@pn.depends(i_svm_randomstate.param.value, i_svm_testsplit.param.value, i_svm_classes.param.classes, watch=True)
+def update_test_split(random_state, test_split, classes):
+    try:
+        i_svm_svmcomp.random_state = random_state
+        i_svm_svmcomp.test_split = test_split
+        if len(classes) > 0:
+            i_svm_svmcomp.classes = classes
+        train, test = i_svm_svmcomp._train_test_split(test_percent=test_split, random_state=random_state)
+        i_svm_classes.train = train
+        i_svm_classes.test = test
+        update_canvas_hash()
+    except:
+        lo_benchmark_SVMs_runsvm.append(traceback.format_exc())
+
+def update_canvas_hash():
+    hash_data = domaps.SVMComp._construct_hash_data(
+        experiments=i_svm_svmcomp.experiments,
+        random_state=i_svm_svmcomp.random_state,
+        test_split=i_svm_svmcomp.test_split,
+        classes=i_svm_svmcomp.classes)
+    if hash_data in i_class_comp.svm_runs.keys():
+        i_svm_canvas.objects = [pn.Row(domaps.SVMComp._plot_training(i_class_comp.svm_runs[hash_data].accuracies))]
+        i_svm_C.value = i_class_comp.svm_runs[hash_data].C
+        i_svm_gamma.value = i_class_comp.svm_runs[hash_data].gamma
+        sio = StringIO()
+        i_class_comp.svm_runs[hash_data].accuracies.to_csv(sio)
+        sio.seek(0)
+        download_acc = pn.widgets.FileDownload(file=sio, filename="SVMtraining_accuracies.csv")
+        i_svm_canvas.append(download_acc)
+    else:
+        i_svm_canvas.objects = [pn.Row()]
+        btn_svm_train.button_type="success"
+
+def svm_run_training(event):
+    try:
+        hash_data = domaps.SVMComp._construct_hash_data(
+            experiments = i_multi_choice.value,
+            random_state = i_svm_randomstate.value,
+            test_split = i_svm_testsplit.value,
+            classes = i_svm_classes.classes
+        )
+        if hash_data not in i_class_comp.svm_runs.keys() or btn_svm_train.button_type != "success":
+            i_svm_canvas.objects = ["Starting training"]
+        C, gamma = i_class_comp.train_svm(
+            experiments = i_multi_choice.value,
+            random_state = i_svm_randomstate.value,
+            test_split = i_svm_testsplit.value,
+            classes = i_svm_classes.classes,
+            output = "canvas",
+            canvas = i_svm_canvas,
+            rounds = i_svm_trainingrounds.value,
+            C0 = i_svm_Crange.value[0], C1 = i_svm_Crange.value[1],
+            g0 = i_svm_gammarange.value[0], g1 = i_svm_gammarange.value[1],
+            overwrite = False if btn_svm_train.button_type=="success" else True
+        )
+        btn_svm_train.button_type="success"
+        sio = StringIO()
+        i_class_comp.svm_runs[hash_data].accuracies.to_csv(sio)
+        sio.seek(0)
+        download_acc = pn.widgets.FileDownload(file=sio, filename="SVMtraining_accuracies.csv")
+        i_svm_canvas.append(download_acc)
+        i_svm_C.value = C
+        i_svm_gamma.value = gamma
+    except RuntimeError:
+        btn_svm_train.button_type="danger"
+        i_svm_canvas[0] = "Please confirm that you want to retrain"
+        pass
+    except:
+        i_svm_canvas[0] = traceback.format_exc()
+        pass
+btn_svm_train.on_click(svm_run_training)
+
+def svm_run_prediction(event):
+    try:
+        i_svm_canvas_prediction.objects = ["Running predictions"]
+        prediction = i_class_comp.predict_svm(
+            experiments = i_multi_choice.value,
+            random_state = i_svm_randomstate.value,
+            test_split = i_svm_testsplit.value,
+            classes = i_svm_classes.classes,
+            C = i_svm_C.value,
+            gamma = i_svm_gamma.value,
+            min_p = i_svm_minp.value,
+            min_diff = i_svm_minpdiff.value,
+            svmset = i_svm_nameprediction.value)
+        hash_data = domaps.SVMComp._construct_hash_data(
+            experiments = i_multi_choice.value,
+            random_state = i_svm_randomstate.value,
+            test_split = i_svm_testsplit.value,
+            classes = i_svm_classes.classes
+        )
+        prob = i_class_comp.svm_runs[hash_data].probabilities
+        out = i_class_comp.id_alignment.drop(i_class_comp.id_alignment.columns, axis=1).join(prediction).join(prob)
+        sio = StringIO()
+        out.to_csv(sio)
+        sio.seek(0)
+        download_pred = pn.widgets.FileDownload(file=sio, filename="SVMprediction.csv")
+        i_svm_canvas_prediction.append(download_pred)
+        
+        for exp in i_multi_choice.value:
+            mem_available_datasets[exp]["SVM results"] = copy.deepcopy(i_class_comp.svm_results[exp])
+            for k in i_class_comp.svm_results[exp].keys():
+                mc_json = mem_available_datasets[exp]["SVM results"][k]["misclassification"].to_json()
+                mem_available_datasets[exp]["SVM results"][k]["misclassification"] = mc_json
+                pr_json = mem_available_datasets[exp]["SVM results"][k]["prediction"].to_json()
+                mem_available_datasets[exp]["SVM results"][k]["prediction"] = pr_json
+        
+        
+        i_svm_set.options = i_svm_set.options+[i_svm_nameprediction.value]
+        i_svm_set.value = i_svm_nameprediction.value
+    except:
+        i_svm_canvas_prediction.objects = [traceback.format_exc()]
+btn_svm_predict.on_click(svm_run_prediction)
+
 
 #### Dashboard structure
 #### Intermap scatter tab
@@ -1455,7 +1698,6 @@ def benchmark_download_getsheet(sheet, mode="csv"):
         out.columns = ["_".join(el) for el in out.columns.reorder_levels(["Experiment", "Map", "Fraction"]).values]
     elif sheet == "pca coordinates":
         out = i_class_comp.df_pca.copy()
-        out.index = out.index.droplevel("merge type")
     elif sheet == "complex scatter":
         out = i_class_comp.df_distance_comp.copy()
         if mode=="csv":
@@ -1561,6 +1803,7 @@ def update_multi_choice():
     i_clusters_for_ranking.options = list(i_class_comp.markerproteins.keys())
     i_clusters_for_ranking.value = list(i_class_comp.markerproteins.keys())
     i_multi_choice.value = i_class_comp.exp_names
+    i_svm_set.options = list(set([k for exp in i_class_comp.exp_names if exp in i_class_comp.svm_results.keys() for k in i_class_comp.svm_results[exp].keys()]))
 
 
 @pn.depends(i_multi_choice.param.value, watch=True)
@@ -1612,28 +1855,6 @@ comparison_tabs.append(("Intramap scatter", comparison_tab_bp))
 comparison_tabs.append(("SVM Analysis", lo_benchmark_SVMs))
 comparison_tabs.append(("Compare profiles", update_profile_comparison))
 comparison_tabs.append(("Download data", lo_benchmark_download))
-
-
-# In[ ]:
-
-
-#### Dashboard structure
-########################
-
-#### Layout elements
-####################
-
-#### Append layout to dashboard
-###############################
-
-#### Callbacks
-##############
-# list
-# of
-# callbacks
-
-#### Callback output positioning
-################################
 
 
 # [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
@@ -1715,7 +1936,7 @@ lo_manage_collection = pn.Row(objects=[lo_dfs_available, lo_coll_buttons, lo_col
 #### Append elements to manage data row
 dashboard_benchmark.objects[[i.name for i in dashboard_benchmark].index("manage_data")].objects = []
 for el in [
-    pn.Pane(textfragments["benchmark_management_top"], widht=600),
+    pn.Pane(textfragments["benchmark_management_top"], width=600),
     lo_add_datasets, lo_manage_collection
 ]:
     dashboard_benchmark.objects[[i.name for i in dashboard_benchmark].index("manage_data")].append(el)
@@ -1974,8 +2195,8 @@ for el in [display_benchmark_output]:
 
 
 #In case of loading a json comparison larger than 80 MB
-#with open("G:\_DIA manuscript\Figure panes and data\Figure 1\Figure1_v2_peptides.json", "br") as file:
-#    i_jsonFile.value = file.read()
+#with open(r"C:\Documents\AnalysedDatasets.json", "br") as file:
+#    i_upload_collection.value = file.read()
 
 
 # In[ ]:
