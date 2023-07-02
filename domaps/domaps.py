@@ -3184,7 +3184,7 @@ class SVMComp():
             test = shared
         
         if test_unshared == True:
-            test = pd.concat([test, _get_markers(which="unshared")], axis=0, ignore_index=True)
+            test = pd.concat([test, self._get_markers(which="unshared")], axis=0, ignore_index=True)
         
         return train, test
     
@@ -3282,6 +3282,8 @@ class SVMComp():
             train = self._train_test_split(test_percent=self.test_split, random_state=self.random_state)[0]
         
         n = 0
+        best_params = pd.Series()
+        accuracies = pd.DataFrame()
         while rounds > n:
             if n == 0:
                 grid = SVMComp._get_grid(C0=C0, C1=C1, Cn=6, g0=g0, g1=g1, gn=6)
