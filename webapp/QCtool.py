@@ -208,18 +208,18 @@ app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], sizing_mo
 # ## App serving<a id="serving"></a>
 # Switch cells below between markup and code to set up for server hosting from the command line (app.servable) vs. local hosting from python.
 
+
+# try:
+#     server.stop()
+# except Exception:
+#     print("First server startup")
+# server = app.show(port=5067, websocket_max_message_size=MAX_SIZE_MB*1024*1024, admin=True,
+#                   http_server_kwargs={'max_buffer_size': MAX_SIZE_MB*1024*1024})
+
 # In[ ]:
 
 
-try:
-    server.stop()
-except Exception:
-    print("First server startup")
-server = app.show(port=5067, websocket_max_message_size=MAX_SIZE_MB*1024*1024, admin=True,
-                  http_server_kwargs={'max_buffer_size': MAX_SIZE_MB*1024*1024})
-
-
-# app.servable()
+app.servable()
 
 # [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
 # ## Cell structuring<a id="structuring"></a>
