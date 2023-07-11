@@ -208,18 +208,18 @@ app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], sizing_mo
 # ## App serving<a id="serving"></a>
 # Switch cells below between markup and code to set up for server hosting from the command line (app.servable) vs. local hosting from python.
 
-# try:
-#     server.stop()
-# except Exception:
-#     print("First server startup")
-# server = app.show(port=5067, websocket_max_message_size=MAX_SIZE_MB*1024*1024, admin=True,
-#                   http_server_kwargs={'max_buffer_size': MAX_SIZE_MB*1024*1024})
-
 # In[ ]:
 
 
-app.servable()
+try:
+    server.stop()
+except Exception:
+    print("First server startup")
+server = app.show(port=5067, websocket_max_message_size=MAX_SIZE_MB*1024*1024, admin=True,
+                  http_server_kwargs={'max_buffer_size': MAX_SIZE_MB*1024*1024})
 
+
+# app.servable()
 
 # [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
 # ## Cell structuring<a id="structuring"></a>
@@ -772,11 +772,13 @@ def update_MRConfig(run):
                            for c in i_class.conditions})
             return i_MRConfig
         except:
-            return pn.Column(
-                i_class.conditions, type(i_class.condition),
-                traceback.format_exc(),
-                "**This analysis does not contain any conditions**"
-            )
+            if i_class.conditions == [""]:
+                return pn.Column("**This analysis does not contain any conditions**")
+            else:
+                return pn.Column(
+                    i_class.conditions,
+                    pn.Str(traceback.format_exc(), width=600),
+                )
     else:
         lo_movement_analysis.objects = lo_movement_analysis.objects[0:2]
         return "Run analysis first"
@@ -2197,6 +2199,7 @@ for el in [display_benchmark_output]:
 #In case of loading a json comparison larger than 80 MB
 #with open(r"C:\Documents\AnalysedDatasets.json", "br") as file:
 #    i_upload_collection.value = file.read()
+#    i_upload_collection.filename = "bla"
 
 
 # In[ ]:
