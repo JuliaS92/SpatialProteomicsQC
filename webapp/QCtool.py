@@ -208,7 +208,6 @@ app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], sizing_mo
 # ## App serving<a id="serving"></a>
 # Switch cells below between markup and code to set up for server hosting from the command line (app.servable) vs. local hosting from python.
 
-
 # try:
 #     server.stop()
 # except Exception:
@@ -218,8 +217,9 @@ app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], sizing_mo
 
 # In[ ]:
 
-
 app.servable()
+
+
 
 # [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
 # ## Cell structuring<a id="structuring"></a>
@@ -745,7 +745,7 @@ lo_movement_analysis = pn.Column(
 btn_calc_mr = pn.widgets.Button(name="Calculate/display MR-plot", width=300, button_type="success")
 
 def calculate_mr(event):
-    lo_movement_analysis.objects = lo_movement_analysis.objects[0:3]
+    lo_movement_analysis.objects = lo_movement_analysis.objects[0:2]
     MRstatus = pn.Card(title="Temporary processing data")
     lo_movement_analysis.append(MRstatus)
     try:
@@ -770,7 +770,10 @@ def update_MRConfig(run):
                 conditions=i_class.conditions,
                 maps = {c:[el.split("_")[1] for el in i_class.map_names if el.startswith(c)]\
                            for c in i_class.conditions})
-            return i_MRConfig
+            return pn.Column(
+                i_MRConfig,
+                btn_calc_mr
+            )
         except:
             if i_class.conditions == [""]:
                 return pn.Column("**This analysis does not contain any conditions**")
@@ -784,7 +787,6 @@ def update_MRConfig(run):
         return "Run analysis first"
 
 lo_movement_analysis.append(update_MRConfig)
-lo_movement_analysis.append(btn_calc_mr)
 
 #### Callback output positioning
 ################################

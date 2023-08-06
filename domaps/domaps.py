@@ -433,6 +433,15 @@ class SpatialDataSet:
                 inplace=True, append=True
             )
             processing_steps.append("Reannotating genes")
+        else:
+            genes = [g if str(g) != "nan" else p for g,p in zip(df_index.index.get_level_values("Gene names"), df_index.index.get_level_values("Protein IDs"))]
+            df_index.reset_index("Gene names", inplace=True, drop=True)
+            df_index.set_index(pd.Index(
+                name="Gene names",
+                data=genes),
+                inplace=True, append=True
+            )
+            processing_steps.append("Filling missing gene names with Protein IDs")
         
         self.df_index = df_index
         
@@ -4729,7 +4738,7 @@ def process_mc(confusion):
         index=pd.Index(F1_scores.index, name="Compartment")
     )
 
-def process_mc_errorbars(mc,n=10,sample_size=0.75):
+def process_mc_errorbars(mc,n=20,sample_size=0.75):
     
     score_iterations = pd.DataFrame(columns = ["F1 score", "Recall", "Precision", "Class size"],
                                     index = pd.MultiIndex.from_tuples(
