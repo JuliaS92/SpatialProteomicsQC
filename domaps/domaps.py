@@ -423,7 +423,6 @@ class SpatialDataSet:
         
         ## Reannotate genes
         if self.reannotate_genes:
-            order = df_index.index.names
             df_index.reset_index("Gene names", inplace=True, drop=True)
             df_index.set_index(pd.Index(
                 name="Gene names",
@@ -433,18 +432,15 @@ class SpatialDataSet:
                 )),
                 inplace=True, append=True
             )
-            df_index = df_index.reorder_levels(order)
             processing_steps.append("Reannotating genes")
         else:
             genes = [g if str(g) != "nan" else p for g,p in zip(df_index.index.get_level_values("Gene names"), df_index.index.get_level_values("Protein IDs"))]
-            order = df_index.index.names
             df_index.reset_index("Gene names", inplace=True, drop=True)
             df_index.set_index(pd.Index(
                 name="Gene names",
                 data=genes),
                 inplace=True, append=True
             )
-            df_index = df_index.reorder_levels(order)
             processing_steps.append("Filling missing gene names with Protein IDs")
         
         self.df_index = df_index
