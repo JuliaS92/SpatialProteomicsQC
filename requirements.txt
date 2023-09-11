@@ -16,3 +16,5 @@ upsetplot
 openpyxl
 datashader
 statsmodels
+networkx
+hvplot
