@@ -43,6 +43,7 @@ import copy
 from scipy.stats import spearmanr
 
 import domaps.gui as gui
+from domaps.network import format_data
 
 try:
     type(domaps)
@@ -217,8 +218,8 @@ app_tabs.append(("About", pn.Row(pn.Pane(textfragments["about_intro"], sizing_mo
 
 # In[ ]:
 
-app.servable()
 
+app.servable()
 
 
 # [<div style="text-align: right; font-size: 8pt">back to top</div>](#TOC)
@@ -788,6 +789,50 @@ def update_MRConfig(run):
 
 lo_movement_analysis.append(update_MRConfig)
 
+
+#### Dashboard structure
+#### Neighborhood
+########################
+lo_neighborhood_analysis = pn.Column(
+    pn.panel(textfragments["neighborhood_top"], width=600),
+    name="neighborhood_analysis", sizing_mode="stretch_width")
+
+#### Layout elements
+#### Neighborhood
+####################
+btn_format_neighborhood = pn.widgets.Button(name="Format data for neighborhood analysis", width=500, button_type="success")
+
+#### Append layout to dashboard
+#### Neighborhood
+###############################
+
+#### Callbacks
+#### Neighborhood
+##############
+# format_neighborhood
+# reset_neighborhood
+
+def format_neighborhood(event):
+    lo_neighborhood_analysis.objects=lo_neighborhood_analysis.objects[0:2]
+    df_core, meta_dict = format_data(i_class)
+    lo_neighborhood_analysis.append(gui.NeighborhoodAnalyzer(df_core=df_core, meta_dict=meta_dict))
+    btn_format_neighborhood.disabled=True
+btn_format_neighborhood.on_click(format_neighborhood)
+
+@pn.depends(cache_run.param.value)
+def reset_neighborhood(run):
+    if run:
+        lo_neighborhood_analysis.objects=lo_neighborhood_analysis.objects[0:2]
+        btn_format_neighborhood.disabled=False
+        return btn_format_neighborhood
+    else:
+        return "Run analysis first"
+
+#### Callback output positioning
+#### Neighborhood
+################################
+lo_neighborhood_analysis.append(reset_neighborhood)
+
 #### Callback output positioning
 ################################
 analysis_tabs.clear()
@@ -795,6 +840,7 @@ analysis_tabs.append(("Data overview", update_data_overview))
 analysis_tabs.append(("Depth and Coverage", update_quantity))
 analysis_tabs.append(("Intramap Scatter", update_cluster_overview))
 analysis_tabs.append(("Movement analysis", lo_movement_analysis))
+analysis_tabs.append(("Neighborhood analysis", lo_neighborhood_analysis))
 analysis_tabs.append(("Download", show_tabular_overview))
 
 

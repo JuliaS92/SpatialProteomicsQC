@@ -1,5 +1,10 @@
 # Releases of domaps and associated webapps
 
+## Version 1.0.1 - development in progress
+
+### Features
+ - Neighborhood analysis from EVprofiler (Martin-Jaular, et al. EMBO Journal 2021) added.
+
 ## Version 0.2 - development in progress (at revised version submission)
 
 ### Features

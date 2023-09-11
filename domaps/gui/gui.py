@@ -5,6 +5,7 @@ import param
 import pkg_resources
 import traceback
 from domaps import SpatialDataSet
+from domaps import network as network
 import re
 import pandas as pd
 from io import BytesIO, StringIO
@@ -2279,3 +2280,484 @@ class ConfigureSVMClasses(Viewer):
     def update_classes(self):
         self.classes = self._classes.value
 
+
+class NeighborhoodAnalyzer(Viewer):
+    
+    df_core = param.DataFrame()
+    meta_dict = param.Dict()
+    
+    def __init__(self, **params):
+        
+        super().__init__(**params)
+        
+        ## Interface elements for single query output
+        
+        # Panes to cache query calculation as json
+        self.cache_sq_neighborhood = pn.pane.Str("")  # neighborhood query result
+        self.cache_sq_q = pn.pane.Str("")  # neighborhood quantile steps
+        self.cache_sq_nwdists = pn.pane.Str("")  # network edge distances
+        self.cache_sq_gp = pn.pane.Str("")  # network layout positions
+        
+        # Main options
+        self.input_sq_gene = pn.widgets.AutocompleteInput(options=[el for el in self.meta_dict["gene_id"].keys() if type(el) == str],
+                                                     name="Select gene (capital letters):", value="CD63")
+        self.input_sq_topn = pn.widgets.IntSlider(start=20, end=100, step=5, value=50, value_throttled=50,
+                                             name="Neighborhood size")
+        self.input_sq_button = pn.widgets.Button(name='Calculate neighborhood', button_type='primary')
+        self.output_sq_status = pn.pane.Markdown("", width_policy="max", sizing_mode="stretch_width")
+        
+        # Advanced options
+        self.input_sq_tolerance = pn.widgets.IntSlider(start=5, end=50, step=5, value=25, value_throttled=25,
+                                                  name="Replicate neighborhood tolerance")
+        self.input_sq_minr = pn.widgets.FloatSlider(start=-1, end=1, step=0.05, value=0, value_throttled=0,
+                                               name="Minimal profile correlation")
+        #input_sq_minenr = pn.widgets.FloatSlider(start=-1, end=1, step=0.05, value=-1, value_throttled=-1,
+        #                                         name="Minimal percentile shift in F3 vs. full proteome")
+        self.input_sq_nhsize = pn.widgets.IntSlider(start=50, end=500, step=50, value=250, value_throttled=250,
+                                               name="Neighborhood size for scoring")
+        
+        # Tabcolumn containing options
+        self.options_single = pn.Tabs()
+        self.options_single.append(("Neighborhood selection", pn.Column(self.input_sq_gene, self.input_sq_topn,
+                                                                   self.input_sq_button, self.output_sq_status)))
+        self.options_single.append(("Advanced options", pn.Column(self.input_sq_tolerance, self.input_sq_minr,
+                                                             self.input_sq_nhsize)))
+        
+        # Options for network display
+        self.input_sq_minz = pn.widgets.Select(options=["***", "**", "*", "B", "all"],
+                                          name="Minimum z scoring for nodes:", value="**")
+        self.input_sq_minrep = pn.widgets.Select(options=[1, 2, 3], name="Minimum shared replicates:", value=2)
+        self.input_sq_maxq = pn.widgets.Select(options=["1%", "5%", "10%", "25%", "50%", "100%"],
+                                          name="Maximum quantile for edges:", value="50%")
+        self.input_sq_highlight = pn.widgets.AutocompleteInput(options=[el for el in self.meta_dict["gene_id"].keys() if type(el) == str]+
+                                                          ["none", "None"], name="Highlight gene:", value="None")
+        self.input_sq_disablehvnx = pn.widgets.Checkbox(value=False, name="figure style")
+        
+        # Options for barplot
+        self.input_sq_bary = pn.widgets.Select(options=["Distance", "z-scoring based category", "Rank range between replicates",
+                                                   "Worst replicate correlation", "Local distance percentile"], name="Select y-axis to display:")
+
+
+        ## Functions for single query data display
+        
+        # Get the single query data
+        def store_gene_data(event):
+            self.input_sq_button.disabled=True
+            self.output_sq_status.object = "Calculating neighborhood ..."
+            output = network.hv_query_df(self.df_core, self.meta_dict, gene=self.input_sq_gene.value,
+                                         size=self.input_sq_topn.value_throttled,
+                                         rank_tolerance=self.input_sq_tolerance.value_throttled,
+                                         min_corr=self.input_sq_minr.value_throttled,
+                                         perc_area=self.input_sq_nhsize.value_throttled)
+            if len(output) == 3:
+                (df, q, msg) = output
+                self.output_sq_status.object = "Done calculating neighborhood"
+                self.cache_sq_q.object = q.to_json()
+                self.cache_sq_neighborhood.object = df.to_json()
+            else:
+                self.output_sq_status.object = output
+                self.cache_sq_q.object = ""
+                self.cache_sq_neighborhood.object = ""
+            self.input_sq_button.disabled=False
+        self.input_sq_button.on_click(store_gene_data)
+        
+        ## Interface elements for multiple network query
+        
+        # Caching panels for multiqueries
+        self.cache_mq_query = pn.pane.Str("")
+        self.cache_mq_q = pn.pane.Str("")
+        self.cache_mq_nwdists = pn.pane.Str("")
+        self.cache_mq_gp = pn.pane.Str("")
+        self.cache_mq_settings = pn.pane.Str("")
+        
+        # Main options
+        self.input_mq_list = pn.widgets.TextAreaInput(value="PSMA1, PSMA2, PSMB1, PSMB2", sizing_mode="fixed")
+        self.input_mq_topn = pn.widgets.IntSlider(start=20, end=100, step=5, value=30, value_throttled=30,
+                                             name="Neighborhood size")
+        self.input_mq_button = pn.widgets.Button(name='Calculate neighborhoods', button_type='primary')
+        self.output_mq_status = pn.pane.Markdown("", width_policy="max", sizing_mode="stretch_width")
+        
+        # Advanced options
+        self.input_mq_tolerance = pn.widgets.IntSlider(start=5, end=50, step=5, value=45, value_throttled=45,
+                                                  name="Replicate neighborhood tolerance")
+        self.input_mq_minr = pn.widgets.FloatSlider(start=-1, end=1, step=0.05, value=0, value_throttled=0,
+                                               name="Minimal profile correlation")
+        self.input_mq_nhsize = pn.widgets.IntSlider(start=50, end=500, step=50, value=250, value_throttled=250,
+                                               name="Neighborhood size for scoring")
+        
+        # Tabcolumn containing options
+        self.options_multi = pn.Tabs()
+        self.options_multi.append(("Neighborhood selection", pn.Column(
+            pn.pane.Markdown("List of gene symbols to compare  \n\ (select from above for examples)"),
+            self.input_mq_list, self.input_mq_topn, self.input_mq_button, self.output_mq_status)))
+        self.options_multi.append(("Advanced options", pn.Column(self.input_mq_tolerance, self.input_mq_minr,
+                                                            self.input_mq_nhsize)))
+        
+        # Options for multi query network
+        self.input_mq_minz = pn.widgets.Select(options=["***", "**", "*", "B", "all"],
+                                          name="Minimum z scoring for nodes:", value="B")
+        self.input_mq_minrep = pn.widgets.Select(options=[1, 2, 3], name="Minimum shared replicates:", value=2)
+        self.input_mq_maxq = pn.widgets.Select(options=["1%", "5%", "10%", "25%", "50%", "100%"],
+                                          name="Maximum quantile for edges:", value="50%")
+        self.input_mq_highlight = pn.widgets.AutocompleteInput(options=[el for el in self.meta_dict["gene_id"].keys() if type(el) == str]+
+                                                          ["none", "None"], name="Highlight gene:", value="None")
+        self.input_mq_disablehvnx = pn.widgets.Checkbox(value=False, name="figure style")
+        
+        def store_mq_data(event):
+            wdgts = [self.input_mq_list, self.input_mq_topn, self.input_mq_tolerance,
+                     self.input_mq_minr, self.input_mq_nhsize]
+            for wdgt in wdgts:
+                wdgt.disabled = True
+            self.input_mq_button.disabled = True
+            self.output_mq_status.object = "Started neighborhood calculation ..."
+            genes = [el.strip().upper() for el in self.input_mq_list.value.split(",")]
+            genes.sort()
+            params = {"gene": genes, "size": self.input_mq_topn.value_throttled,
+                      "tolerance": self.input_mq_tolerance.value_throttled,
+                      "minr": self.input_mq_minr.value_throttled,
+                      "nhsize": self.input_mq_nhsize.value_throttled}
+            self.cache_mq_settings.object = pd.DataFrame(pd.Series(params)).to_json()
+            pb = pn.widgets.Progress(max=len(genes), value=0, width_policy="max")
+            self.options_multi[0].append(pb)
+            output = network.multi_query(self.df_core, self.meta_dict, genes=genes,
+                                 size=params["size"], rank_tolerance=params["tolerance"], min_corr=params["minr"],
+                                 perc_area=params["nhsize"], pb=pb)
+            self.options_multi[0].remove(pb)
+            if len(output) == 3:
+                (df, q, msg) = output
+                self.output_mq_status.object = "Done calculating neighborhoods."
+                self.cache_mq_q.object = q.to_json()
+                self.cache_mq_query.object = df.to_json()
+            else:
+                self.output_mq_status.object = output
+                self.cache_mq_q.object = ""
+                self.cache_mq_query.object = ""
+            for wdgt in wdgts:
+                wdgt.disabled = False
+        self.input_mq_button.on_click(store_mq_data)
+    
+    
+    # Barplot
+    @param.depends('cache_sq_neighborhood.object', 'input_sq_bary.value')
+    def get_gene_data(self):
+        try:
+            df = pd.read_json(self.cache_sq_neighborhood.object).sort_values("Distance measure")
+        except:
+            return ""
+        p = network.sq_barplot(df, self.input_sq_bary.value)
+        return p
+    
+    # Networkplot
+    @param.depends('cache_sq_neighborhood.object',
+                   'input_sq_minz.value', 'input_sq_maxq.value', 'input_sq_minrep.value')
+    def layout_single_network(self):
+        query, min_z, max_q, min_rep = self.cache_sq_neighborhood.object, self.input_sq_minz.value, self.input_sq_maxq.value, self.input_sq_minrep.value
+        # Retrieve neighborhood information
+        try:
+            query_result = pd.read_json(query).sort_values("Distance measure")
+            q = pd.read_json(self.cache_sq_q.object, typ="series", convert_dates=False, convert_axes=False)
+        except:
+            self.cache_sq_nwdists.object = ""
+            self.cache_sq_gp.object = ""
+            return "Failed to read neighborhood (see settings panel for details).\n\n"+traceback.format_exc()
+        
+        # Define node list
+        z_dict = {"all":5, "B":4, "*":3, "**":2, "***":1}
+        min_z = z_dict[min_z]
+        try:
+            nwk_members = network.filter_nwk_members(query_result, min_rep, min_z)
+        except:
+            self.cache_sq_nwdists.object = ""
+            self.cache_sq_gp.object = ""
+            return "Failed to generate node list.\n\n"+traceback.format_exc()
+        
+        # Layout network
+        q_dict = {"1%":0.01, "5%":0.05, "10%":0.1, "25%":0.25, "50%":0.5, "100%":1}
+        try:
+            dists_pd, GP = network.layout_network(self.df_core, self.meta_dict, query_result, nwk_members, q_dict[max_q], q, layout_method="Spring")
+        except:
+            self.cache_sq_nwdists.object = ""
+            self.cache_sq_gp.object = ""
+            return "Failed to layout network.\n\n"+traceback.format_exc()
+        
+        # Store distances and layout in caching panels
+        self.cache_sq_nwdists.object = dists_pd.to_json()
+        self.cache_sq_gp.object = pd.DataFrame(GP).to_json()
+        
+        return ""
+    
+    @param.depends('cache_sq_gp.object', 'input_sq_highlight.value', 'input_sq_disablehvnx.value')
+    def draw_single_network(self):
+        GP, highlight, figure_style = self.cache_sq_gp.object, self.input_sq_highlight.value, self.input_sq_disablehvnx.value
+        # Read query result and quantile cutoffs
+        try:
+            query_result = pd.read_json(self.cache_sq_neighborhood.object).sort_values("Distance measure")
+            q = pd.read_json(self.cache_sq_q.object, typ="series", convert_dates=False, convert_axes=False)
+        except:
+            return ""
+        
+        # Read distances and network layout from cache
+        try:
+            dists_pd = pd.read_json(self.cache_sq_nwdists.object)
+            GP = pd.read_json(GP).to_dict()
+            GP = {k: np.array(list(GP[k].values())) for k in GP.keys()}
+        except:
+            return ""
+        
+        # switch between figure and interactive style
+        if figure_style:
+            nwk = network.draw_network_figure(dists_pd, GP, query_result, highlight, q)
+        else:
+            nwk = network.draw_network_interactive(dists_pd, GP, query_result, highlight, q)
+        
+        return nwk
+            
+        
+    # Get the multi query data -> change this to a button triggered callback and create a second callback to
+    # validate the input, compare the settings and enable/disable the run button accordingly
+    # @pn.depends(input_mq_list.param.value, input_mq_topn.param.value_throttled,
+    #             input_mq_tolerance.param.value_throttled, input_mq_minr.param.value_throttled,
+    #             input_mq_nhsize.param.value_throttled)
+    @param.depends('input_mq_list.value', 'input_mq_topn.value_throttled',
+                'input_mq_tolerance.value_throttled', 'input_mq_minr.value_throttled',
+                'input_mq_nhsize.value_throttled')
+    def validate_mq_param(self):
+        genes, size, tolerance, minr, nhsize = self.input_mq_list.value, self.input_mq_topn.value_throttled, self.input_mq_tolerance.value_throttled, self.input_mq_minr.value_throttled, self.input_mq_nhsize.value_throttled
+        wdgts = [self.input_mq_list, self.input_mq_topn, self.input_mq_tolerance,
+                 self.input_mq_minr, self.input_mq_nhsize]
+        for wdgt in wdgts:
+            wdgt.disabled = True
+        genes = [el.strip().upper() for el in genes.split(",")]
+        genes.sort()
+        for el in genes:
+            if el not in self.meta_dict['gene_id'].keys():
+                self.output_mq_status.object = "{} not found in the dataset. The single gene query tab has                                        an autocomplete function for all quantified genes. Use this to check,                                        which genes can be put into the mutli gene query.".format(el)
+                for wdgt in wdgts:
+                    wdgt.disabled = False
+                self.input_mq_button.disabled = True
+                return
+        oldparams = self.cache_mq_settings.object
+        newparams = {"gene": genes, "size": size, "tolerance": tolerance, "minr": minr, "nhsize": nhsize}
+        newparams = pd.DataFrame(pd.Series(newparams)).to_json()
+        if oldparams == newparams:
+            self.output_mq_status.object = "No need to recalculate, the result for these settings is what you are looking at."
+            for wdgt in wdgts:
+                wdgt.disabled = False
+            self.input_mq_button.disabled = True
+            return
+        else:
+            self.output_mq_status.object = "Hit the button to start calculating the selected neighborhoods.         This can take ~0.5 min per gene."
+            for wdgt in wdgts:
+                wdgt.disabled = False
+            self.input_mq_button.disabled = False
+            return
+        
+    # Networkplot
+    @param.depends('cache_mq_query.object', 'input_mq_minz.value', 'input_mq_maxq.value', 'input_mq_minrep.value')
+    def layout_multi_network(self):
+        query, min_z, max_q, min_rep = self.cache_mq_query.object, self.input_mq_minz.value, self.input_mq_maxq.value, self.input_mq_minrep.value
+        # Retrieve neighborhood information
+        try:
+            query_result = pd.read_json(query).sort_values("Distance measure")
+            q = pd.read_json(self.cache_mq_q.object, typ="series", convert_dates=False, convert_axes=False)
+        except:
+            self.cache_mq_nwdists.object = ""
+            self.cache_mq_gp.object = ""
+            return "Failed to read neighborhood (see settings panel for details).\n\n"+traceback.format_exc()
+        
+        # Define node list
+        z_dict = {"all":5, "B":4, "*":3, "**":2, "***":1}
+        min_z = z_dict[min_z]
+        try:
+            nwk_members = network.filter_nwk_members(query_result, min_rep, min_z)
+        except:
+            self.cache_mq_nwdists.object = ""
+            self.cache_mq_gp.object = ""
+            return "Failed to generate node list.\n\n"+traceback.format_exc()
+        
+        # Layout network
+        q_dict = {"1%":0.01, "5%":0.05, "10%":0.1, "25%":0.25, "50%":0.5, "100%":1}
+        try:
+            dists_pd, GP = network.layout_network(self.df_core, self.meta_dict, query_result, nwk_members, q_dict[max_q], q, layout_method="Spring")
+        except:
+            self.cache_mq_nwdists.object = ""
+            self.cache_mq_gp.object = ""
+            return "Failed to layout network.\n\n"+traceback.format_exc()
+        
+        # Store distances and layout in caching panels
+        self.cache_mq_nwdists.object = dists_pd.to_json()
+        self.cache_mq_gp.object = pd.DataFrame(GP).to_json()
+        
+        return ""
+    
+    @param.depends('cache_mq_gp.object', 'input_mq_highlight.value', 'input_mq_disablehvnx.value')
+    def draw_multi_network(self):
+        GP, highlight, figure_style = self.cache_mq_gp.object, self.input_mq_highlight.value, self.input_mq_disablehvnx.value
+        # Read query result and quantile cutoffs
+        try:
+            query_result = pd.read_json(self.cache_mq_query.object).sort_values("Distance measure")
+            q = pd.read_json(self.cache_mq_q.object, typ="series", convert_dates=False, convert_axes=False)
+        except:
+            return ""
+        
+        # Read distances and network layout from cache
+        try:
+            dists_pd = pd.read_json(self.cache_mq_nwdists.object)
+            GP = pd.read_json(GP).to_dict()
+            GP = {k: np.array(list(GP[k].values())) for k in GP.keys()}
+        except:
+            return ""
+        
+        # switch between figure and interactive style
+        if figure_style:
+            nwk = network.draw_network_figure(dists_pd, GP, query_result, highlight, q)
+        else:
+            nwk = network.draw_network_interactive(dists_pd, GP, query_result, highlight, q)
+        
+        return nwk
+
+    
+    def __panel__(self):
+        about = '''
+## Quick Guide:
+1. Enter a gene symbol in UPPER CASE in the single query tab or several in the multi query tab.
+2. Start the neighborhood calculation by clicking the button underneath.
+3. The network shows the distance based relationships between the close neighbours, ideally
+revealing tight clusters (try e.g. PSMA1) and peripheral proteins.
+4. The barplot shows various quantitative measures for all neighbors (only in single query mode).
+5. In order to understand what the advanced settings and additional parameters for the network
+selection, please refer to the theoretical section below. All settings have reasonable default values.
+
+### Useful hints
+- The checkbox underneath the settings for the network layout lets you switch between the interactive network, 
+which includes a toolbar to the right as provided by hvplot, and the figure style (7pt font-size) network, 
+which can be copied for future reference (Download option pending).
+- If network nodes are too crowded, reduce the stringency on the quantile to add back more edges that pull 
+distant nodes closer together and thereby tight clusters slightly apart.
+- The inclusion of neighbours found in only one neighbourhood replicate is not recommended, but can be tried 
+for an low stringency explorative analysis of the data. 
+- If you expect a protein to appear in the neighborhood of a query but can’t see it in the network, try 
+increasing the neighborhood size and tolerance, relief the z-score stringency and use the highlight option 
+on the network to find the protein.
+- The single gene input autocompletes. If a protein is not found, check on Uniprot if it has a 
+different primary gene name. If it is still not on the list it was not quantified sufficiently.
+
+## Theoretical framework and interpretation of results
+
+### Neighborhood calculation
+Profile similarity between proteins is evaluated by calculating the pairwise 
+Manhattan distance (absolute summed difference at every point of the two profiles). The query  
+is retrieved as the top hit (with a distance of 0), and other proteins (see single query barplot) are 
+shown in order of increasing distance to the query. The neighbourhood size defines how many proteins 
+will be displayed in the barplot, and used for building a neighbourhood network. In the advanced 
+settings quality filters can be applied to adjust the stringency and sensitivity of the analysis:
+- minimum cosine correlation of profiles across replicates
+Proteins not matching these criteria are removed from the dataset before any distances are calculated.
+
+### Neighborhood evaluation
+There are three measures provided to gauge which proteins are reproducibly in close proximity to the 
+query, in the context of the local data density.
+
+1. Replicate ranking  
+The barplot shows the difference between the best and the worst proximity rank of a protein 
+across the three replicates. If the top scoring neighbor (most likely rank 1 in at least one of the 
+replicates) has a replicate range of 10 this means that is was at least on rank 11 in one of the 
+other replicates. A protein is considered common to all three replicates if its overall rank is within 
+the specified neighborhood size and each replicate rank is within the set neighbourhood size + ‘tolerance’, 
+which can be set in the advanced settings.
+2. Z-scoring of proximity  
+To define the close protein neighbourhood of a query, in the context of the local dataspace, 
+a simple estimate of the local profile density and distribution is performed. From the nearest 250 proteins 
+(neighborhood size for scoring as set in the advanced settings), the median distance to the query 
+(termed MDQ) is calculated. Next, for every one of these 250 proteins the absolute distance to the MDQ is 
+determined. The median of these values corresponds to the MAD (median absolute distance to the MDQ). Each 
+positive distance to the MDQ (ie the right tail of the distribution) is then transformed to a pseudo Z 
+score, using a robust estimate of the standard deviation: pZ = ((distance to MDQ) – MDQ) / (1.483 x MAD). 
+Profiles are categorized by these pZ scores: very close neighbours (Z>3.09, \*\*\*), close (Z>2.33, \*\*), 
+fairly close (Z>1.64, *), borderline (Z>1.28, B). Note that these categories provide 
+guidance to evaluate relative profile proximity in the context of other mapped proteins nearby. However, they 
+neither reflect exact boundaries for local clusters, nor exact probabilities of association with the query 
+protein. While the actual distances between two proteins are identical regardless 
+which is submitted as the query, the proximity guide classifier may be different because the set 
+of proteins defining the distribution changes with the query. For example, an isolated protein near the 
+edge of a dense cluster of profiles will retrieve some of these proteins as relatively close neighbours, but 
+not vice versa. Thus, it may also be informative to consider also the absolute distances of proteins to the 
+query, as indicated in the predictor output, and the distance quantile.
+3. Distance quantiles  
+To achieve an additional non-directional classification of distances, which is essential for network 
+construction, all pairwise Manhattan-distances between the query’s 250 closest neighbours (same setting 
+as for z-scoring) were calculated. The distances between the network nodes are then categorized by the 
+quantile they occupy in this distribution. If a neighbor has a distance quantile of <1% it means it 
+is at least as close to the query as the closest 1% of all protein pairs in that area are to each other (i.e. 
+a very close neighbor). This score is non-directional, but is affected by other data structures in the 
+vicinity. Again considering an isolated protein close to a protein cluster, the nearest neighbours will 
+occupy a higher quantile because the pairwise distances within the protein cluster will shift the overall 
+distribution towards smaller distances.
+
+### Network generation
+To visualize the complex structure of local neighbourhoods, we utilized network analysis. This can reveal 
+for example if the closest neighbours of a protein form a very tight network among themselves, indicating 
+a functional cluster; if the neighbourhood contains one or more tight subclusters, which may correspond to 
+protein complexes; or if the local neighbourhood is very evenly distributed. These insights cannot be judged 
+from a PCA plot alone, as the dimensional flattening loses information contained in the original 
+nine-dimensional dataset. Similarly, the network architecture is not apparent from the linear list of nearest 
+neighbours (the bar plot), as the relative proximity of the neighbours is not considered; hence, two proteins 
+that are both close to the query might be quite distant from each other. The network analysis was carried 
+out in python using the networkx library 
+[(Hagberg et al, 2008)](https://networkx.github.io/documentation/stable/index.html). Network nodes are 
+selected based on the filter criteria described above, from the neighborhood as calculated based on the 
+selected settings. Nodes have to be close neighbours (by rank) in at least a defined number of replicates 
+(nodes are colour coded accordingly), and have to achieve a minimal z-score, as set by the user. The distances 
+between the remaining network nodes are then categorized by the quantile scoring, calculated by scoring all 
+pairwise connections within this set (not just the ones to the query). All edges that fall into a higher 
+quantile than the selected cut off are discarded. If a node is completely disconnected by this it will not be 
+displayed in the network. All remaining distances are inverted and used as edgeweights for a force-directed 
+layouting algorithm (spring network layout (Fruchterman & Reingold, 1991)), which pulls proteins with short 
+distances closer together. Edges are colored by their distance percentile to visually reveal tight clusters.
+
+### Multi query networks
+To visualize the segregation/overlap of adjacent neighbourhoods, networks can be constructed from more 
+than one query protein. For each of the individual queries, nodes are selected as above. Here a slight 
+adjustment of parameters is useful: Fewer neighbors should be considered, to clearly separate distant queries, 
+but borderline distances should be included, to allow for more connections between adjacent neighbourhoods to 
+shape the network layout. The quantile boundaries are calculated for each individual set of 250 neighbors and 
+then averaged across the queries. Thus, if two queries from areas of dataspace with different densities are 
+selected, this will become apparent in the number and color of the edges (the sparser neighbourhood will have 
+fewer/thinner connections).
+
+## Implementation notes
+The original source code for this part of the tool is stored at <https://github.com/JuliaS92/EVProfiler>.
+
+## Reference
+Please alsways include the original research publication when referencing analyses generated here:
+
+Lorena Martin-Jaular, Nathalie Nevo, Julia P. Schessner, Mercedes Tkach, Mabel Jouve, Florent Dingli, Damarys Loew, 
+Kenneth  W. Witwer,  Matias Ostrowski, Georg H.H. Borner, Clotilde Théry. Proteomic profiling allows unbiased analysis 
+of HIV-1 and host extracellular vesicles. EMBO Journal (2021).
+'''
+        ## Assemble output tabs for single query
+        output_bar = pn.Column(self.input_sq_bary, pn.pane.Markdown("colors indicate occurence across replicate lists"), self.get_gene_data)
+        output_nwk = pn.Column(pn.Row(self.input_sq_minz, self.input_sq_maxq, self.input_sq_minrep),
+                               pn.Row(self.input_sq_highlight, self.input_sq_disablehvnx),
+                               pn.Row(self.draw_single_network, pn.pane.SVG("LegendNetworksFull.svg")),
+                               self.layout_single_network)
+        
+        output_sq_tabs = pn.Tabs()
+        output_sq_tabs.append(("Network plot", output_nwk))
+        output_sq_tabs.append(("Barplot", output_bar))
+        
+        ## Assemble output tabs for multi query
+        output_mq_nwk = pn.Column(pn.Row(self.input_mq_minz, self.input_mq_maxq, self.input_mq_minrep),
+                                  pn.Row(self.input_mq_highlight, self.input_mq_disablehvnx),
+                                  pn.Row(self.draw_multi_network, pn.pane.SVG("LegendNetworksFull.svg")),
+                                  self.layout_multi_network)
+        
+        output_mq_tabs = pn.Tabs()
+        output_mq_tabs.append(("Network plot", output_mq_nwk))
+        ## Assemble full app
+        content = pn.Tabs()
+        content.append(("Single gene query", pn.Row(pn.Column(self.options_single), output_sq_tabs)))
+        content.append(("Multi gene query", pn.Row(pn.Column(self.options_multi, self.validate_mq_param), output_mq_tabs)))
+        content.append(("About", pn.pane.Markdown(about)))
+        content
+        return content
