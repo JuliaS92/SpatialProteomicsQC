@@ -20,7 +20,8 @@
     "coll_status_default": "1. Add datasets for benchmarking using one of the following methods:\nA. Analyse a dataset in the 'Analysis tab' and it will automatically appear in the 'Benchmark' tab.\nB. Upload a stored collection from a .json file. There is an option to download analysed datasets as collection.\nC. Load our stored reference datasets from the dropdown menu.<br>\n2. Tick to select the datasets that you want to compare.\n3. Press the green button 'Align and analyse selected datasets'.\n4. Explore the data using the tabs below.<br><br>Additional notes:<br><ul><li>The datasets selected here only affect the alignment of protein groups and the shared PCA space. The overlap used for benchmarking figures can be adjusted after alignment.</li><li>Press the red button 'Reset analysis to make new selection' to unlock the interface for a new selection of datasets.</li></ul>",
 	"benchmark_error_messages": "", 
     "home_single_shortinstructions": "Upload, filter, normalize and quality control your own datasets here. This is required to then run a benchmark against other datasets.",
-    "home_benchmark_shortinstructions": "Compare the performance and quality of different experimental datasets, including published reference datasets."
+    "home_benchmark_shortinstructions": "Compare the performance and quality of different experimental datasets, including published reference datasets.",
+    "neighborhood_top": "This feature is taken from Martin-Jaular, et al. EMBO Journal 2021. The integration is still ongoing and performance has not been optimized."
 
 
 }
