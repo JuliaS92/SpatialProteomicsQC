@@ -14,6 +14,8 @@ import natsort
 import plotly.express as px
 import numpy as np
 from sklearn.decomposition import PCA
+import os
+import pkgutil
 
 plotly_config={
       'toImageButtonOptions': {
@@ -2739,7 +2741,7 @@ of HIV-1 and host extracellular vesicles. EMBO Journal (2021).
         output_bar = pn.Column(self.input_sq_bary, pn.pane.Markdown("colors indicate occurence across replicate lists"), self.get_gene_data)
         output_nwk = pn.Column(pn.Row(self.input_sq_minz, self.input_sq_maxq, self.input_sq_minrep),
                                pn.Row(self.input_sq_highlight, self.input_sq_disablehvnx),
-                               pn.Row(self.draw_single_network, pn.pane.SVG("LegendNetworksFull.svg")),
+                               pn.Row(self.draw_single_network, pn.pane.SVG(BytesIO(pkgutil.get_data(__name__, "../img/LegendNetworksFull.svg")))),
                                self.layout_single_network)
         
         output_sq_tabs = pn.Tabs()
@@ -2749,7 +2751,7 @@ of HIV-1 and host extracellular vesicles. EMBO Journal (2021).
         ## Assemble output tabs for multi query
         output_mq_nwk = pn.Column(pn.Row(self.input_mq_minz, self.input_mq_maxq, self.input_mq_minrep),
                                   pn.Row(self.input_mq_highlight, self.input_mq_disablehvnx),
-                                  pn.Row(self.draw_multi_network, pn.pane.SVG("LegendNetworksFull.svg")),
+                                  pn.Row(self.draw_multi_network, pn.pane.SVG(BytesIO(pkgutil.get_data(__name__, "../img/LegendNetworksFull.svg")))),
                                   self.layout_multi_network)
         
         output_mq_tabs = pn.Tabs()

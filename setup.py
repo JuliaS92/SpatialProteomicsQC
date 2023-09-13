@@ -14,7 +14,7 @@ setup(name='domaps',
       license='MIT',
       packages=['domaps', 'domaps.gui', 'domaps.network'],
       install_requires = requirements,
-      package_data={'domaps': ["annotations/*", "referencedata/*"]},
+      package_data={'domaps': ["annotations/*", "referencedata/*", "img/*"]},
       include_package_data=True,
       zip_safe=False,
       python_requires='>=3.7',)
