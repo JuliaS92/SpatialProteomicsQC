@@ -13,3 +13,4 @@ scripts/*.txt
 scripts/*.tab
 scripts/test*
 *Thumbs.db
+.vscode
