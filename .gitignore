@@ -1,11 +1,11 @@
-build/*
+build
 *.ipynb_checkpoints*
 *.pytest_cache*
 *__pycache__*
 *egg-info*
 .coverage
 .DS_Store
-dev_files/*
+dev_files
 domaps/tests/candidatedata*
 domaps/tests/write_test_usecases.py
 domaps/tests/_test*
@@ -14,3 +14,4 @@ scripts/*.tab
 scripts/test*
 *Thumbs.db
 .vscode
+.ruff_cache
