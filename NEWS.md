@@ -4,6 +4,8 @@
 
 ### Changes
  - Start enforcing better coding practices (see pre-commit hooks)
+ - Remove python 3.7 support
+ - Fix dependencies for 3.8-3.10
 
 ## Version 1.0.1
 
