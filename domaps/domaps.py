@@ -5421,10 +5421,10 @@ def format_data_long(
     ...                  original_protein_ids="PG.ProteinGroups", genes="PG.Genes",
     ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
     ...                  sets={"LFQ intensity": "PG.Quantity", "MS/MS count": "PG.RunEvidenceCount"})
-    Set                                         LFQ intensity                          MS/MS count
-    Map                                                  rep1       rep2                      rep1      rep2
+    Set                                         LFQ intensity                          MS/MS count               
+    Map                                                  rep1       rep2                      rep1      rep2     
     Fraction                                               F1   F2    F1            F2          F1  F2    F1   F2
-    Original Protein IDs Gene names Protein IDs
+    Original Protein IDs Gene names Protein IDs                                                                  
     bar;bar-1            ipsum      bar                 200.0  NaN  30.1           NaN         1.0 NaN  20.0  NaN
     foo                  lorem      foo                 100.0  0.0  50.0  2.000000e+10         4.0 NaN   0.0  6.0
 
@@ -5442,10 +5442,10 @@ def format_data_long(
     ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
     ...                  sets={"LFQ intensity": "PG.Quantity"},
     ...                  fraction_mapping={"F1": None, "F2": "F2", "F3": "F1"}) # Drop F1, relabel F3 as F1, leave F2 as is
-    Set                                         LFQ intensity
-    Map                                                  rep1
+    Set                                         LFQ intensity      
+    Map                                                  rep1      
     Fraction                                               F2    F1
-    Original Protein IDs Gene names Protein IDs
+    Original Protein IDs Gene names Protein IDs                    
     bar;bar-1            ipsum      bar                   NaN  30.1
     foo                  lorem      foo                   0.0  50.0
 
@@ -5462,10 +5462,10 @@ def format_data_long(
     ...                  samples="R.Condition", name_pattern="(?P<rep>.*)_(?P<frac>.*)",
     ...                  sets={"LFQ intensity": "PG.Quantity"},
     ...                  fraction_mapping={"F1": None, "F2": "F2", "F3": "F1"}) # Drop F1, relabel F3 as F1, leave F2 as is
-    Set                                         LFQ intensity
-    Map                                                  rep1
+    Set                                         LFQ intensity      
+    Map                                                  rep1      
     Fraction                                               F2    F1
-    Original Protein IDs Gene names Protein IDs
+    Original Protein IDs Gene names Protein IDs                    
     bar;bar-1            bar;bar-1  bar                   NaN  30.1
     foo                  foo        foo                   0.0  50.0
     """
@@ -5571,10 +5571,10 @@ def format_data_pivot(
     ...                       name_pattern=".* (?P<rep>.*)_(?P<frac>.*)",
     ...                       sets={"LFQ intensity": "LFQ intensity .*", "MS/MS count": "MS/MS counts .*"},
     ...                       index_cols=["Reverse"])
-    Set                                                 LFQ intensity                   MS/MS count
-    Map                                                             1           2                 1          2
+    Set                                                 LFQ intensity                   MS/MS count                
+    Map                                                             1           2                 1          2     
     Fraction                                                       F1    F2    F1    F2          F1    F2   F1   F2
-    Original Protein IDs Gene names Reverse Protein IDs
+    Original Protein IDs Gene names Reverse Protein IDs                                                            
     foo                  lorem      NaN     foo                  20.0   NaN  20.0  10.0         2.0   NaN  4.0  3.0
     bar;bar-1            ipsum      NaN     bar                   NaN  40.0  20.0  40.0         NaN  10.0  5.0  3.0
     """
@@ -5678,9 +5678,9 @@ def filter_SILAC_countvar(
     ...                                        [["Ratio","Ratio","Ratio count","Ratio count","Ratio variability","Ratio variability"],
     ...                                         ["F1","F2","F1","F2","F1","F2"]],
     ...                                        names=["Set", "Fraction"])))
-    Set      Ratio      Ratio count      Ratio variability
+    Set      Ratio      Ratio count      Ratio variability      
     Fraction    F1   F2          F1   F2                F1    F2
-    id
+    id                                                          
     a          1.0  0.0         3.0  2.0               3.0  15.0
     b          2.0  NaN         3.0  NaN               5.0   NaN
     c          NaN  0.0         NaN  2.0               NaN   5.0
@@ -5759,9 +5759,9 @@ def filter_msms_count(
     ...                                index=pd.Index(["a","b","c"],name="id"),
     ...                                columns=pd.MultiIndex.from_arrays([["LFQ","LFQ","LFQ","MS/MS count","MS/MS count","MS/MS count"],
     ...                                                                  ["F1","F2","F3","F1","F2","F3"]], names=["Set", "Fraction"])))
-    Set      LFQ       MS/MS count
+    Set      LFQ       MS/MS count          
     Fraction  F1 F2 F3          F1   F2   F3
-    id
+    id                                      
     a          1  2  1         5.0  2.0  3.0
     b          2  0  1         5.0  NaN  1.0
     """
@@ -5827,9 +5827,9 @@ def filter_consecutive(
     ...                                 index=pd.Index(["a","b","c","d"],name="id"),
     ...                                 columns=pd.MultiIndex.from_arrays([["LFQ","LFQ","LFQ","LFQ","LFQ","LFQ"],
     ...                                                                   ["F1","F2","F3","F4","F5","F6"]], names=["Set", "Fraction"])), sets=dict(abundance="LFQ"))
-    Set       LFQ
+    Set       LFQ                         
     Fraction   F1   F2   F3   F4   F5   F6
-    id
+    id                                    
     a         1.0  2.0  1.0  5.0  2.0  3.0
     b         NaN  NaN  1.0  5.0  3.0  1.0
     """
@@ -5896,9 +5896,9 @@ def filter_singlecolumn_keep(df, column: str, operator: str = "!=", value="'+'")
     ...                                   columns=pd.MultiIndex.from_tuples([("Intensity", "F1"), ("Intensity", "F2")], names=["Set", "Fraction"]),
     ...                                   index=pd.MultiIndex.from_tuples([("foo", "lorem", np.nan), ("bar", "ipsum", ""), ("baz", "dolor", "+")], names=["Protein IDs", "Gene names", "Reverse"])),
     ...                      column="Reverse")
-    Set                            Intensity
+    Set                            Intensity   
     Fraction                              F1 F2
-    Protein IDs Gene names Reverse
+    Protein IDs Gene names Reverse             
     foo         lorem      NaN             1  2
     bar         ipsum                      3  4
 
@@ -5906,9 +5906,9 @@ def filter_singlecolumn_keep(df, column: str, operator: str = "!=", value="'+'")
     ...                                   columns=pd.MultiIndex.from_tuples([("Intensity", "F1"), ("Intensity", "F2")], names=["Set", "Fraction"]),
     ...                                   index=pd.MultiIndex.from_tuples([("foo", "lorem", np.nan), ("bar", "ipsum", 0.5), ("baz", "dolor", 1)], names=["Protein IDs", "Gene names", "Score"])),
     ...                      column="Score", operator=">=", value=1)
-    Set                    Intensity
+    Set                    Intensity   
     Fraction                      F1 F2
-    Protein IDs Gene names
+    Protein IDs Gene names             
     baz         dolor              5  6
     """
 
