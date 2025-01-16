@@ -1318,8 +1318,9 @@ class SpatialDataSet:
                     ).set_index(pd.Index([clusters], name="Cluster"), append=True)
                 except KeyError:
                     continue
-                df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.append(
-                    plot_try_pca
+                df_pca_all_marker_cluster_maps = pd.concat(
+                    [df_pca_all_marker_cluster_maps, plot_try_pca],
+                    axis=0,
                 )
         if len(df_pca_all_marker_cluster_maps) == 0:
             df_pca_all_marker_cluster_maps = df_pca_filtered.stack("Map")
@@ -1414,7 +1415,7 @@ class SpatialDataSet:
                         )
                     except KeyError:
                         continue
-                    df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
+                    df_setofproteins_PCA = pd.concat([df_setofproteins_PCA, plot_try_pca])
 
                 df_setofproteins_PCA.reset_index(inplace=True)
                 if maps == map_names[0]:
@@ -1489,9 +1490,7 @@ class SpatialDataSet:
             # collect data irrespective of coverage
             df_cluster_unfiltered = self.get_marker_proteins_unfiltered(cluster)
             df_allclusters_01_unfiltered_mapfracunstacked = (
-                df_allclusters_01_unfiltered_mapfracunstacked.append(
-                    df_cluster_unfiltered
-                )
+                pd.concat([df_allclusters_01_unfiltered_mapfracunstacked, df_cluster_unfiltered])
             )
 
             # filter for coverage and calculate distances
@@ -1502,12 +1501,10 @@ class SpatialDataSet:
                 self.calc_cluster_distances(df_cluster)
             )
             df_alldistances_individual_mapfracunstacked = (
-                df_alldistances_individual_mapfracunstacked.append(
-                    df_distances_individual
-                )
+                pd.concat([df_alldistances_individual_mapfracunstacked, df_distances_individual])
             )
             df_alldistances_aggregated_mapunstacked = (
-                df_alldistances_aggregated_mapunstacked.append(df_distances_aggregated)
+                pd.concat([df_alldistances_aggregated_mapunstacked, df_distances_aggregated])
             )
         if len(df_alldistances_individual_mapfracunstacked) == 0:
             self.df_distance_noindex = pd.DataFrame(
@@ -1601,7 +1598,7 @@ class SpatialDataSet:
                 df_p = df_in.xs(marker, level="Protein IDs", axis=0, drop_level=False)
             except:
                 continue
-            df_cluster_unfiltered = df_cluster_unfiltered.append(df_p)
+            df_cluster_unfiltered = pd.concat([df_cluster_unfiltered, df_p])
         if len(df_cluster_unfiltered) == 0:
             return df_cluster_unfiltered
 
@@ -1982,7 +1979,7 @@ class SpatialDataSet:
                     drop_level=False,
                 )
                 df_cluster_xmaps_distance_with_index = (
-                    df_cluster_xmaps_distance_with_index.append(plot_try)
+                    pd.concat([df_cluster_xmaps_distance_with_index, plot_try])
                 )
 
             df_cluster_xmaps_distance_with_index["Combined Maps"] = "Combined Maps"
@@ -2137,7 +2134,7 @@ class SpatialDataSet:
                     level=["Cluster", "Map"],
                     drop_level=False,
                 )
-                df_boxplot_manymaps = df_boxplot_manymaps.append(plot_try)
+                df_boxplot_manymaps = pd.concat([df_boxplot_manymaps, plot_try])
 
             self.df_boxplot_manymaps = df_boxplot_manymaps
 
@@ -2216,9 +2213,7 @@ class SpatialDataSet:
                     df_statistic_table_individual_cluster = pd.DataFrame(
                         statistic_series
                     ).T
-                    df_overview = df_overview.append(
-                        df_statistic_table_individual_cluster
-                    )
+                    df_overview = pd.concat([df_overview, df_statistic_table_individual_cluster])
 
                 df_dist_cluster = df_distance_map_cluster_gene_in_index.xs(
                     clusters, level="Cluster"
@@ -2235,7 +2230,7 @@ class SpatialDataSet:
                 df_statistic_table_individual_cluster = pd.DataFrame(
                     statistic_series_combined
                 ).T
-                df_overview = df_overview.append(df_statistic_table_individual_cluster)
+                df_overview = pd.concat([df_overview, df_statistic_table_individual_cluster])
 
             except:
                 continue
@@ -2693,7 +2688,8 @@ class SpatialDataSetComparison:
             )
         except:
             pass
-        self.df_svm_performance = self.df_svm_performance.append(
+        self.df_svm_performance = pd.concat([
+            self.df_svm_performance,
             process_mc_errorbars(misclassification).set_index(
                 pd.MultiIndex.from_arrays(
                     [
@@ -2704,7 +2700,7 @@ class SpatialDataSetComparison:
                 ),
                 append=True,
             )
-        )
+        ])
 
     def perform_pca_comparison(self, n=3):
         """
@@ -2892,7 +2888,7 @@ class SpatialDataSetComparison:
             df_pca = df_pca_exp[df_pca_exp.Cluster != "Undefined"].sort_values(
                 by="Cluster"
             )
-            df_pca = df_pca_exp[df_pca_exp.Cluster == "Undefined"].append(df_pca)
+            df_pca = pd.concat([df_pca_exp[df_pca_exp.Cluster == "Undefined"], df_pca])
         else:
             for i in self.markerproteins[cluster_of_interest_comparison]:
                 df_pca_exp.loc[df_pca_exp["Protein IDs"] == i, "Compartment"] = (
@@ -2945,7 +2941,7 @@ class SpatialDataSetComparison:
                 df_p = df_in.xs(marker, level="Protein IDs", axis=0, drop_level=False)
             except:
                 continue
-            df_cluster = df_cluster.append(df_p)
+            df_cluster = pd.concat([df_cluster, df_p], axis=0)
         if len(df_cluster) == 0:
             return df_cluster
 
@@ -3033,7 +3029,7 @@ class SpatialDataSetComparison:
             if len(df_cluster) == 0:
                 continue
             dists_cluster = self.calc_cluster_distances(df_cluster)
-            df_distances = df_distances.append(dists_cluster)
+            df_distances = pd.concat([df_distances, dists_cluster])
         if len(df_distances) == 0:
             raise ValueError(
                 "Could not calculate biological precision, because no complexes could be extracted"
@@ -3199,7 +3195,7 @@ class SpatialDataSetComparison:
                     drop_level=False,
                 )
                 df_cluster_xmaps_distance_global = (
-                    df_cluster_xmaps_distance_global.append(plot_try)
+                    pd.concat([df_cluster_xmaps_distance_global, plot_try])
                 )
 
             df_cluster_xmaps_distance_global.sort_values(
@@ -3309,9 +3305,15 @@ class SpatialDataSetComparison:
 
         medians = df.groupby("Experiment").median()
 
+        # TODO: return this to a simple reset_index
+        for level in df.index.names:
+            if level not in df.columns:
+                level_index = df.index.names.index(level)
+                df.reset_index(level=level_index, inplace=True)
+
         if plot_type == "strip":
             plot = px.strip(
-                df.reset_index(), color="Experiment", stripmode="overlay", **plotargs
+                df, color="Experiment", stripmode="overlay", **plotargs
             )
             plot.update_traces(width=2.3)
             plot.update_xaxes(range=(-0.6, len(multi_choice) - 0.4))
@@ -5571,12 +5573,12 @@ def format_data_pivot(
     ...                       name_pattern=".* (?P<rep>.*)_(?P<frac>.*)",
     ...                       sets={"LFQ intensity": "LFQ intensity .*", "MS/MS count": "MS/MS counts .*"},
     ...                       index_cols=["Reverse"])
-    Set                                                 LFQ intensity                   MS/MS count                
-    Map                                                             1           2                 1          2     
-    Fraction                                                       F1    F2    F1    F2          F1    F2   F1   F2
-    Original Protein IDs Gene names Reverse Protein IDs                                                            
-    foo                  lorem      NaN     foo                  20.0   NaN  20.0  10.0         2.0   NaN  4.0  3.0
-    bar;bar-1            ipsum      NaN     bar                   NaN  40.0  20.0  40.0         NaN  10.0  5.0  3.0
+    Set                                                 LFQ intensity               MS/MS count            
+    Map                                                             1         2               1        2   
+    Fraction                                                       F1    F2  F1  F2          F1    F2 F1 F2
+    Original Protein IDs Gene names Reverse Protein IDs                                                    
+    foo                  lorem      NaN     foo                  20.0   NaN  20  10         2.0   NaN  4  3
+    bar;bar-1            ipsum      NaN     bar                   NaN  40.0  20  40         NaN  10.0  5  3
     """
 
     ## Rename columns
