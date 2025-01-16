@@ -1,6 +1,6 @@
 from setuptools import setup
 
-with open("requirements.txt") as requirements_file:
+with open("requirements_strict.txt") as requirements_file:
     requirements = []
     for line in requirements_file:
         requirements.append(line)
