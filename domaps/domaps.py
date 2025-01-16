@@ -4901,8 +4901,8 @@ class SVMComp:
             winner.groupby("Compartment").value_counts().unstack("Compartment").T
         )
         confusion_formatted = pd.DataFrame(
-            index=set(test["Compartment"].values),
-            columns=set(test["Compartment"].values),
+            index=list(set(test["Compartment"].values)),
+            columns=list(set(test["Compartment"].values)),
         )
         for i in confusion_formatted.columns:
             for j in confusion_formatted.index:
