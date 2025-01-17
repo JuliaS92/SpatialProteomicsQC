@@ -18,5 +18,5 @@ setup(
     package_data={"domaps": ["annotations/*", "referencedata/*", "img/*"]},
     include_package_data=True,
     zip_safe=False,
-    python_requires=">=3.7",
+    python_requires=">=3.8",
 )

@@ -1,14 +1,12 @@
 import natsort
 import numpy as np
 import pandas as pd
-import plotly.io as pio
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import datashader as ds
 import re
-import traceback
 from io import BytesIO, StringIO
 from sklearn.decomposition import PCA
 from sklearn.metrics import pairwise as pw
@@ -16,14 +14,12 @@ from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn import svm
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.covariance import MinCovDet
-from scipy.stats import chisquare, chi2
+from scipy.stats import chi2
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import combine_pvalues
-import json
 import statistics
 import matplotlib.pyplot as plt
-import matplotlib_venn as venn
-from matplotlib_venn import venn2, venn3, venn3_circles
+from matplotlib_venn import venn2, venn3
 from PIL import Image
 from upsetplot import from_memberships
 from upsetplot import plot as upplot
@@ -1075,7 +1071,7 @@ class SpatialDataSet:
             if y == 1:
                 rename_numOFnans[x] = "{} Map".format(y)
             elif y == 0:
-                rename_numOFnans[x] = "PG not identified".format(y)
+                rename_numOFnans[x] = "PG not identified"
             else:
                 rename_numOFnans[x] = "{} Maps".format(y)
         for keys in rename_numOFnans.keys():
@@ -1318,8 +1314,9 @@ class SpatialDataSet:
                     ).set_index(pd.Index([clusters], name="Cluster"), append=True)
                 except KeyError:
                     continue
-                df_pca_all_marker_cluster_maps = df_pca_all_marker_cluster_maps.append(
-                    plot_try_pca
+                df_pca_all_marker_cluster_maps = pd.concat(
+                    [df_pca_all_marker_cluster_maps, plot_try_pca],
+                    axis=0,
                 )
         if len(df_pca_all_marker_cluster_maps) == 0:
             df_pca_all_marker_cluster_maps = df_pca_filtered.stack("Map")
@@ -1414,7 +1411,9 @@ class SpatialDataSet:
                         )
                     except KeyError:
                         continue
-                    df_setofproteins_PCA = df_setofproteins_PCA.append(plot_try_pca)
+                    df_setofproteins_PCA = pd.concat(
+                        [df_setofproteins_PCA, plot_try_pca]
+                    )
 
                 df_setofproteins_PCA.reset_index(inplace=True)
                 if maps == map_names[0]:
@@ -1488,10 +1487,8 @@ class SpatialDataSet:
         for cluster in self.markerproteins.keys():
             # collect data irrespective of coverage
             df_cluster_unfiltered = self.get_marker_proteins_unfiltered(cluster)
-            df_allclusters_01_unfiltered_mapfracunstacked = (
-                df_allclusters_01_unfiltered_mapfracunstacked.append(
-                    df_cluster_unfiltered
-                )
+            df_allclusters_01_unfiltered_mapfracunstacked = pd.concat(
+                [df_allclusters_01_unfiltered_mapfracunstacked, df_cluster_unfiltered]
             )
 
             # filter for coverage and calculate distances
@@ -1501,13 +1498,11 @@ class SpatialDataSet:
             df_distances_aggregated, df_distances_individual = (
                 self.calc_cluster_distances(df_cluster)
             )
-            df_alldistances_individual_mapfracunstacked = (
-                df_alldistances_individual_mapfracunstacked.append(
-                    df_distances_individual
-                )
+            df_alldistances_individual_mapfracunstacked = pd.concat(
+                [df_alldistances_individual_mapfracunstacked, df_distances_individual]
             )
-            df_alldistances_aggregated_mapunstacked = (
-                df_alldistances_aggregated_mapunstacked.append(df_distances_aggregated)
+            df_alldistances_aggregated_mapunstacked = pd.concat(
+                [df_alldistances_aggregated_mapunstacked, df_distances_aggregated]
             )
         if len(df_alldistances_individual_mapfracunstacked) == 0:
             self.df_distance_noindex = pd.DataFrame(
@@ -1601,7 +1596,7 @@ class SpatialDataSet:
                 df_p = df_in.xs(marker, level="Protein IDs", axis=0, drop_level=False)
             except:
                 continue
-            df_cluster_unfiltered = df_cluster_unfiltered.append(df_p)
+            df_cluster_unfiltered = pd.concat([df_cluster_unfiltered, df_p])
         if len(df_cluster_unfiltered) == 0:
             return df_cluster_unfiltered
 
@@ -1924,7 +1919,7 @@ class SpatialDataSet:
                 [
                     i
                     for i in df_quantification_overview.index.names
-                    if not i in ["Sequence", "Gene names"]
+                    if i not in ["Sequence", "Gene names"]
                 ]
             )
         else:
@@ -1981,8 +1976,8 @@ class SpatialDataSet:
                     level=["Cluster", "Map"],
                     drop_level=False,
                 )
-                df_cluster_xmaps_distance_with_index = (
-                    df_cluster_xmaps_distance_with_index.append(plot_try)
+                df_cluster_xmaps_distance_with_index = pd.concat(
+                    [df_cluster_xmaps_distance_with_index, plot_try]
                 )
 
             df_cluster_xmaps_distance_with_index["Combined Maps"] = "Combined Maps"
@@ -2137,7 +2132,7 @@ class SpatialDataSet:
                     level=["Cluster", "Map"],
                     drop_level=False,
                 )
-                df_boxplot_manymaps = df_boxplot_manymaps.append(plot_try)
+                df_boxplot_manymaps = pd.concat([df_boxplot_manymaps, plot_try])
 
             self.df_boxplot_manymaps = df_boxplot_manymaps
 
@@ -2216,8 +2211,8 @@ class SpatialDataSet:
                     df_statistic_table_individual_cluster = pd.DataFrame(
                         statistic_series
                     ).T
-                    df_overview = df_overview.append(
-                        df_statistic_table_individual_cluster
+                    df_overview = pd.concat(
+                        [df_overview, df_statistic_table_individual_cluster]
                     )
 
                 df_dist_cluster = df_distance_map_cluster_gene_in_index.xs(
@@ -2235,7 +2230,9 @@ class SpatialDataSet:
                 df_statistic_table_individual_cluster = pd.DataFrame(
                     statistic_series_combined
                 ).T
-                df_overview = df_overview.append(df_statistic_table_individual_cluster)
+                df_overview = pd.concat(
+                    [df_overview, df_statistic_table_individual_cluster]
+                )
 
             except:
                 continue
@@ -2693,17 +2690,20 @@ class SpatialDataSetComparison:
             )
         except:
             pass
-        self.df_svm_performance = self.df_svm_performance.append(
-            process_mc_errorbars(misclassification).set_index(
-                pd.MultiIndex.from_arrays(
-                    [
-                        np.repeat(experiment, 3 * (len(misclassification) + 3)),
-                        np.repeat(name, 3 * (len(misclassification) + 3)),
-                    ],
-                    names=["Experiment", "Set"],
+        self.df_svm_performance = pd.concat(
+            [
+                self.df_svm_performance,
+                process_mc_errorbars(misclassification).set_index(
+                    pd.MultiIndex.from_arrays(
+                        [
+                            np.repeat(experiment, 3 * (len(misclassification) + 3)),
+                            np.repeat(name, 3 * (len(misclassification) + 3)),
+                        ],
+                        names=["Experiment", "Set"],
+                    ),
+                    append=True,
                 ),
-                append=True,
-            )
+            ]
         )
 
     def perform_pca_comparison(self, n=3):
@@ -2892,7 +2892,7 @@ class SpatialDataSetComparison:
             df_pca = df_pca_exp[df_pca_exp.Cluster != "Undefined"].sort_values(
                 by="Cluster"
             )
-            df_pca = df_pca_exp[df_pca_exp.Cluster == "Undefined"].append(df_pca)
+            df_pca = pd.concat([df_pca_exp[df_pca_exp.Cluster == "Undefined"], df_pca])
         else:
             for i in self.markerproteins[cluster_of_interest_comparison]:
                 df_pca_exp.loc[df_pca_exp["Protein IDs"] == i, "Compartment"] = (
@@ -2945,7 +2945,7 @@ class SpatialDataSetComparison:
                 df_p = df_in.xs(marker, level="Protein IDs", axis=0, drop_level=False)
             except:
                 continue
-            df_cluster = df_cluster.append(df_p)
+            df_cluster = pd.concat([df_cluster, df_p], axis=0)
         if len(df_cluster) == 0:
             return df_cluster
 
@@ -3033,7 +3033,7 @@ class SpatialDataSetComparison:
             if len(df_cluster) == 0:
                 continue
             dists_cluster = self.calc_cluster_distances(df_cluster)
-            df_distances = df_distances.append(dists_cluster)
+            df_distances = pd.concat([df_distances, dists_cluster])
         if len(df_distances) == 0:
             raise ValueError(
                 "Could not calculate biological precision, because no complexes could be extracted"
@@ -3198,8 +3198,8 @@ class SpatialDataSetComparison:
                     level=["Cluster", level_of_interest],
                     drop_level=False,
                 )
-                df_cluster_xmaps_distance_global = (
-                    df_cluster_xmaps_distance_global.append(plot_try)
+                df_cluster_xmaps_distance_global = pd.concat(
+                    [df_cluster_xmaps_distance_global, plot_try]
                 )
 
             df_cluster_xmaps_distance_global.sort_values(
@@ -3309,10 +3309,14 @@ class SpatialDataSetComparison:
 
         medians = df.groupby("Experiment").median()
 
+        # TODO: return this to a simple reset_index
+        for level in df.index.names:
+            if level not in df.columns:
+                level_index = df.index.names.index(level)
+                df.reset_index(level=level_index, inplace=True)
+
         if plot_type == "strip":
-            plot = px.strip(
-                df.reset_index(), color="Experiment", stripmode="overlay", **plotargs
-            )
+            plot = px.strip(df, color="Experiment", stripmode="overlay", **plotargs)
             plot.update_traces(width=2.3)
             plot.update_xaxes(range=(-0.6, len(multi_choice) - 0.4))
             for index, m in medians.iterrows():
@@ -4899,8 +4903,8 @@ class SVMComp:
             winner.groupby("Compartment").value_counts().unstack("Compartment").T
         )
         confusion_formatted = pd.DataFrame(
-            index=set(test["Compartment"].values),
-            columns=set(test["Compartment"].values),
+            index=list(set(test["Compartment"].values)),
+            columns=list(set(test["Compartment"].values)),
         )
         for i in confusion_formatted.columns:
             for j in confusion_formatted.index:
@@ -5404,6 +5408,7 @@ def format_data_long(
     index_cols: list = [],
     fraction_mapping: dict = dict(),
 ):
+    # fmt: off
     """
     This formats proteomic input data in long format to be compatible with the SpatialDataset class.
 
@@ -5469,6 +5474,7 @@ def format_data_long(
     bar;bar-1            bar;bar-1  bar                   NaN  30.1
     foo                  foo        foo                   0.0  50.0
     """
+    # fmt: on
 
     ## Rename columns
     df_index = df.rename(
@@ -5506,7 +5512,7 @@ def format_data_long(
             df_index.columns.get_level_values("Set"),
             [
                 re.match(name_pattern, i).group("rep")
-                if not "<cond>" in name_pattern
+                if "<cond>" not in name_pattern
                 else "_".join(re.match(name_pattern, i).group("cond", "rep"))
                 for i in df_index.columns.get_level_values("Samples")
             ],
@@ -5559,6 +5565,7 @@ def format_data_pivot(
     index_cols: list = [],
     fraction_mapping: dict = dict(),
 ):
+    # fmt: off
     """
     >>> pd.set_option('display.max_columns', 500)
     >>> pd.set_option('display.width', 1000)
@@ -5571,13 +5578,14 @@ def format_data_pivot(
     ...                       name_pattern=".* (?P<rep>.*)_(?P<frac>.*)",
     ...                       sets={"LFQ intensity": "LFQ intensity .*", "MS/MS count": "MS/MS counts .*"},
     ...                       index_cols=["Reverse"])
-    Set                                                 LFQ intensity                   MS/MS count                
-    Map                                                             1           2                 1          2     
-    Fraction                                                       F1    F2    F1    F2          F1    F2   F1   F2
-    Original Protein IDs Gene names Reverse Protein IDs                                                            
-    foo                  lorem      NaN     foo                  20.0   NaN  20.0  10.0         2.0   NaN  4.0  3.0
-    bar;bar-1            ipsum      NaN     bar                   NaN  40.0  20.0  40.0         NaN  10.0  5.0  3.0
+    Set                                                 LFQ intensity               MS/MS count            
+    Map                                                             1         2               1        2   
+    Fraction                                                       F1    F2  F1  F2          F1    F2 F1 F2
+    Original Protein IDs Gene names Reverse Protein IDs                                                    
+    foo                  lorem      NaN     foo                  20.0   NaN  20  10         2.0   NaN  4  3
+    bar;bar-1            ipsum      NaN     bar                   NaN  40.0  20  40         NaN  10.0  5  3
     """
+    # fmt: on
 
     ## Rename columns
     df_index = df.rename(
@@ -5610,7 +5618,7 @@ def format_data_pivot(
                 for col in df_index.columns
             ],
             [re.match(name_pattern, col).group("rep") for col in df_index.columns]
-            if not "<cond>" in name_pattern
+            if "<cond>" not in name_pattern
             else [
                 "_".join(re.match(name_pattern, col).group("cond", "rep"))
                 for col in df_index.columns
@@ -5654,6 +5662,7 @@ def filter_SILAC_countvar(
     RatioVariability: float = 30,
     sets: dict = dict(count="Ratio count", variability="Ratio variability"),
 ):
+    # fmt: off
     """
     The multiindex dataframe is subjected to stringency filtering. Proteins were retained with 3 or more quantifications in each
     subfraction (=count). Furthermore, proteins with only 2 quantification events in one or more subfraction were retained, if their ratio variability for
@@ -5685,6 +5694,7 @@ def filter_SILAC_countvar(
     b          2.0  NaN         3.0  NaN               5.0   NaN
     c          NaN  0.0         NaN  2.0               NaN   5.0
     """
+    # fmt: on
 
     ## Fetch column levels and assert presence of the required sets and fraction annotations
     column_levels = df.columns.names
@@ -5731,6 +5741,7 @@ def filter_SILAC_countvar(
 def filter_msms_count(
     df, average_MSMS_counts: int = 2, sets: dict = dict(msms="MS/MS count")
 ):
+    # fmt: off
     """
     Filter proteomic profiling data for average ms/ms counts per profile.
 
@@ -5765,6 +5776,7 @@ def filter_msms_count(
     a          1  2  1         5.0  2.0  3.0
     b          2  0  1         5.0  NaN  1.0
     """
+    # fmt: on
 
     ## Fetch column levels and assert presence of the required sets and fraction annotations
     column_levels = df.columns.names
@@ -5819,6 +5831,7 @@ def filter_consecutive(
     fraction_order: list = [],
     sets: dict = dict(abundance="LFQ intensity"),
 ):
+    # fmt: off
     """
     >>> filter_consecutive(pd.DataFrame([[1,2,1,5,2,3], # complete profile
     ...                                  [0,0,1,5,3,1], # partial profile
@@ -5833,6 +5846,7 @@ def filter_consecutive(
     a         1.0  2.0  1.0  5.0  2.0  3.0
     b         NaN  NaN  1.0  5.0  3.0  1.0
     """
+    # fmt: on
 
     ## Fetch column levels and assert presence of the required sets and fraction annotations
     column_levels = df.columns.names
@@ -5891,6 +5905,7 @@ def filter_consecutive(
 
 
 def filter_singlecolumn_keep(df, column: str, operator: str = "!=", value="'+'"):
+    # fmt: off
     """
     >>> filter_singlecolumn_keep(pd.DataFrame([[1,2],[3,4],[5,6]],
     ...                                   columns=pd.MultiIndex.from_tuples([("Intensity", "F1"), ("Intensity", "F2")], names=["Set", "Fraction"]),
@@ -5911,6 +5926,7 @@ def filter_singlecolumn_keep(df, column: str, operator: str = "!=", value="'+'")
     Protein IDs Gene names             
     baz         dolor              5  6
     """
+    # fmt: on
 
     df_filtered = df.query(f"`{column}` {operator} {value}")
     if column in df_filtered.columns:
