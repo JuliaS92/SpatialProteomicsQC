@@ -37,7 +37,7 @@ classifiers = [
 Paper = "https://www.nature.com/articles/s41467-023-41000-7"
 Repository = "https://github.com/JuliaS92/SpatialProteomicsQC"
 #Documentation = "https://readthedocs.org"
-#Changelog = "https://github.com/me/spam/blob/master/NEWS.md"
+Changelog = "https://github.com/me/spam/blob/master/NEWS.md"
 Issues = "https://github.com/JuliaS92/SpatialProteomicsQC/issues"
 "Hosted webapp" = "https://domabc.bornerlab.org"
 
