@@ -58,3 +58,9 @@ version = {attr = "domaps.__version__"}
 
 #[project.scripts]
 #domabc = "domaps.gui:serve"
+
+[tool.pytest.ini_options]
+collect_ignore_glob = [
+    "network.py",
+    "gui.py"
+]
