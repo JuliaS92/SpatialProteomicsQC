@@ -1,7 +1,6 @@
 from pandas import read_csv
 from pandas.testing import assert_frame_equal
 from domaps import SpatialDataSet, SpatialDataSetComparison
-import domaps.gui as gui
 import os
 import pkg_resources
 import json
@@ -30,15 +29,12 @@ class TestAnalysis:
         )
 
         # set up gui
-        interface = gui.ConfigureSingleFile()
-        with open(datafile, "br") as file:
-            interface._content.file.value = file.read()
-            interface._content.file.filename = file.name
-        with open(settings, "br") as file:
-            interface._btn_load.value = file.read()
+        with open(settings, "r") as file:
+            settings = json.load(file)
+            settings["filename"] = datafile
 
         # run analysis
-        data = SpatialDataSet.from_settings(interface.get_settings(), legacy=False)
+        data = SpatialDataSet.from_settings(settings, legacy=False)
         data.run_pipeline()
 
         assert_frame_equal(
