@@ -63,5 +63,6 @@ version = {attr = "domaps.__version__"}
 [tool.pytest.ini_options]
 collect_ignore_glob = [
     "**/network/*",
-    "**/gui/*"
+    "**/gui/*",
+    "**/webapp/"*
 ]
