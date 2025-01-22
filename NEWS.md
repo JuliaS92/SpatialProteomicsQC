@@ -7,6 +7,8 @@
  - Remove python 3.7 support
  - Fix dependencies for 3.8-3.10
  - Establish release workflow from AlphaX ecosystem https://github.com/MannLabs/alphashared/blob/main/.github/workflows/README.md
+ - Switch from setup.py to pyproject.toml
+ - Enable optional dependencies for graphical user interface (mainly panel, bokeh, param)
 
 ## Version 1.0.1
 
