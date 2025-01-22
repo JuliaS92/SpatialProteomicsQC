@@ -38,4 +38,5 @@ jobs:
     - name: Test with pytest
       run: |
         # test python module including doctest and coverage
-        pytest --doctest-modules --cov
+        pytest --doctest-modules domaps/domaps.py
+        pytest --cov
