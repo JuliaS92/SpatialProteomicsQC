@@ -64,5 +64,5 @@ version = {attr = "domaps.__version__"}
 collect_ignore_glob = [
     "**/network/*",
     "**/gui/*",
-    "**/webapp/"*
+    "**/webapp/*"
 ]
