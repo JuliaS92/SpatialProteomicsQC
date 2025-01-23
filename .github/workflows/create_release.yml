@@ -18,4 +18,4 @@ jobs:
       commitish_to_release: ${{ inputs.commitish_to_release }}
       package_name: "domaps"
       # optional parameters
-      python_version: 3.10
+      python_version: "3.10"
