@@ -1,6 +1,6 @@
 # Releases of domaps and associated webapps
 
-## Version 1.0.2 (ongoing)
+## Version 1.0.2-dev0 (ongoing)
 
 ### Changes
  - Start enforcing better coding practices (see pre-commit hooks)
