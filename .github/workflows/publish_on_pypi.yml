@@ -1,0 +1,25 @@
+# Publish and test release on Test-PyPI and PyPI.
+name: Publish on PyPi
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_to_release:
+        description: 'Enter tag to release (example: v1.5.5). A tag with this name must exist in the repository.'
+        type: string
+        required: true
+
+jobs:
+  publish_on_pypi:
+    uses: MannLabs/alphashared/.github/workflows/publish_on_pypi.yml@v1
+    secrets:
+      test_pypi_api_token: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      pypi_api_token: ${{ secrets.PYPI_API_TOKEN }}
+    with:
+      # see the documentation of the action for more information on the parameters
+      package_name: "domaps"
+      tag_to_release: ${{ inputs.tag_to_release }}
+      # optional parameters:
+      python_version: 3.10
+      test_stable: false
+      only_testpypi_release: true

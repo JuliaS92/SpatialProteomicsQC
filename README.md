@@ -44,3 +44,9 @@ panel serve QCtool.py
 ```
 
 
+### Code Contributions
+Generally code contributions are welcome - if you have best practices or benchmarks that you want to see represented here get in touch, or open a PR.
+
+For releases we follow the alphaX ecosystem https://github.com/MannLabs/alphashared/blob/main/.github/workflows/README.md.
+
+Requirements are split between what is required for data analysis and what is required to run the panel based GUI. Please don't add code for data processing that requires any of the GUI libraries.

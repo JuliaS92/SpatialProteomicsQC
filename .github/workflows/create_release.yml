@@ -1,0 +1,21 @@
+# Create a draft release and build and upload all installers to it.
+name: Create Draft Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      commitish_to_release:
+        description: 'Enter commit hash or branch to release (default: main).'
+        type: string
+        required: false
+
+jobs:
+  create-release:
+    secrets: inherit # pragma: allowlist secret
+    uses: MannLabs/alphashared/.github/workflows/create_release.yml@v1
+    with:
+      # see the documentation of the action for more information on the parameters
+      commitish_to_release: ${{ inputs.commitish_to_release }}
+      package_name: "domaps"
+      # optional parameters
+      python_version: 3.10
