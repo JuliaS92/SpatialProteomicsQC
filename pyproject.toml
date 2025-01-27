@@ -8,9 +8,13 @@ requires-python = ">=3.8"
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 authors = [
-    {name = "Julia Schessner", email = "schessner@biochem.mpg.de"},
+    {name = "Julia Schessner"},
     {name = "Vincent Albrecht"}
 ]
+maintainers = [
+    {name = "Julia Schessner", email = "schessner@biochem.mpg.de"}
+]
+
 description = "Python library for dynamic organellar maps"
 readme = "README.md"
 keywords = [
