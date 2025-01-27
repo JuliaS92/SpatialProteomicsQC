@@ -6,9 +6,9 @@ build
 .coverage
 .DS_Store
 dev_files
-domaps/tests/candidatedata*
-domaps/tests/write_test_usecases.py
-domaps/tests/_test*
+tests/candidatedata*
+tests/write_test_usecases.py
+tests/_test*
 scripts/*.txt
 scripts/*.tab
 scripts/test*

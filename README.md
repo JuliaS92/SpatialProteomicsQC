@@ -14,7 +14,7 @@ Instructions for uploading data as well as sample data are included in the inter
 There are no special hardware requirements for running the QCtool. The code was tested on Linux and Windows and should also run on Mac.
 
 ### Setting up the environment
-To run the app locally create a new python environment (required version >=3.7, <= 3.10). This can either be done using [anaconda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-with-commands) or a [native virtual environment](https://docs.python.org/3/library/venv.html). Illustration for unix systems:
+To run the app locally create a new python environment (required version >=3.8, <= 3.10). This can either be done using [anaconda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-with-commands) or a [native virtual environment](https://docs.python.org/3/library/venv.html). Illustration for unix systems:
 
 ```
 python3 -m venv path/to/env
@@ -25,7 +25,7 @@ Next, clone this repository (requires git) or download it here and install the p
 ```
 git clone https://github.com/valbrecht/SpatialProteomicsQC
 
-pip install .
+pip install ".[gui]"
 ```
 
 This step takes roughly 20 minutes, depending on download speed and hardware configuration, limited by the plotly library. If any pip installations fail due to external dependencies missing (e.g. zlib requirement for Pillow installation from source on python 3.6, or Microsoft Visual C++ 14 on windows) try installing that library using a binary file, thereby avoiding the dependency:
@@ -39,7 +39,7 @@ To run the tool on your computer and to be able to interact with the data and th
 ### Running a (local) server
 To access the GUI without directly interacting with the code, or to host your own instance of the tool, you can run a [panel serve](https://panel.holoviz.org/user_guide/Deploy_and_Export.html#launching-a-server-on-the-commandline) command from the command line:
 ```
-cd webapp
+cd domaps/webapp
 panel serve QCtool.py
 ```
 
@@ -49,4 +49,4 @@ Generally code contributions are welcome - if you have best practices or benchma
 
 For releases we follow the alphaX ecosystem https://github.com/MannLabs/alphashared/blob/main/.github/workflows/README.md.
 
-Requirements are split between what is required for data analysis and what is required to run the panel based GUI. Please don't add code for data processing that requires any of the GUI libraries.
+Requirements are split between what is required for data analysis and what is required to run the panel based GUI. Please don't add code for data processing that requires any of the GUI libraries. All newly added code should be tested by doctests or pytest and documented with docstrings. For major additions please include a jupyter notebook.

@@ -107,7 +107,7 @@ class TestBenchmark:
 
     def test_referencedata_HeLa(self):
         filenames = [
-            os.path.join(os.path.dirname(__file__), "../referencedata/" + el)
+            os.path.join(os.path.dirname(__file__), "../domaps/referencedata/" + el)
             for el in pkg_resources.resource_listdir("domaps", "referencedata")
             if "HeLa" in el
         ]
