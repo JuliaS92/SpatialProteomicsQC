@@ -40,7 +40,7 @@ optional_value = "final"
 filename = "./domaps/__init__.py"
 
 [[tool.bumpversion.files]]
-filename = "./webapp/QCtool.py"
+filename = "./domaps/webapp/QCtool.py"
 
 [[tool.bumpversion.files]]
-filename = "./webapp/QCtool.ipynb"
+filename = "./domaps/webapp/QCtool.ipynb"
