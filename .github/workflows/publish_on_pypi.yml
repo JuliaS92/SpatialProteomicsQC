@@ -9,6 +9,11 @@ on:
         type: string
         required: true
 
+      only_testpypi_release:
+        description: 'Skip release on "real" pypi (only for debugging).'
+        type: boolean
+        default: false
+
 jobs:
   publish_on_pypi:
     uses: MannLabs/alphashared/.github/workflows/publish_on_pypi.yml@v1
@@ -22,4 +27,4 @@ jobs:
       # optional parameters:
       python_version: 3.10
       test_stable: false
-      only_testpypi_release: true
+      only_testpypi_release: ${{ inputs.only_testpypi_release }}
