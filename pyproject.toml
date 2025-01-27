@@ -50,7 +50,7 @@ domaps = ["annotations/*", "referencedata/*", "img/*"]
 [tool.setuptools.dynamic]
 # https://stackoverflow.com/a/73600610
 dependencies = {file = ["requirements/requirements.txt"]}
-optional-dependencies.stable = { file = [ "requirements/requirements_gui.txt"
+optional-dependencies.stable = { file = [ "requirements/requirements_stable.txt"
 ] }
 optional-dependencies.gui = { file = [ "requirements/requirements_gui.txt", "requirements/requitements_strict.txt"
 ] }
