@@ -46,13 +46,7 @@ from scipy.stats import spearmanr
 import domaps.gui as gui
 from domaps.network import format_data
 
-try:
-    type(domaps)
-    print("reloading library")
-    domaps = reload(domaps)
-except Exception as ex:
-    print("loading library first time")
-    import domaps
+import domaps
 
 from datetime import datetime
 
