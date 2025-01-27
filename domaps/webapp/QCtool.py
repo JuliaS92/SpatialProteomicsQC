@@ -168,7 +168,7 @@ app_center = pn.Column(
     pn.Row(
         pn.Pane("# QC tool for Spatial Proteomics", width=600),
         pn.layout.HSpacer(),
-        pn.Pane("domaps version 1.0.2", width=200),
+        pn.Pane("domaps version 1.0.3-dev0", width=200),
         margin=10,
     ),
     pn.Row(name="main_content", margin=50),
