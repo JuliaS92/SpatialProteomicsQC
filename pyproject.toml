@@ -8,9 +8,13 @@ requires-python = ">=3.8"
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 authors = [
-    {name = "Julia Schessner", email = "schessner@biochem.mpg.de"},
+    {name = "Julia Schessner"},
     {name = "Vincent Albrecht"}
 ]
+maintainers = [
+    {name = "Julia Schessner", email = "schessner@biochem.mpg.de"}
+]
+
 description = "Python library for dynamic organellar maps"
 readme = "README.md"
 keywords = [
@@ -50,7 +54,7 @@ domaps = ["annotations/*", "referencedata/*", "img/*"]
 [tool.setuptools.dynamic]
 # https://stackoverflow.com/a/73600610
 dependencies = {file = ["requirements/requirements.txt"]}
-optional-dependencies.stable = { file = [ "requirements/requirements_gui.txt"
+optional-dependencies.stable = { file = [ "requirements/requirements_stable.txt"
 ] }
 optional-dependencies.gui = { file = [ "requirements/requirements_gui.txt", "requirements/requitements_strict.txt"
 ] }
