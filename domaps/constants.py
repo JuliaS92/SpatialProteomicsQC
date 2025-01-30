@@ -83,6 +83,8 @@ class SettingStrings(metaclass=_ConstantsClass):
     ORIENTATION = "orientation"
 
     # General settings
+    FILENAME = "filename"
+    EXPERIMENTNAME = "expname"
     SETS = "sets"
     SOURCE = "source"
     ACQUISITION = "acquisition"
@@ -93,3 +95,95 @@ class SettingStrings(metaclass=_ConstantsClass):
     REANNOTATION_SOURCE = "reannotation_source"
     ORGANELLES = "organelles"
     COMPLEXES = "complexes"
+
+
+DefaultAcquisitionSettings = {
+    SettingStrings.SILAC_ACQUISITION: {
+        SettingStrings.SETS: [
+            DataFrameStrings.RATIO,
+            DataFrameStrings.RATIO_COUNT,
+            DataFrameStrings.RATIO_VARIABILITY,
+        ],
+        SettingStrings.INPUT_INVERT: True,
+        SettingStrings.INPUT_LOGGED: False,
+        SettingStrings.INPUT_SAMPLENORMALIZATION: SettingStrings.NORMALIZATION_MEDIAN,
+        SettingStrings.QUALITY_FILTER: [SettingStrings.FILTER_SILAC_COUNTVAR],
+        SettingStrings.RATIOCOUNT: 2,
+        SettingStrings.RATIOVARIABILITY: 30,
+    },
+    SettingStrings.LFQ_ACQUISITION: {
+        SettingStrings.SETS: [
+            DataFrameStrings.LFQ_INTENSITY,
+            DataFrameStrings.MSMS_COUNT,
+        ],
+        SettingStrings.INPUT_INVERT: False,
+        SettingStrings.INPUT_LOGGED: False,
+        SettingStrings.INPUT_SAMPLENORMALIZATION: None,
+        SettingStrings.QUALITY_FILTER: [
+            SettingStrings.FILTER_MSMS_COUNT,
+            SettingStrings.FILTER_CONSECUTIVE,
+        ],
+        SettingStrings.AVERAGE_MSMS_COUNTS: 2,
+        SettingStrings.CONSECUTIVE: 4,
+    },
+    SettingStrings.INTENSITY_ACQUISITION: {
+        SettingStrings.SETS: [
+            DataFrameStrings.INTENSITY,
+            DataFrameStrings.MSMS_COUNT,
+        ],
+        SettingStrings.INPUT_INVERT: False,
+        SettingStrings.INPUT_LOGGED: False,
+        SettingStrings.INPUT_SAMPLENORMALIZATION: SettingStrings.NORMALIZATION_SUM,
+        SettingStrings.QUALITY_FILTER: [
+            SettingStrings.FILTER_MSMS_COUNT,
+            SettingStrings.FILTER_CONSECUTIVE,
+        ],
+        SettingStrings.AVERAGE_MSMS_COUNTS: 2,
+        SettingStrings.CONSECUTIVE: 4,
+    },
+    SettingStrings.CUSTOM_ACQUISIITION: {
+        SettingStrings.SETS: [DataFrameStrings.ABUNDANCE],
+        SettingStrings.QUALITY_FILTER: [
+            SettingStrings.FILTER_MSMS_COUNT,
+            SettingStrings.FILTER_CONSECUTIVE,
+        ],
+        SettingStrings.AVERAGE_MSMS_COUNTS: 2,
+        SettingStrings.CONSECUTIVE: 4,
+    },
+}
+
+DefaultSourceSettings = {
+    SettingStrings.MAXQUANT_PROTEINS_PIVOT: {
+        SettingStrings.ORIGINAL_PROTEIN_IDS: "Majority protein IDs",
+        SettingStrings.GENES: "Gene names",
+        SettingStrings.SETS: {
+            DataFrameStrings.RATIO: "Ratio H/L (?!normalized|type|is.*|variability|count).+",
+            DataFrameStrings.RATIO_COUNT: "Ratio H/L count .+",
+            DataFrameStrings.RATIO_VARIABILITY: "Ratio H/L variability.... .+",
+            DataFrameStrings.LFQ_INTENSITY: "LFQ intensity .+",
+            DataFrameStrings.MSMS_COUNT: "MS/MS count .+",
+            DataFrameStrings.INTENSITY: "Intensity .+",
+            DataFrameStrings.ABUNDANCE: "Intensity .+",
+        },
+        SettingStrings.COLUMN_FILTERS: {
+            "Potential contaminant": ["!=", "'+'"],
+            "Only identified by site": ["!=", "'+'"],
+            "Reverse": ["!=", "'+'"],
+        },
+        SettingStrings.ANNOTATION_COLUMNS: ["Protein names", "id"],
+    },
+    "MaxQuant_peptides_pivot": None,
+    SettingStrings.SPECTRONAUT_PROTEINS_LONG: {
+        SettingStrings.ORIGINAL_PROTEIN_IDS: "PG.ProteinGroups",
+        SettingStrings.GENES: "PG.Genes",
+        SettingStrings.SAMPLES: "R.Condition",
+        SettingStrings.SETS: {
+            DataFrameStrings.LFQ_INTENSITY: "PG.Quantity",
+            DataFrameStrings.MSMS_COUNT: "PG.RunEvidenceCount",
+            DataFrameStrings.INTENSITY: "PG.Quantity",
+            DataFrameStrings.ABUNDANCE: "PG.Quantity",
+        },
+    },
+    "Spectronaut_proteins_pivot": None,
+    "DIANN_proteins_pivot": None,
+}

@@ -32,7 +32,11 @@ import inspect
 import warnings
 from itertools import cycle, combinations
 
-from domaps.constants import DataFrameStrings, SettingStrings
+from domaps.constants import (
+    DataFrameStrings,
+    DefaultAcquisitionSettings,
+    SettingStrings,
+)
 
 
 def natsort_index_keys(x):
@@ -50,97 +54,6 @@ class SpatialDataSet:
         "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*|variability|count)[^ ]+|^Ratio H/L variability.... .+|^Ratio H/L count .+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR]otein.[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
     }
 
-    defaultsettings = {
-        "acquisition_modes": {
-            SettingStrings.SILAC_ACQUISITION: {
-                SettingStrings.SETS: [
-                    DataFrameStrings.RATIO,
-                    DataFrameStrings.RATIO_COUNT,
-                    DataFrameStrings.RATIO_VARIABILITY,
-                ],
-                SettingStrings.INPUT_INVERT: True,
-                SettingStrings.INPUT_LOGGED: False,
-                SettingStrings.INPUT_SAMPLENORMALIZATION: SettingStrings.NORMALIZATION_MEDIAN,
-                SettingStrings.QUALITY_FILTER: [SettingStrings.FILTER_SILAC_COUNTVAR],
-                SettingStrings.RATIOCOUNT: 2,
-                SettingStrings.RATIOVARIABILITY: 30,
-            },
-            SettingStrings.LFQ_ACQUISITION: {
-                SettingStrings.SETS: [
-                    DataFrameStrings.LFQ_INTENSITY,
-                    DataFrameStrings.MSMS_COUNT,
-                ],
-                SettingStrings.INPUT_INVERT: False,
-                SettingStrings.INPUT_LOGGED: False,
-                SettingStrings.INPUT_SAMPLENORMALIZATION: None,
-                SettingStrings.QUALITY_FILTER: [
-                    SettingStrings.FILTER_MSMS_COUNT,
-                    SettingStrings.FILTER_CONSECUTIVE,
-                ],
-                SettingStrings.AVERAGE_MSMS_COUNTS: 2,
-                SettingStrings.CONSECUTIVE: 4,
-            },
-            SettingStrings.INTENSITY_ACQUISITION: {
-                SettingStrings.SETS: [
-                    DataFrameStrings.INTENSITY,
-                    DataFrameStrings.MSMS_COUNT,
-                ],
-                SettingStrings.INPUT_INVERT: False,
-                SettingStrings.INPUT_LOGGED: False,
-                SettingStrings.INPUT_SAMPLENORMALIZATION: SettingStrings.NORMALIZATION_SUM,
-                SettingStrings.QUALITY_FILTER: [
-                    SettingStrings.FILTER_MSMS_COUNT,
-                    SettingStrings.FILTER_CONSECUTIVE,
-                ],
-                SettingStrings.AVERAGE_MSMS_COUNTS: 2,
-                SettingStrings.CONSECUTIVE: 4,
-            },
-            SettingStrings.CUSTOM_ACQUISIITION: {
-                SettingStrings.SETS: [DataFrameStrings.ABUNDANCE],
-                SettingStrings.QUALITY_FILTER: [
-                    SettingStrings.FILTER_MSMS_COUNT,
-                    SettingStrings.FILTER_CONSECUTIVE,
-                ],
-                SettingStrings.AVERAGE_MSMS_COUNTS: 2,
-                SettingStrings.CONSECUTIVE: 4,
-            },
-        },
-        "sources": {
-            SettingStrings.MAXQUANT_PROTEINS_PIVOT: {
-                SettingStrings.ORIGINAL_PROTEIN_IDS: "Majority protein IDs",
-                SettingStrings.GENES: "Gene names",
-                SettingStrings.SETS: {
-                    DataFrameStrings.RATIO: "Ratio H/L (?!normalized|type|is.*|variability|count).+",
-                    DataFrameStrings.RATIO_COUNT: "Ratio H/L count .+",
-                    DataFrameStrings.RATIO_VARIABILITY: "Ratio H/L variability.... .+",
-                    DataFrameStrings.LFQ_INTENSITY: "LFQ intensity .+",
-                    DataFrameStrings.MSMS_COUNT: "MS/MS count .+",
-                    DataFrameStrings.INTENSITY: "Intensity .+",
-                    DataFrameStrings.ABUNDANCE: "Intensity .+",
-                },
-                SettingStrings.COLUMN_FILTERS: {
-                    "Potential contaminant": ["!=", "'+'"],
-                    "Only identified by site": ["!=", "'+'"],
-                    "Reverse": ["!=", "'+'"],
-                },
-                SettingStrings.ANNOTATION_COLUMNS: ["Protein names", "id"],
-            },
-            "MaxQuant_peptides_pivot": None,
-            SettingStrings.SPECTRONAUT_PROTEINS_LONG: {
-                SettingStrings.ORIGINAL_PROTEIN_IDS: "PG.ProteinGroups",
-                SettingStrings.GENES: "PG.Genes",
-                SettingStrings.SAMPLES: "R.Condition",
-                SettingStrings.SETS: {
-                    DataFrameStrings.LFQ_INTENSITY: "PG.Quantity",
-                    DataFrameStrings.MSMS_COUNT: "PG.RunEvidenceCount",
-                    DataFrameStrings.INTENSITY: "PG.Quantity",
-                    DataFrameStrings.ABUNDANCE: "PG.Quantity",
-                },
-            },
-            "Spectronaut_proteins_pivot": None,
-            "DIANN_proteins_pivot": None,
-        },
-    }
     # fmt: off
     css_color = ["#b2df8a","#6a3d9a","#e31a1c","#b15928","#fdbf6f","#ff7f00","#cab2d6","#fb9a99","#1f78b4","#ffff99","#a6cee3","#33a02c","blue","orange","goldenrod","lightcoral","magenta","brown","lightpink","red","turquoise","khaki","darkgoldenrod","darkturquoise","darkviolet","greenyellow","darksalmon","hotpink","indianred","indigo","darkolivegreen","coral","aqua","beige","bisque","black","blanchedalmond","blueviolet","burlywood","cadetblue","yellowgreen","chartreuse","chocolate","cornflowerblue","cornsilk","darkblue","darkcyan","darkgray","darkgrey","darkgreen","darkkhaki","darkmagenta","darkorange","darkorchid","darkred","darkseagreen","darkslateblue","snow","springgreen","darkslategrey","mediumpurple","oldlace","olive","lightseagreen","deeppink","deepskyblue","dimgray","dimgrey","dodgerblue","firebrick","floralwhite","forestgreen","fuchsia","gainsboro","ghostwhite","gold","gray","ivory","lavenderblush","lawngreen","lemonchiffon","lightblue","lightcyan","fuchsia","gainsboro","ghostwhite","gold","gray","ivory","lavenderblush","lawngreen","lemonchiffon","lightblue","lightcyan","lightgoldenrodyellow","lightgray","lightgrey","lightgreen","lightsalmon","lightskyblue","lightslategray","lightslategrey","lightsteelblue","lightyellow","lime","limegreen","linen","maroon","mediumaquamarine","mediumblue","mediumseagreen","mediumslateblue","mediumspringgreen","mediumturquoise","mediumvioletred","midnightblue","mintcream","mistyrose","moccasin","olivedrab","orangered","orchid","palegoldenrod","palegreen","paleturquoise","palevioletred","papayawhip","peachpuff","peru","pink","plum","powderblue","rosybrown","royalblue","saddlebrown","salmon","sandybrown","seagreen","seashell","sienna","silver","skyblue","slateblue","steelblue","teal","thistle","tomato","violet","wheat","white","whitesmoke","slategray","slategrey","aquamarine","azure","crimson","cyan","darkslategray","grey","mediumorchid","navajowhite","navy"]
     # fmt: on
@@ -221,9 +134,9 @@ class SpatialDataSet:
         elif acquisition != SettingStrings.SILAC_ACQUISITION and legacy == False:
             self.average_MSMS_counts = average_MSMS_counts
             self.consecutive = consecutive
-            self.mainset = self.defaultsettings["acquisition_modes"][acquisition][
-                SettingStrings.SETS
-            ][0]
+            self.mainset = DefaultAcquisitionSettings[acquisition][SettingStrings.SETS][
+                0
+            ]
 
         self.transformed_mainset = self.mainset
 
@@ -298,8 +211,8 @@ class SpatialDataSet:
                 [
                     el not in settings.keys()
                     for el in [
-                        "filename",
-                        "expname",
+                        SettingStrings.FILENAME,
+                        SettingStrings.EXPERIMENTNAME,
                         SettingStrings.COMMENT,
                         SettingStrings.SOURCE,
                         SettingStrings.ACQUISITION,
@@ -712,7 +625,7 @@ class SpatialDataSet:
         # add more settings here
         analysis_parameters = {
             SettingStrings.ACQUISITION: self.acquisition,
-            "filename": self.filename,
+            SettingStrings.FILENAME: self.filename,
             SettingStrings.COMMENT: self.comment,
             SettingStrings.ORGANISM: self.organism,
             "processing steps": "\n".join(processing_steps),
