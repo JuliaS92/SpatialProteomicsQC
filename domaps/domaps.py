@@ -69,15 +69,11 @@ class SpatialDataSet:
         name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)",
         reannotate_genes=False,
         reannotation_source={"source": False, "idmapping": None},
-        legacy=True,
-        RatioHLcount=2,
         RatioCount=2,
         RatioVariability=30,
-        summed_MSMS_counts=2,  # legacy
-        consecutiveLFQi=4,  # legacy
         average_MSMS_counts=2,  # future
         consecutive=4,  # future
-        organism="Homo sapiens - Uniprot",  # legacy/future
+        organism="Homo sapiens - Uniprot",  # future
         organelles="Homo sapiens - Uniprot",  # future
         complexes="Homo sapiens - Uniprot",  # future
         fractions=[],
@@ -88,15 +84,10 @@ class SpatialDataSet:
         self.acquisition = acquisition
         self.name_pattern = name_pattern
         self.comment = comment
-        self.legacy = legacy
         self.fractions = fractions
 
-        if legacy == False:
-            self.source = source
-            self.orientation = orientation
-            # self.imported_columns = self.regex["imported_columns"] now in from_settings()
-        else:
-            self.imported_columns = self.regex["imported_columns"]
+        self.source = source
+        self.orientation = orientation
 
         self.map_names = []
         self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
@@ -108,30 +99,12 @@ class SpatialDataSet:
         if reannotate_genes:
             self.reannotation_source = reannotation_source
 
-        if (
-            acquisition == "SILAC - MQ"
-            or acquisition == SettingStrings.SILAC_ACQUISITION
-        ):
-            if legacy == True:
-                self.RatioHLcount = RatioHLcount
-            else:
-                self.RatioCount = RatioCount
+        if acquisition == SettingStrings.SILAC_ACQUISITION:
+            self.RatioCount = RatioCount
             self.RatioVariability = RatioVariability
-            self.mainset = DataFrameStrings.RATIO if legacy == False else "Ratio H/L"
+            self.mainset = DataFrameStrings.RATIO
 
-        # depracate
-        # elif acquisition == "Custom":
-        #    self.custom_columns = kwargs["custom_columns"]
-        #    self.custom_normalized = kwargs["custom_normalized"]
-        #    self.imported_columns = "^"+"$|^".join(["$|^".join(el) if type(el) == list else el for el in self.custom_columns.values() if el not in [[], None, ""]])+"$"
-
-        # elif acquisition == "LFQ5 - MQ" or acquisition == "LFQ6 - MQ" or acquisition == "LFQ6 - Spectronaut" or acquisition == "LFQ5 - Spectronaut":
-        elif SettingStrings.LFQ_ACQUISITION in acquisition and legacy == True:
-            self.summed_MSMS_counts = summed_MSMS_counts
-            self.consecutiveLFQi = consecutiveLFQi
-            self.mainset = DataFrameStrings.LFQ_INTENSITY
-
-        elif acquisition != SettingStrings.SILAC_ACQUISITION and legacy == False:
+        elif acquisition != SettingStrings.SILAC_ACQUISITION:
             self.average_MSMS_counts = average_MSMS_counts
             self.consecutive = consecutive
             self.mainset = DefaultAcquisitionSettings[acquisition][SettingStrings.SETS][
@@ -140,151 +113,61 @@ class SpatialDataSet:
 
         self.transformed_mainset = self.mainset
 
-        # self.markerset_or_cluster = False if "markerset_or_cluster" not in kwargs.keys() else kwargs["markerset_or_cluster"]
         self.organism = organism
-        if legacy == True:
-            assert organism + ".csv" in pkg_resources.resource_listdir(
-                __name__, "annotations/complexes"
-            )
+        if complexes + ".csv" in pkg_resources.resource_listdir(
+            __name__, "annotations/complexes"
+        ):
             marker_table = pd.read_csv(
                 pkg_resources.resource_stream(
-                    __name__, "annotations/complexes/{}.csv".format(organism)
+                    __name__, "annotations/complexes/{}.csv".format(complexes)
                 )
             )
-            self.markerproteins = {
-                k: v.replace(" ", "").split(",")
-                for k, v in zip(
-                    marker_table[DataFrameStrings.CLUSTER],
-                    marker_table["Members - Protein IDs"],
-                )
-            }
+        else:
+            marker_table = pd.read_csv(StringIO(complexes))
+        self.markerproteins = {
+            k: v.replace(" ", "").split(",")
+            for k, v in zip(
+                marker_table[DataFrameStrings.CLUSTER],
+                marker_table["Members - Protein IDs"],
+            )
+        }
+        if organelles + ".csv" in pkg_resources.resource_listdir(
+            __name__, "annotations/organellemarkers"
+        ):
             df_organellarMarkerSet = pd.read_csv(
                 pkg_resources.resource_stream(
-                    __name__, "annotations/organellemarkers/{}.csv".format(organism)
+                    __name__,
+                    "annotations/organellemarkers/{}.csv".format(organelles),
                 ),
                 usecols=lambda x: bool(re.match("Compartment|Protein ID", x)),
             ).drop_duplicates()
-            self.df_organellarMarkerSet = df_organellarMarkerSet
         else:
-            if complexes + ".csv" in pkg_resources.resource_listdir(
-                __name__, "annotations/complexes"
-            ):
-                marker_table = pd.read_csv(
-                    pkg_resources.resource_stream(
-                        __name__, "annotations/complexes/{}.csv".format(complexes)
-                    )
-                )
-            else:
-                marker_table = pd.read_csv(StringIO(complexes))
-            self.markerproteins = {
-                k: v.replace(" ", "").split(",")
-                for k, v in zip(
-                    marker_table[DataFrameStrings.CLUSTER],
-                    marker_table["Members - Protein IDs"],
-                )
-            }
-            if organelles + ".csv" in pkg_resources.resource_listdir(
-                __name__, "annotations/organellemarkers"
-            ):
-                df_organellarMarkerSet = pd.read_csv(
-                    pkg_resources.resource_stream(
-                        __name__,
-                        "annotations/organellemarkers/{}.csv".format(organelles),
-                    ),
-                    usecols=lambda x: bool(re.match("Compartment|Protein ID", x)),
-                ).drop_duplicates()
-            else:
-                df_organellarMarkerSet = pd.read_csv(
-                    StringIO(organelles),
-                    usecols=lambda x: bool(re.match("Compartment|Protein ID", x)),
-                ).drop_duplicates()
-            self.df_organellarMarkerSet = df_organellarMarkerSet
+            df_organellarMarkerSet = pd.read_csv(
+                StringIO(organelles),
+                usecols=lambda x: bool(re.match("Compartment|Protein ID", x)),
+            ).drop_duplicates()
+        self.df_organellarMarkerSet = df_organellarMarkerSet
 
         self.kwargs = kwargs
+
+        self.imported_columns = generate_usecols_regex(
+            sets=kwargs[SettingStrings.SETS],
+            original_protein_ids=kwargs[SettingStrings.ORIGINAL_PROTEIN_IDS],
+            genes=kwargs[SettingStrings.GENES],
+            samples=kwargs.get(SettingStrings.SAMPLES, None),
+            column_filters=kwargs.get(SettingStrings.COLUMN_FILTERS, None),
+            annotation_columns=kwargs.get(SettingStrings.ANNOTATION_COLUMNS, None),
+        )
+
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
 
-    def from_settings(settings, legacy=True):
-        settings["legacy"] = legacy
-        if legacy:
-            if any(
-                [
-                    el not in settings.keys()
-                    for el in [
-                        SettingStrings.FILENAME,
-                        SettingStrings.EXPERIMENTNAME,
-                        SettingStrings.COMMENT,
-                        SettingStrings.SOURCE,
-                        SettingStrings.ACQUISITION,
-                        SettingStrings.NAME_PATTERN,
-                        SettingStrings.REANNOTATE,
-                        SettingStrings.REANNOTATION_SOURCE,
-                        SettingStrings.ORGANELLES,
-                    ]
-                ]
-            ):
-                raise ValueError(
-                    "Settings are not sufficient to configure in legacy mode."
-                )
-            if settings[SettingStrings.SOURCE] == "MaxQuant":
-                if settings[SettingStrings.ACQUISITION] == "LFQ":
-                    source = "LFQ6 - MQ"
-                elif settings[SettingStrings.ACQUISITION] == "SILAC":
-                    source = "SILAC - MQ"
-                else:
-                    raise ValueError(
-                        f"No legacy configuration for {SettingStrings.SOURCE} and {settings[SettingStrings.ACQUISITION]}."
-                    )
-            elif settings[SettingStrings.SOURCE] == "Spectronaut":
-                if settings[SettingStrings.ACQUISITION] == "LFQ":
-                    source = "LFQ6 - Spectronaut"
-                else:
-                    raise ValueError(
-                        f"No legacy configuration for {SettingStrings.SOURCE} and {settings[SettingStrings.ACQUISITION]}."
-                    )
-            else:
-                raise ValueError(
-                    f"No legacy configuration for {SettingStrings.SOURCE}."
-                )
-
-            if SettingStrings.AVERAGE_MSMS_COUNTS in settings.keys():
-                settings["summed_MSMS_counts"] = settings[
-                    SettingStrings.AVERAGE_MSMS_COUNTS
-                ]
-
-            if SettingStrings.CONSECUTIVE in settings.keys():
-                settings["consecutiveLFQi"] = settings[SettingStrings.CONSECUTIVE]
-
-            if SettingStrings.RATIOCOUNT in settings.keys():
-                settings["RatioHLcount"] = settings[SettingStrings.RATIOCOUNT]
-
-            ds = SpatialDataSet(
-                acquisition=source,
-                reannotate_genes=bool(settings[SettingStrings.REANNOTATE]),
-                reannotation_source=parse_reannotation_source(
-                    settings[SettingStrings.REANNOTATE],
-                    settings[SettingStrings.REANNOTATION_SOURCE],
-                ),
-                organism=settings[SettingStrings.ORGANELLES],
-                **{
-                    k: v
-                    for k, v in settings.items()
-                    if k
-                    not in [
-                        SettingStrings.ACQUISITION,
-                        SettingStrings.REANNOTATION_SOURCE,
-                        SettingStrings.REANNOTATE,
-                        SettingStrings.ORGANISM,
-                    ]
-                },
-            )
-        else:
-            settings[SettingStrings.REANNOTATION_SOURCE] = parse_reannotation_source(
-                settings[SettingStrings.REANNOTATE],
-                settings[SettingStrings.REANNOTATION_SOURCE],
-            )
-            ds = SpatialDataSet(**settings)
-            ds.imported_columns = generate_usecols_regex(settings)
+    def from_settings(settings):
+        settings[SettingStrings.REANNOTATION_SOURCE] = parse_reannotation_source(
+            settings[SettingStrings.REANNOTATE],
+            settings[SettingStrings.REANNOTATION_SOURCE],
+        )
+        ds = SpatialDataSet(**settings)
         return ds
 
     def run_pipeline(self, content=None, progressbar=None):
@@ -312,10 +195,7 @@ class SpatialDataSet:
         setprogress("Data Reading ...")
         self.data_reading(content=content)
         setprogress("Data Processing ...")
-        if self.legacy == True:
-            self.processingdf()
-        else:
-            self.process_input()
+        self.process_input()
         self.quantity_profiles_proteinGroups()
         setprogress("PCA ...")
         self.perform_pca()
@@ -629,7 +509,6 @@ class SpatialDataSet:
             SettingStrings.COMMENT: self.comment,
             SettingStrings.ORGANISM: self.organism,
             "processing steps": "\n".join(processing_steps),
-            "legacy": self.legacy,
         }
         self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
 
@@ -1035,30 +914,16 @@ class SpatialDataSet:
         """
 
         markerproteins = self.markerproteins
-
-        if "SILAC" in self.acquisition and self.legacy:
-            df_01orlog_fracunstacked = (
-                self.df_log_stacked[DataFrameStrings.LOG_PROFILE]
-                .unstack(DataFrameStrings.FRACTION)
-                .dropna()
-            )
-            df_01orlog_MapFracUnstacked = (
-                self.df_log_stacked[DataFrameStrings.LOG_PROFILE]
-                .unstack([DataFrameStrings.FRACTION, DataFrameStrings.MAP])
-                .dropna()
-            )
-
-        else:
-            df_01orlog_fracunstacked = (
-                self.df_01_stacked[DataFrameStrings.NORMALIZED_PROFILE]
-                .unstack(DataFrameStrings.FRACTION)
-                .dropna()
-            )
-            df_01orlog_MapFracUnstacked = (
-                self.df_01_stacked[DataFrameStrings.NORMALIZED_PROFILE]
-                .unstack([DataFrameStrings.FRACTION, DataFrameStrings.MAP])
-                .dropna()
-            )
+        df_01orlog_fracunstacked = (
+            self.df_01_stacked[DataFrameStrings.NORMALIZED_PROFILE]
+            .unstack(DataFrameStrings.FRACTION)
+            .dropna()
+        )
+        df_01orlog_MapFracUnstacked = (
+            self.df_01_stacked[DataFrameStrings.NORMALIZED_PROFILE]
+            .unstack([DataFrameStrings.FRACTION, DataFrameStrings.MAP])
+            .dropna()
+        )
 
         pca = PCA(n_components=n)
 
@@ -2463,28 +2328,7 @@ class SpatialDataSetComparison:
         self.mixed = mixed
         self.fractions = fractions
 
-        if "legacy" in json_dict[self.ref_exp]["Analysis parameters"].keys():
-            self.markerproteins = json_dict[self.ref_exp][SettingStrings.COMPLEXES]
-        else:
-            try:
-                organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"][
-                    SettingStrings.ORGANISM
-                ]
-            except:
-                organism = "Homo sapiens - Uniprot"
-
-            marker_table = pd.read_csv(
-                pkg_resources.resource_stream(
-                    __name__, "annotations/complexes/{}.csv".format(organism)
-                )
-            )
-            self.markerproteins = {
-                k: v.replace(" ", "").split(",")
-                for k, v in zip(
-                    marker_table[DataFrameStrings.CLUSTER],
-                    marker_table["Members - Protein IDs"],
-                )
-            }
+        self.markerproteins = json_dict[self.ref_exp][SettingStrings.COMPLEXES]
 
         self.clusters_for_ranking = self.markerproteins.keys()
 
@@ -4997,26 +4841,34 @@ def parse_reannotation_source(mode, source):
     return reannotation_source
 
 
-def generate_usecols_regex(settings):
+def generate_usecols_regex(
+    sets: dict,
+    original_protein_ids: str,
+    genes: str,
+    samples: str = None,
+    column_filters: dict = None,
+    annotation_columns: list = None,
+):
     columns = []
 
     # sets
-    for v in settings[SettingStrings.SETS].values():
+    for v in sets.values():
         columns.append(v)
 
     # mandatory columns
-    columns.append(settings[SettingStrings.ORIGINAL_PROTEIN_IDS])
-    columns.append(settings[SettingStrings.GENES])
-    if SettingStrings.SAMPLES in settings.keys():
-        columns.append(settings[SettingStrings.SAMPLES])
+    columns.append(original_protein_ids)
+    columns.append(genes)
+    if samples is not None:
+        columns.append(samples)
 
     # column filters
-    for k in settings[SettingStrings.COLUMN_FILTERS].keys():
-        columns.append(k)
+    if column_filters is not None:
+        for k in column_filters.keys():
+            columns.append(k)
 
     # index columns
-    if SettingStrings.ANNOTATION_COLUMNS in settings.keys():
-        columns += settings[SettingStrings.ANNOTATION_COLUMNS]
+    if annotation_columns is not None:
+        columns += annotation_columns
 
     columns = set(columns)
     return "^" + "$|^".join(columns) + "$"
