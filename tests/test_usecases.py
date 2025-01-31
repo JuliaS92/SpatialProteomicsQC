@@ -34,7 +34,7 @@ class TestAnalysis:
             settings["filename"] = datafile
 
         # run analysis
-        data = SpatialDataSet.from_settings(settings, legacy=False)
+        data = SpatialDataSet.from_settings(settings)
         data.run_pipeline()
 
         assert_frame_equal(

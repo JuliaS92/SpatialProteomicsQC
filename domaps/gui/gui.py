@@ -5,8 +5,12 @@ from panel.viewable import Viewer
 import param
 import pkg_resources
 import traceback
-from domaps import SpatialDataSet
 from domaps import network as network
+from domaps.constants import (
+    DefaultAcquisitionSettings,
+    DefaultSourceSettings,
+    SettingStrings,
+)
 import re
 import pandas as pd
 from io import BytesIO, StringIO
@@ -15,8 +19,9 @@ import natsort
 import plotly.express as px
 import numpy as np
 from sklearn.decomposition import PCA
-import os
 import pkgutil
+
+# TODO: Finish using constants classes
 
 plotly_config = {
     "toImageButtonOptions": {
@@ -771,10 +776,10 @@ class ConfigureFileContent(Viewer):
 
     def _set_defaults(self):
         source = "_".join([self.source, self.level, self.orientation])
-        if source in SpatialDataSet.defaultsettings["sources"].keys():
-            source = SpatialDataSet.defaultsettings["sources"][source]
+        if source in DefaultSourceSettings.keys():
+            source = DefaultSourceSettings[source]
             try:
-                self._column_ids.value = source["original_protein_ids"]
+                self._column_ids.value = source[SettingStrings.ORIGINAL_PROTEIN_IDS]
                 self._dependent_layout_long[0][0][0] = self._column_ids
                 self._dependent_layout_pivot[0][0][0] = self._column_ids
             except:
@@ -782,7 +787,7 @@ class ConfigureFileContent(Viewer):
                 self._dependent_layout_pivot[0][0][0] = self._column_custom_ids
                 self._column_custom_ids.param.trigger("value")
             try:
-                self._column_genes.value = source["genes"]
+                self._column_genes.value = source[SettingStrings.GENES]
                 self._dependent_layout_long[0][0][1] = self._column_genes
                 self._dependent_layout_pivot[0][0][1] = self._column_genes
             except:
@@ -791,7 +796,7 @@ class ConfigureFileContent(Viewer):
                 self._column_custom_genes.param.trigger("value")
             if self.orientation == "long":
                 try:
-                    self._column_samples.value = source["samples"]
+                    self._column_samples.value = source[SettingStrings.SAMPLES]
                     self._dependent_layout_long[0][1][2] = self._column_samples
                 except:
                     self._dependent_layout_long[0][1][2] = self._column_custom_samples
@@ -799,7 +804,7 @@ class ConfigureFileContent(Viewer):
             try:
                 v = [
                     el
-                    for el in source["annotation_columns"]
+                    for el in source[SettingStrings.ANNOTATION_COLUMNS]
                     if el in self._columns_annotation.options
                 ]
                 self._columns_annotation.value = v
@@ -826,14 +831,14 @@ class ConfigureFileContent(Viewer):
 
     def _set_defaults_acquisition(self):
         source = "_".join([self.source, self.level, self.orientation])
-        if source in SpatialDataSet.defaultsettings["sources"].keys():
-            source = SpatialDataSet.defaultsettings["sources"][source]
+        if source in DefaultSourceSettings.keys():
+            source = DefaultSourceSettings[source]
             if self.orientation == "pivot":
                 try:
-                    self._column_mainset_pivot.value = source["sets"][
-                        SpatialDataSet.defaultsettings["acquisition_modes"][
-                            self.acquisition
-                        ]["sets"][0]
+                    self._column_mainset_pivot.value = source[SettingStrings.SETS][
+                        DefaultAcquisitionSettings[self.acquisition][
+                            SettingStrings.SETS
+                        ][0]
                     ]
                     self._column_mainset_pivot.disabled = True
                 except:
@@ -841,10 +846,10 @@ class ConfigureFileContent(Viewer):
                     self._column_mainset_pivot.param.trigger("value")
             elif self.orientation == "long":
                 try:
-                    self._column_mainset_long.value = source["sets"][
-                        SpatialDataSet.defaultsettings["acquisition_modes"][
-                            self.acquisition
-                        ]["sets"][0]
+                    self._column_mainset_long.value = source[SettingStrings.SETS][
+                        DefaultAcquisitionSettings[self.acquisition][
+                            SettingStrings.SETS
+                        ][0]
                     ]
                     self._dependent_layout_long[0][0][2] = self._column_mainset_long
                 except:
@@ -1079,26 +1084,26 @@ class ConfigureFileContent(Viewer):
         settings = dict()
         if self.experiment_name.value == "":
             raise ValueError("Please give the experiment a name")
-        settings["filename"] = self.file.filename
-        settings["expname"] = self.experiment_name.value
-        settings["source"] = self.source
-        settings["acquisition"] = self.acquisition
+        settings[SettingStrings.FILENAME] = self.file.filename
+        settings[SettingStrings.EXPERIMENTNAME] = self.experiment_name.value
+        settings[SettingStrings.SOURCE] = self.source
+        settings[SettingStrings.ACQUISITION] = self.acquisition
         settings["level"] = self.level
-        settings["orientation"] = self.orientation
-        settings["original_protein_ids"] = self.column_ids
-        settings["genes"] = self.column_genes
-        settings["sets"] = {
-            SpatialDataSet.defaultsettings["acquisition_modes"][self.acquisition][
-                "sets"
-            ][0]: self.column_mainset
+        settings[SettingStrings.ORIENTATION] = self.orientation
+        settings[SettingStrings.ORIGINAL_PROTEIN_IDS] = self.column_ids
+        settings[SettingStrings.GENES] = self.column_genes
+        settings[SettingStrings.SETS] = {
+            DefaultAcquisitionSettings[self.acquisition][SettingStrings.SETS][
+                0
+            ]: self.column_mainset
         }
 
-        settings["name_pattern"] = self.name_pattern
+        settings[SettingStrings.NAME_PATTERN] = self.name_pattern
         settings["fractions"] = self.fraction_ordering.get_ordered_labels()
         settings["fraction_mapping"] = self.fraction_ordering.get_mapping()
-        settings["columns_annotation"] = self.columns_annotation
+        settings[SettingStrings.ANNOTATION_COLUMNS] = self.columns_annotation
         if self.orientation == "long":
-            settings["samples"] = self.column_samples
+            settings[SettingStrings.SAMPLES] = self.column_samples
         return settings
 
 
@@ -1829,21 +1834,21 @@ class ConfigureSingleFile(Viewer):
     @param.depends("_content.acquisition")
     def _select_acquisition(self):
         self._set_defaults()
-        filters = SpatialDataSet.defaultsettings["acquisition_modes"][
-            self._content.acquisition
-        ]["quality_filter"]
-        if "SILAC_countvar" in filters:
+        filters = DefaultAcquisitionSettings[self._content.acquisition][
+            SettingStrings.QUALITY_FILTER
+        ]
+        if SettingStrings.FILTER_SILAC_COUNTVAR in filters:
             layout = self._SILAC
             self._SILAC.toggle = True
         else:
             self._SILAC.toggle = False
             layout = pn.Row()
-        if "msms_count" in filters:
+        if SettingStrings.FILTER_MSMS_COUNT in filters:
             layout.append(self._MSMS)
             self._MSMS.toggle = True
         else:
             self._MSMS.toggle = False
-        if "consecutive" in filters:
+        if SettingStrings.FILTER_CONSECUTIVE in filters:
             layout.append(self._cons)
             self._cons.toggle = True
         else:
@@ -1854,8 +1859,8 @@ class ConfigureSingleFile(Viewer):
         source = "_".join(
             [self._content.source, self._content.level, self._content.orientation]
         )
-        if source in SpatialDataSet.defaultsettings["sources"].keys():
-            source = SpatialDataSet.defaultsettings["sources"][source]
+        if source in DefaultSourceSettings.keys():
+            source = DefaultSourceSettings[source]
 
         # Column filters:
         try:
@@ -1863,25 +1868,23 @@ class ConfigureSingleFile(Viewer):
         except Exception as ex:
             self._error_output[0] = str(ex)
         try:
-            self._col.value = source["column_filters"]
+            self._col.value = source[SettingStrings.COLUMN_FILTERS]
         except:
             self._col.value = {}
 
-        acquisition = SpatialDataSet.defaultsettings["acquisition_modes"][
-            self._content.acquisition
-        ]
+        acquisition = DefaultAcquisitionSettings[self._content.acquisition]
         # tranformations
         try:
-            self._transform.invert = acquisition["input_invert"]
+            self._transform.invert = acquisition[SettingStrings.INPUT_INVERT]
         except:
             pass
         try:
-            self._transform.unlog = acquisition["input_unlog"]
+            self._transform.unlog = acquisition[SettingStrings.INPUT_LOGGED]
         except:
             pass
         try:
             self._transform.samplenormalization = acquisition[
-                "input_samplenormalization"
+                SettingStrings.INPUT_SAMPLENORMALIZATION
             ]
         except:
             pass
@@ -1961,9 +1964,7 @@ class ConfigureSingleFile(Viewer):
                 column_ids=settings["original_protein_ids"],
                 column_genes=settings["genes"],
                 column_mainset=settings["sets"][
-                    SpatialDataSet.defaultsettings["acquisition_modes"][
-                        self._content.acquisition
-                    ]["sets"][0]
+                    DefaultAcquisitionSettings[self._content.acquisition]["sets"][0]
                 ],
                 columns_annotation=[]
                 if "columns_annotation" not in settings.keys()
