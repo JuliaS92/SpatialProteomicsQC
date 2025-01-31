@@ -230,7 +230,11 @@ class SpatialDataSet:
         if content is None:
             content = filename
 
-        if filename.endswith("xls") or filename.endswith("txt"):
+        if (
+            filename.endswith("xls")
+            or filename.endswith("txt")
+            or filename.endswith("tsv")
+        ):
             self.df_original = pd.read_csv(
                 content,
                 sep="\t",
@@ -3064,6 +3068,11 @@ class SpatialDataSetComparison:
             df = df.groupby([DataFrameStrings.CLUSTER]).apply(
                 lambda x: x / normalization(x)
             )
+            df.reset_index(
+                level=df.index.names.index(DataFrameStrings.CLUSTER),
+                inplace=True,
+                drop=True,
+            )
         elif normalization in multi_choice:
             df = (
                 df.unstack(DataFrameStrings.EXPERIMENT)
@@ -3099,15 +3108,14 @@ class SpatialDataSetComparison:
 
         medians = df.groupby(DataFrameStrings.EXPERIMENT).median()
 
-        # TODO: return this to a simple reset_index
-        for level in df.index.names:
-            if level not in df.columns:
-                level_index = df.index.names.index(level)
-                df.reset_index(level=level_index, inplace=True)
+        df_plot = df.reset_index()
 
         if plot_type == "strip":
             plot = px.strip(
-                df, color=DataFrameStrings.EXPERIMENT, stripmode="overlay", **plotargs
+                df_plot,
+                color=DataFrameStrings.EXPERIMENT,
+                stripmode="overlay",
+                **plotargs,
             )
             plot.update_traces(width=2.3)
             plot.update_xaxes(range=(-0.6, len(multi_choice) - 0.4))
@@ -3123,27 +3131,23 @@ class SpatialDataSetComparison:
                     opacity=0.8,
                 )
         elif plot_type == "box":
-            plot = px.box(
-                df.reset_index(), color=DataFrameStrings.EXPERIMENT, **plotargs
-            )
+            plot = px.box(df_plot, color=DataFrameStrings.EXPERIMENT, **plotargs)
         elif plot_type == "violin":
-            plot = px.violin(
-                df.reset_index(), color=DataFrameStrings.EXPERIMENT, **plotargs
-            )
+            plot = px.violin(df_plot, color=DataFrameStrings.EXPERIMENT, **plotargs)
         elif plot_type == "stacked":
             plot = px.bar(
-                df.reset_index(),
+                df_plot,
                 color=DataFrameStrings.CLUSTER,
                 barmode="stack",
                 **plotargs,
             )
             plot.update_layout(
                 legend_traceorder="reversed",
-                height=30 * len(df.reset_index().Cluster.unique()),
+                height=30 * len(df_plot[DataFrameStrings.CLUSTER].unique()),
             ).update_traces(marker_line_color="black", marker_line_width=1)
         elif plot_type == "histogram":
             plot = px.histogram(
-                df.reset_index(),
+                df_plot,
                 x="distance",
                 color=DataFrameStrings.EXPERIMENT,
                 barmode="overlay",

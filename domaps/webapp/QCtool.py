@@ -428,9 +428,7 @@ def execution(event):
     cache_run.value = False
     try:
         global i_class
-        i_class = domaps.SpatialDataSet.from_settings(
-            i_FileConfig.get_settings(), legacy=False
-        )
+        i_class = domaps.SpatialDataSet.from_settings(i_FileConfig.get_settings())
         i_class.run_pipeline(
             content=BytesIO(i_FileConfig._content.file.value),
             progressbar=analysis_status,
