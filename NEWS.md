@@ -2,7 +2,10 @@
 
 ## Version 1.0.4-dev0
 
-No changes yet.
+- FIX: tsv loading now works
+- FIX: Intramap scatter bugs fixed
+- ADDED: String constants and default settings in constants.py
+- REMOVED: Support for settings generated before version 1.0 (legacy mode)
 
 ## Version 1.0.3
 
