@@ -56,7 +56,7 @@ domaps = ["annotations/*", "referencedata/*", "img/*"]
 dependencies = {file = ["requirements/requirements.txt"]}
 optional-dependencies.stable = { file = [ "requirements/requirements_stable.txt"
 ] }
-optional-dependencies.gui = { file = [ "requirements/requirements_gui.txt", "requirements/requitements_strict.txt"
+optional-dependencies.gui = { file = [ "requirements/requirements_gui.txt", "requirements/requirements_stable.txt"
 ] }
 optional-dependencies.development = { file = ["requirements/requirements_development.txt"
 ] }
