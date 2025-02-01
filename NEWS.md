@@ -1,11 +1,14 @@
 # Releases of domaps and associated webapps
 
-## Version 1.0.4-dev0
+## Version 1.0.4
 
-- FIX: tsv loading now works
-- FIX: Intramap scatter bugs fixed
+- FIX: tsv were read as csv
+- FIX: Intramap scatter index duplication
 - ADDED: String constants and default settings in constants.py
-- REMOVED: Support for settings generated before version 1.0 (legacy mode)
+- ADDED: json files now contain domaps version used for generating them
+ - data files: current running version
+ - settings: version of last change regarding settings
+- REMOVED: legacy mode arguments for SpatialDataSet
 
 ## Version 1.0.3
 
