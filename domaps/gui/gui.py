@@ -30,6 +30,8 @@ plotly_config = {
     }
 }
 
+settings_version = "1.0.4"
+
 
 class ValidationError(Exception):
     pass
@@ -1939,6 +1941,7 @@ class ConfigureSingleFile(Viewer):
             ]
         )
         settings["comment"] = self._comment.value
+        settings["domaps_settings_version"] = settings_version
         if "quality_filter" not in settings.keys():
             settings["quality_filter"] = []
         # the following line will update the interface once with the settings.
