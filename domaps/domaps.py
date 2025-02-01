@@ -38,6 +38,8 @@ from domaps.constants import (
     SettingStrings,
 )
 
+from domaps.__init__ import __version__ as version
+
 
 def natsort_index_keys(x):
     order = natsort.natsorted(np.unique(x.values))
@@ -513,6 +515,8 @@ class SpatialDataSet:
             SettingStrings.COMMENT: self.comment,
             SettingStrings.ORGANISM: self.organism,
             "processing steps": "\n".join(processing_steps),
+            "legacy": False,  # TODO: remove this with 2.0 (only required for reading new files with versions < 1.0.4)
+            "domaps version": version,
         }
         self.analysis_summary_dict["Analysis parameters"] = analysis_parameters.copy()
 
@@ -2332,7 +2336,33 @@ class SpatialDataSetComparison:
         self.mixed = mixed
         self.fractions = fractions
 
-        self.markerproteins = json_dict[self.ref_exp][SettingStrings.COMPLEXES]
+        # This is to support files written between 1.0.0 and 1.0.3 (legacy) and files written from 1.0.4 onwards (version)
+        if (
+            "legacy" in json_dict[self.ref_exp]["Analysis parameters"]
+            or "domaps version" in json_dict[self.ref_exp]["Analysis parameters"]
+        ):
+            self.markerproteins = json_dict[self.ref_exp][SettingStrings.COMPLEXES]
+        # This is to support files written before 1.0
+        else:
+            try:
+                organism = json_dict[list(json_dict.keys())[0]]["Analysis parameters"][
+                    SettingStrings.ORGANISM
+                ]
+            except:
+                organism = "Homo sapiens - Uniprot"
+
+            marker_table = pd.read_csv(
+                pkg_resources.resource_stream(
+                    __name__, "annotations/complexes/{}.csv".format(organism)
+                )
+            )
+            self.markerproteins = {
+                k: v.replace(" ", "").split(",")
+                for k, v in zip(
+                    marker_table[DataFrameStrings.CLUSTER],
+                    marker_table["Members - Protein IDs"],
+                )
+            }
 
         self.clusters_for_ranking = self.markerproteins.keys()
 
