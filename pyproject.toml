@@ -60,6 +60,8 @@ optional-dependencies.gui = { file = [ "requirements/requirements_gui.txt", "req
 ] }
 optional-dependencies.development = { file = ["requirements/requirements_development.txt"
 ] }
+optional-dependencies.viz = { file = ["requirements/requirements_viz.txt"
+] }
 
 version = {attr = "domaps.__version__"}
 

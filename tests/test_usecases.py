@@ -5,6 +5,8 @@ import os
 import pkg_resources
 import json
 
+test_viz = False
+
 
 class TestAnalysis:
     filenames = {
@@ -93,7 +95,8 @@ class TestBenchmark:
         # run plotting functions
         comp.quantity_pr_pg_barplot_comparison(multi_choice)
         comp.coverage_comparison(multi_choice)
-        comp.venn_sections(multi_choice, omit_size=50)
+        if test_viz:
+            comp.venn_sections(multi_choice, omit_size=50)
         comp.get_complex_coverage(5)
         comp.plot_intramap_scatter(
             multi_choice=multi_choice,
