@@ -1,16 +1,10 @@
-matplotlib
-matplotlib-venn
-numba
 numpy<2
 plotly
 scikit-learn
 scipy
 statsmodels
-UpSetPlot
 requests
 statistics
 natsort
-datashader
 # TODO: Check difference between pandas 2.2.3 and pandas 2.0.0 (test_DOM_DDA fails)
 pandas==2.0.0
-dask<=2024.8 # pyarrow optional requirement is not actually optional

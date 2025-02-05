@@ -1,0 +1,6 @@
+
+datashader
+dask<=2024.8 # pyarrow optional requirement is not actually optional
+UpSetPlot
+matplotlib
+matplotlib-venn
