@@ -5,7 +5,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
-import datashader as ds
 import re
 from io import BytesIO, StringIO
 from sklearn.decomposition import PCA
@@ -18,11 +17,6 @@ from scipy.stats import chi2
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import combine_pvalues
 import statistics
-import matplotlib.pyplot as plt
-from matplotlib_venn import venn2, venn3
-from PIL import Image
-from upsetplot import from_memberships
-from upsetplot import plot as upplot
 import pkg_resources
 from scipy.stats import zscore
 import urllib.parse
@@ -31,6 +25,18 @@ import bisect
 import inspect
 import warnings
 from itertools import cycle, combinations
+
+try:
+    from upsetplot import from_memberships
+    from upsetplot import plot as upplot
+    import matplotlib.pyplot as plt
+    from matplotlib_venn import venn2, venn3
+    import datashader as ds
+    from PIL import Image
+except:
+    warnings.warn(
+        'Not all visualizations will work because of the following libraries is missing (upsetplot, matplotlib, matplotlib_venn or datashader). Run `pip install "domaps[viz]"`'
+    )
 
 from domaps.constants import (
     DataFrameStrings,
