@@ -3051,17 +3051,16 @@ class SpatialDataSetComparison:
 
             return distance_boxplot_figure
 
-    def plot_intramap_scatter(
+    def aggregate_cluster_scatter(
         self,
         normalization=np.median,
         aggregate_proteins=True,
         aggregate_maps=False,
-        plot_type="strip",
         min_size=5,
         multi_choice=None,
         clusters_for_ranking=None,
-        highlight=None,
     ):
+        """Aggregate the cluster distances for ranking"""
         if multi_choice is None:
             multi_choice = self.exp_names
         if clusters_for_ranking is None:
@@ -3122,13 +3121,6 @@ class SpatialDataSetComparison:
                 columns=["distance"],
             )
 
-        plotargs = dict(
-            x=DataFrameStrings.EXPERIMENT,
-            y="distance",
-            hover_data=df.index.names,
-            template="simple_white",
-        )
-
         df = df.sort_values("distance", ascending=False).sort_index(
             level=DataFrameStrings.EXPERIMENT,
             key=lambda x: pd.Index(
@@ -3136,7 +3128,36 @@ class SpatialDataSetComparison:
             ),
         )
 
+        return df
+
+    def plot_intramap_scatter(
+        self,
+        normalization=np.median,
+        aggregate_proteins=True,
+        aggregate_maps=False,
+        plot_type="strip",
+        min_size=5,
+        multi_choice=None,
+        clusters_for_ranking=None,
+        highlight=None,
+    ):
+        df = self.aggregate_cluster_scatter(
+            normalization=normalization,
+            aggregate_proteins=aggregate_proteins,
+            aggregate_maps=aggregate_maps,
+            min_size=min_size,
+            multi_choice=multi_choice,
+            clusters_for_ranking=clusters_for_ranking,
+        )
+
         medians = df.groupby(DataFrameStrings.EXPERIMENT).median()
+
+        plotargs = dict(
+            x=DataFrameStrings.EXPERIMENT,
+            y="distance",
+            hover_data=df.index.names,
+            template="simple_white",
+        )
 
         df_plot = df.reset_index()
 
