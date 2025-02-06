@@ -25,6 +25,7 @@ import bisect
 import inspect
 import warnings
 from itertools import cycle, combinations
+from typing import Union, Any
 
 try:
     from upsetplot import from_memberships
@@ -42,6 +43,7 @@ from domaps.constants import (
     DataFrameStrings,
     DefaultAcquisitionSettings,
     SettingStrings,
+    ValidStringSettings,
 )
 
 from domaps.__init__ import __version__ as version
@@ -58,9 +60,7 @@ def natsort_list_keys(x):
 
 
 class SpatialDataSet:
-    regex = {
-        "imported_columns": "^[Rr]atio H/L (?!normalized|type|is.*|variability|count)[^ ]+|^Ratio H/L variability.... .+|^Ratio H/L count .+|id$|[Mm][Ss].*[cC]ount.+$|[Ll][Ff][Qq].*|.*[nN]ames.*|.*[Pp][rR]otein.[Ii][Dd]s.*|[Pp]otential.[cC]ontaminant|[Oo]nly.[iI]dentified.[bB]y.[sS]ite|[Rr]everse|[Ss]core|[Qq]-[Vv]alue|R.Condition|PG.Genes|PG.ProteinGroups|PG.Cscore|PG.Qvalue|PG.RunEvidenceCount|PG.Quantity|^Proteins$|^Sequence$"
-    }
+    """All data states, calculations and plotting required for the analysis of an individual set of spatial proteomics data are stored in this class."""
 
     # fmt: off
     css_color = ["#b2df8a","#6a3d9a","#e31a1c","#b15928","#fdbf6f","#ff7f00","#cab2d6","#fb9a99","#1f78b4","#ffff99","#a6cee3","#33a02c","blue","orange","goldenrod","lightcoral","magenta","brown","lightpink","red","turquoise","khaki","darkgoldenrod","darkturquoise","darkviolet","greenyellow","darksalmon","hotpink","indianred","indigo","darkolivegreen","coral","aqua","beige","bisque","black","blanchedalmond","blueviolet","burlywood","cadetblue","yellowgreen","chartreuse","chocolate","cornflowerblue","cornsilk","darkblue","darkcyan","darkgray","darkgrey","darkgreen","darkkhaki","darkmagenta","darkorange","darkorchid","darkred","darkseagreen","darkslateblue","snow","springgreen","darkslategrey","mediumpurple","oldlace","olive","lightseagreen","deeppink","deepskyblue","dimgray","dimgrey","dodgerblue","firebrick","floralwhite","forestgreen","fuchsia","gainsboro","ghostwhite","gold","gray","ivory","lavenderblush","lawngreen","lemonchiffon","lightblue","lightcyan","fuchsia","gainsboro","ghostwhite","gold","gray","ivory","lavenderblush","lawngreen","lemonchiffon","lightblue","lightcyan","lightgoldenrodyellow","lightgray","lightgrey","lightgreen","lightsalmon","lightskyblue","lightslategray","lightslategrey","lightsteelblue","lightyellow","lime","limegreen","linen","maroon","mediumaquamarine","mediumblue","mediumseagreen","mediumslateblue","mediumspringgreen","mediumturquoise","mediumvioletred","midnightblue","mintcream","mistyrose","moccasin","olivedrab","orangered","orchid","palegoldenrod","palegreen","paleturquoise","palevioletred","papayawhip","peachpuff","peru","pink","plum","powderblue","rosybrown","royalblue","saddlebrown","salmon","sandybrown","seagreen","seashell","sienna","silver","skyblue","slateblue","steelblue","teal","thistle","tomato","violet","wheat","white","whitesmoke","slategray","slategrey","aquamarine","azure","crimson","cyan","darkslategray","grey","mediumorchid","navajowhite","navy"]
@@ -68,37 +68,53 @@ class SpatialDataSet:
 
     def __init__(
         self,
-        filename,
-        expname,
-        acquisition="LFQ",
-        source="MaxQuant_proteins_pivot",  # future
-        orientation="pivot",  # future
-        comment="",
-        name_pattern="e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)",
-        reannotate_genes=False,
-        reannotation_source={"source": False, "idmapping": None},
-        RatioCount=2,
-        RatioVariability=30,
-        average_MSMS_counts=2,  # future
-        consecutive=4,  # future
-        organism="Homo sapiens - Uniprot",  # future
-        organelles="Homo sapiens - Uniprot",  # future
-        complexes="Homo sapiens - Uniprot",  # future
-        fractions=[],
+        filename: str,
+        expname: str,
+        acquisition: str = SettingStrings.LFQ_ACQUISITION,
+        source: str = SettingStrings.MAXQUANT_PROTEINS_PIVOT,
+        orientation: str = ValidStringSettings.ORIENTATION_PIVOT,
+        comment: str = "",
+        name_pattern: str = "e.g.:.* (?P<cond>.*)_(?P<rep>.*)_(?P<frac>.*)",
+        reannotation_source: dict = {"source": False, "idmapping": None},
+        organism: str = "Homo sapiens - Uniprot",
+        organelles: Union[str, StringIO] = "Homo sapiens - Uniprot",
+        complexes: Union[str, StringIO] = "Homo sapiens - Uniprot",
+        fractions: list = [],
+        *,
+        reannotate_genes: bool = False,
         **kwargs,
     ):
         self.filename = filename
         self.expname = expname
         self.acquisition = acquisition
-        self.name_pattern = name_pattern
-        self.comment = comment
-        self.fractions = fractions
-
         self.source = source
         self.orientation = orientation
+        self.comment = comment
+        self.name_pattern = name_pattern
+        self.fractions = fractions
+        self.kwargs = kwargs
 
-        self.map_names = []
-        self.df_01_stacked, self.df_log_stacked = pd.DataFrame(), pd.DataFrame()
+        # TODO: Turn these into properties to be able to depracate them
+        # Parse acquisition
+        if acquisition == SettingStrings.SILAC_ACQUISITION:
+            self.RatioCount = kwargs.get(SettingStrings.RATIOCOUNT, 2)
+            self.RatioVariability = kwargs.get(SettingStrings.RATIOVARIABILITY, 30)
+            self.mainset = DataFrameStrings.RATIO
+
+        elif acquisition != SettingStrings.SILAC_ACQUISITION:
+            self.average_MSMS_counts = kwargs.get(SettingStrings.AVERAGE_MSMS_COUNTS, 2)
+            self.consecutive = kwargs.get(SettingStrings.CONSECUTIVE, 4)
+            self.mainset = DefaultAcquisitionSettings[acquisition][SettingStrings.SETS][
+                0
+            ]
+
+        # Inititalize attributes filled by process_input method
+        self.map_names = []  # All individual map names in the experiment
+        self.df_01_stacked = pd.DataFrame()  # 0-to-1 normalized data in long format, where columns correspond to sets only, Map and Fraction are index levels
+        self.df_log_stacked = pd.DataFrame()  # Logarithmized data in long format, where columns correspond to sets only, Map and Fraction are index levels
+        self.transformed_mainset: str = (
+            self.mainset
+        )  # The name of the mainset after transformation, used for downstream analysis
 
         if SettingStrings.REANNOTATE in kwargs.keys():
             reannotate_genes = kwargs[SettingStrings.REANNOTATE]
@@ -107,24 +123,12 @@ class SpatialDataSet:
         if reannotate_genes:
             self.reannotation_source = reannotation_source
 
-        if acquisition == SettingStrings.SILAC_ACQUISITION:
-            self.RatioCount = RatioCount
-            self.RatioVariability = RatioVariability
-            self.mainset = DataFrameStrings.RATIO
-
-        elif acquisition != SettingStrings.SILAC_ACQUISITION:
-            self.average_MSMS_counts = average_MSMS_counts
-            self.consecutive = consecutive
-            self.mainset = DefaultAcquisitionSettings[acquisition][SettingStrings.SETS][
-                0
-            ]
-
-        self.transformed_mainset = self.mainset
-
+        # TODO: Extract this to a method
         self.organism = organism
         if complexes + ".csv" in pkg_resources.resource_listdir(
             __name__, "annotations/complexes"
         ):
+            # TODO: Deduplicate this code
             marker_table = pd.read_csv(
                 pkg_resources.resource_stream(
                     __name__, "annotations/complexes/{}.csv".format(complexes)
@@ -136,28 +140,38 @@ class SpatialDataSet:
             k: v.replace(" ", "").split(",")
             for k, v in zip(
                 marker_table[DataFrameStrings.CLUSTER],
-                marker_table["Members - Protein IDs"],
+                marker_table[DataFrameStrings.CLUSTER_MEMBERS],
             )
         }
         if organelles + ".csv" in pkg_resources.resource_listdir(
             __name__, "annotations/organellemarkers"
         ):
+            # TODO: Deduplicate this code
             df_organellarMarkerSet = pd.read_csv(
                 pkg_resources.resource_stream(
                     __name__,
                     "annotations/organellemarkers/{}.csv".format(organelles),
                 ),
-                usecols=lambda x: bool(re.match("Compartment|Protein ID", x)),
+                usecols=lambda x: bool(
+                    re.match(
+                        f"{DataFrameStrings.COMPARTMENT}|{DataFrameStrings.COMPARTMENT_PROTEIN_ID}",
+                        x,
+                    )
+                ),
             ).drop_duplicates()
         else:
             df_organellarMarkerSet = pd.read_csv(
                 StringIO(organelles),
-                usecols=lambda x: bool(re.match("Compartment|Protein ID", x)),
+                usecols=lambda x: bool(
+                    re.match(
+                        f"{DataFrameStrings.COMPARTMENT}|{DataFrameStrings.COMPARTMENT_PROTEIN_ID}",
+                        x,
+                    )
+                ),
             ).drop_duplicates()
         self.df_organellarMarkerSet = df_organellarMarkerSet
 
-        self.kwargs = kwargs
-
+        # Generate regex for column import
         self.imported_columns = generate_usecols_regex(
             sets=kwargs[SettingStrings.SETS],
             original_protein_ids=kwargs[SettingStrings.ORIGINAL_PROTEIN_IDS],
@@ -167,10 +181,39 @@ class SpatialDataSet:
             annotation_columns=kwargs.get(SettingStrings.ANNOTATION_COLUMNS, None),
         )
 
+        # Initialize empty dictionaries for storing analysis results
         self.analysed_datasets_dict = {}
         self.analysis_summary_dict = {}
 
-    def from_settings(settings):
+    @staticmethod
+    def validate_settings(settings) -> None:
+        """
+        Validate the settings dictionary.
+
+        Args:
+            settings: dictionary with settings
+
+        Raises:
+            ValueError: If the settings are invalid
+        """
+        # TODO: Implement this
+        pass
+
+    @staticmethod
+    def from_settings(settings) -> "SpatialDataSet":
+        """
+        Create a SpatialDataSet object from a settings dictionary.
+
+        See the SpatialDataSet constructor and the SettingStrings for details on the settings.
+        After initialization it is recommended to call run_pipeline to process the data.
+
+        Args:
+            settings: dictionary with settings
+
+        Returns:
+            SpatialDataSet: The created SpatialDataSet object
+        """
+        SpatialDataSet.validate_settings(settings)
         settings[SettingStrings.REANNOTATION_SOURCE] = parse_reannotation_source(
             settings[SettingStrings.REANNOTATE],
             settings[SettingStrings.REANNOTATION_SOURCE],
@@ -178,7 +221,9 @@ class SpatialDataSet:
         ds = SpatialDataSet(**settings)
         return ds
 
-    def run_pipeline(self, content=None, progressbar=None):
+    def run_pipeline(
+        self, content: Union[StringIO | str | Any] = None, progressbar=None
+    ) -> None:
         """
         Run the whole processing pipeline without generating any visual output.
 
@@ -215,7 +260,9 @@ class SpatialDataSet:
         self.results_overview_table()
         setprogress("Analysis finished.")
 
-    def data_reading(self, filename=None, content=None):
+    def data_reading(
+        self, filename: str = None, content: Union[StringIO | str | Any] = None
+    ):
         """
         Data import. Can read the df_original from a file or buffer.
         df_original contains all information of the raw file; tab separated file is imported,
@@ -268,8 +315,6 @@ class SpatialDataSet:
         """ """
 
         processing_steps = []
-
-        orientation = self.orientation
 
         ## Format data based on input columns
         if self.orientation == "long":
@@ -389,14 +434,18 @@ class SpatialDataSet:
                 in self.kwargs[SettingStrings.QUALITY_FILTER]
             ):
                 df_filtered = filter_SILAC_countvar(
-                    df_filtered, self.RatioCount, self.RatioVariability
+                    df_filtered,
+                    self.kwargs[SettingStrings.RATIOCOUNT],
+                    self.kwargs[SettingStrings.RATIOVARIABILITY],
                 )
                 processing_steps.append("Filtering SILAC countvar")
             if (
                 SettingStrings.FILTER_MSMS_COUNT
                 in self.kwargs[SettingStrings.QUALITY_FILTER]
             ):
-                df_filtered = filter_msms_count(df_filtered, self.average_MSMS_counts)
+                df_filtered = filter_msms_count(
+                    df_filtered, self.kwargs[SettingStrings.AVERAGE_MSMS_COUNTS]
+                )
                 processing_steps.append("Filtering MSMS count")
             if (
                 SettingStrings.FILTER_CONSECUTIVE
@@ -404,7 +453,7 @@ class SpatialDataSet:
             ):
                 df_filtered = filter_consecutive(
                     df_filtered,
-                    self.consecutive,
+                    self.kwargs[SettingStrings.CONSECUTIVE],
                     sets={DataFrameStrings.ABUNDANCE: self.mainset},
                 )
                 processing_steps.append("Filtering consecutive values")
@@ -2366,7 +2415,7 @@ class SpatialDataSetComparison:
                 k: v.replace(" ", "").split(",")
                 for k, v in zip(
                     marker_table[DataFrameStrings.CLUSTER],
-                    marker_table["Members - Protein IDs"],
+                    marker_table[DataFrameStrings.CLUSTER_MEMBERS],
                 )
             }
 
@@ -4873,8 +4922,9 @@ def reframe_df_01_fromJson_for_Perseus(json_dict):
 def parse_reannotation_source(mode, source):
     reannotation_source = {}
     reannotation_source["source"] = mode
-    reannotate = bool(mode)
-    if mode == "fasta_headers":
+    if not bool(mode):
+        pass
+    elif mode == "fasta_headers":
         if "\n" in source:
             idmapping = [el for el in source.split("\n")]
         else:
@@ -4899,6 +4949,8 @@ def parse_reannotation_source(mode, source):
                 usecols=["Entry", "Gene names  (primary )"],
             )
         reannotation_source["idmapping"] = idmapping
+    else:
+        raise ValueError(f"Unkown source for gene reannotation: {mode}")
     return reannotation_source
 
 
