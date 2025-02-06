@@ -25,7 +25,7 @@ import bisect
 import inspect
 import warnings
 from itertools import cycle, combinations
-from typing import Union, Any
+from typing import Union, Any, List, Dict
 
 try:
     from upsetplot import from_memberships
@@ -222,7 +222,7 @@ class SpatialDataSet:
         return ds
 
     def run_pipeline(
-        self, content: Union[StringIO | str | Any] = None, progressbar=None
+        self, content: Union[StringIO, str, Any] = None, progressbar=None
     ) -> None:
         """
         Run the whole processing pipeline without generating any visual output.
@@ -261,7 +261,7 @@ class SpatialDataSet:
         setprogress("Analysis finished.")
 
     def data_reading(
-        self, filename: str = None, content: Union[StringIO | str | Any] = None
+        self, filename: str = None, content: Union[StringIO, str, Any] = None
     ):
         """
         Data import. Can read the df_original from a file or buffer.
@@ -2770,9 +2770,12 @@ class SpatialDataSetComparison:
 
         return fig_global_pca
 
-    def _get_marker_proteins(self, experiments, cluster):
-        df_in = self.df_01_filtered_combined.copy()
-        markers = self.markerproteins[cluster]
+    @staticmethod
+    def _get_marker_proteins(
+        df_in: pd.DataFrame, experiments: List, markers: List, cluster: str
+    ):
+        # df_in = self.df_01_filtered_combined.copy()
+        # markers = self.markerproteins[cluster]
 
         # retrieve marker proteins
         df_cluster = pd.DataFrame()
@@ -2831,8 +2834,9 @@ class SpatialDataSetComparison:
 
         return df_cluster
 
+    @staticmethod
     def _calc_cluster_distances(
-        self, df_cluster, complex_profile=np.median, distance_measure="manhattan"
+        df_cluster, complex_profile=np.median, distance_measure="manhattan"
     ):
         df_distances = pd.DataFrame()
 
@@ -2865,22 +2869,64 @@ class SpatialDataSetComparison:
         )
         return df_distances
 
-    def calc_biological_precision(self, experiments=None, clusters=None):
+    def calc_biological_precision(
+        self, experiments: Union[List, None] = None, clusters: Union[List, None] = None
+    ) -> pd.DataFrame:
         """
-        Method to calculate the distance table for assessing biological precision
-        """
+        Method to calculate the distance table for assessing biological precision.
 
-        df_distances = pd.DataFrame()
+        Args:
+            experiments: list of experiment names
+            clusters: list of protein clusters
+
+        Returns:
+            pd.DataFrame, distance table
+        """
         if experiments is None:
             experiments = self.exp_names
         if clusters is None:
             clusters = self.markerproteins.keys()
+        df_distances = self._calc_biological_precision(
+            df01=self.df_01_filtered_combined.copy(),
+            experiments=experiments,
+            markerproteins=self.markerproteins,
+            clusters=clusters,
+        )
+        self.df_distance_comp = df_distances
+        return df_distances
+
+    @staticmethod
+    def _calc_biological_precision(
+        df01: pd.DataFrame,
+        experiments: List,
+        markerproteins: Dict,
+        clusters: List,
+    ) -> pd.DataFrame:
+        """
+        Method to calculate the distance table for assessing biological precision.
+
+        Args:
+            df01: pd.DataFrame, 0/1 normalized data
+            experiments: list of experiment names
+            markerproteins: dict, key: cluster name, value: protein ids
+            clusters: list of protein clusters
+
+        Returns:
+            pd.DataFrame, distance table
+        """
+
+        df_distances = pd.DataFrame()
 
         for cluster in clusters:
-            df_cluster = self._get_marker_proteins(experiments, cluster)
+            df_cluster = SpatialDataSetComparison._get_marker_proteins(
+                df_in=df01,
+                experiments=experiments,
+                markers=markerproteins[cluster],
+                cluster=cluster,
+            )
             if len(df_cluster) == 0:
                 continue
-            dists_cluster = self._calc_cluster_distances(df_cluster)
+            dists_cluster = SpatialDataSetComparison._calc_cluster_distances(df_cluster)
             df_distances = pd.concat([df_distances, dists_cluster])
         if len(df_distances) == 0:
             raise ValueError(
@@ -2904,14 +2950,17 @@ class SpatialDataSetComparison:
             ],
         )
 
-        self.df_distance_comp = df_distances
-
         return df_distances
 
     def get_complex_coverage(self, min_n=5):
         full_coverage = {}
         for complx in self.markerproteins.keys():
-            df = self._get_marker_proteins(self.exp_names, complx)
+            df = self._get_marker_proteins(
+                df_in=self.df_01_filtered_combined.copy(),
+                experiments=self.exp_names,
+                markers=self.markerproteins[complx],
+                cluster=complx,
+            )
             if len(df) >= min_n:
                 full_coverage[complx] = len(df)
         partial_coverage = {}
@@ -2919,7 +2968,12 @@ class SpatialDataSetComparison:
             for complx in self.markerproteins.keys():
                 if complx in full_coverage.keys():
                     continue
-                df = self._get_marker_proteins([exp], complx)
+                df = self._get_marker_proteins(
+                    df_in=self.df_01_filtered_combined.copy(),
+                    experiments=[exp],
+                    markers=self.markerproteins[complx],
+                    cluster=complx,
+                )
                 # print(df)
                 if complx in partial_coverage.keys():
                     partial_coverage[complx].append(len(df))
