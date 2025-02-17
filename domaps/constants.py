@@ -41,6 +41,10 @@ class DataFrameStrings(metaclass=_ConstantsClass):
     NORMALIZED_PROFILE = "normalized profile"
     LOG_PROFILE = "log profile"
 
+    # Annotation file columns names
+    CLUSTER_MEMBERS = "Members - Protein IDs"
+    COMPARTMENT_PROTEIN_ID = "Protein ID"
+
 
 class SettingStrings(metaclass=_ConstantsClass):
     # These are various strings used within settings files to define the processing pipeline. Changes make ols settings files incompatible.
@@ -95,6 +99,11 @@ class SettingStrings(metaclass=_ConstantsClass):
     REANNOTATION_SOURCE = "reannotation_source"
     ORGANELLES = "organelles"
     COMPLEXES = "complexes"
+
+
+class ValidStringSettings(metaclass=_ConstantsClass):
+    ORIENTATION_PIVOT = "pivot"
+    ORIENTATION_LONG = "long"
 
 
 DefaultAcquisitionSettings = {

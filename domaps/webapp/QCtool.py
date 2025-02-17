@@ -2204,7 +2204,7 @@ def update_profile_comparison(
                     .reset_index()
                     .rename({0: "Profile [% total signal]"}, axis=1)
                 )
-                plotdata = plotdata.append(el_df)
+                plotdata = pd.concat([plotdata, el_df])
             if len(plotdata) > 0:
                 plotdata.sort_values(
                     "Fraction", key=domaps.natsort_list_keys, inplace=True
