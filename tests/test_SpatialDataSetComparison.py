@@ -88,7 +88,9 @@ def test_calc_biological_precision_values():
     ]
 
     # Values are correct
-    assert df_returned.iloc[0, :].to_list() == [
+    assert df_returned.query(
+        "Exp_Map == 'DDA_Borner_Map1' & `Gene names` == 'AGPS'"
+    ).iloc[0, :].to_list() == [
         "DDA_Borner_Map1",
         "AGPS",
         "O00116",

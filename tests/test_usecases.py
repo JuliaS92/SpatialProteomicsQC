@@ -43,12 +43,14 @@ class TestAnalysis:
             data.reframe_df_01ORlog_for_Perseus(data.df_01_stacked).reset_index(),
             read_csv(dfoutput),
             check_dtype=False,
+            check_like=True,
         )
 
         assert_frame_equal(
             data.results_overview_table().reset_index(),
             read_csv(overview),
             check_dtype=False,
+            check_like=True,
         )
 
     def test_HCC827(self):
