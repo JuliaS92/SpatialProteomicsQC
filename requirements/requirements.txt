@@ -7,4 +7,4 @@ requests
 statistics
 natsort
 # TODO: Check difference between pandas 2.2.3 and pandas 2.0.0 (test_DOM_DDA fails)
-pandas==2.0.0
+pandas<2.2.3
