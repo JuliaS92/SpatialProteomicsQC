@@ -84,6 +84,25 @@ class SpatialDataSet:
         reannotate_genes: bool = False,
         **kwargs,
     ):
+        """
+        Initialize a SpatialDataSet object.
+
+        Args:
+            filename: Path to the input file.
+            expname: Name of the experiment.
+            acquisition: Type of acquisition (default: LFQ).
+            source: Source of the data (default: MaxQuant pivot format).
+            orientation: Orientation of the data (default: pivot).
+            comment: Additional comments.
+            name_pattern: Regex pattern for identifying replicate, condition and fractions from sample or file names.
+            reannotation_source: Source for reannotation.
+            organism: Organism name.
+            organelles: Organelles information, this is either a filename if a preset is used, or a readable that can be passed to read_csv.
+            complexes: Complexes information, this is either a filename if a preset is used, or a readable that can be passed to read_csv.
+            fractions: List of fractions in the order they should be used.
+            reannotate_genes: Whether to reannotate genes.
+            kwargs: Additional keyword arguments required for data formatting and filtering. See SettingStrings for details.
+        """
         self.filename = filename
         self.expname = expname
         self.acquisition = acquisition
@@ -435,8 +454,8 @@ class SpatialDataSet:
             ):
                 df_filtered = filter_SILAC_countvar(
                     df_filtered,
-                    self.kwargs[SettingStrings.RATIOCOUNT],
-                    self.kwargs[SettingStrings.RATIOVARIABILITY],
+                    self.kwargs.get(SettingStrings.RATIOCOUNT, 2),
+                    self.kwargs.get(SettingStrings.RATIOVARIABILITY, 30),
                 )
                 processing_steps.append("Filtering SILAC countvar")
             if (
@@ -556,7 +575,7 @@ class SpatialDataSet:
             ]
         ).reset_index(drop=True)
 
-        # poopulate analysis summary dictionary with (meta)data
+        # populate analysis summary dictionary with (meta)data
         self.analysis_summary_dict["0/1 normalized data"] = df_01_comparison.to_json()
         self.analysis_summary_dict[SettingStrings.ORGANELLES] = (
             self.df_organellarMarkerSet.to_json()
