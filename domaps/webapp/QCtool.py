@@ -2235,26 +2235,29 @@ def update_profile_comparison(
                 el_df = i_class_comp.df_01_filtered_combined.xs(
                     el, level="Compartment", axis=0, drop_level=False
                 )
-                plotdata = plotdata.append(
-                    el_df.stack("Fraction")
-                    .groupby(["Compartment", "Map", "Experiment", "Fraction"])
-                    .apply(
-                        lambda x: pd.Series(
-                            {
-                                "Profile [% total signal]": np.nanmean(x),
-                                "std": np.nanstd(x),
-                                "sem": np.nanstd(x) / np.sqrt(sum(np.isfinite(x))),
-                            }
+                plotdata = pd.concat(
+                    [
+                        plotdata,
+                        el_df.stack("Fraction")
+                        .groupby(["Compartment", "Map", "Experiment", "Fraction"])
+                        .apply(
+                            lambda x: pd.Series(
+                                {
+                                    "Profile [% total signal]": np.nanmean(x),
+                                    "std": np.nanstd(x),
+                                    "sem": np.nanstd(x) / np.sqrt(sum(np.isfinite(x))),
+                                }
+                            )
                         )
-                    )
-                    .reset_index()
-                    .rename(columns={"level_4": "measure", 0: "value"})
-                    .set_index(
-                        ["Compartment", "Map", "Experiment", "Fraction", "measure"]
-                    )
-                    .unstack("measure")
-                    .droplevel(0, axis=1)
-                    .reset_index()
+                        .reset_index()
+                        .rename(columns={"level_4": "measure", 0: "value"})
+                        .set_index(
+                            ["Compartment", "Map", "Experiment", "Fraction", "measure"]
+                        )
+                        .unstack("measure")
+                        .droplevel(0, axis=1)
+                        .reset_index(),
+                    ]
                 )
             if len(plotdata) > 0:
                 plotdata.sort_values(
