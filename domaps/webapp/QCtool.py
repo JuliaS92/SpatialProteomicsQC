@@ -945,7 +945,7 @@ def update_MRConfig(run):
             else:
                 return pn.Column(
                     i_class.conditions,
-                    pn.Str(traceback.format_exc(), width=600),
+                    pn.pane.Str(traceback.format_exc(), width=600),
                 )
     else:
         lo_movement_analysis.objects = lo_movement_analysis.objects[0:2]
