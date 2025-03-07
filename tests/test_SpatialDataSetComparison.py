@@ -1,14 +1,15 @@
 from domaps import SpatialDataSetComparison
 import json
 import os
-import pkg_resources
 from pytest import fixture
 import pandas as pd
 from unittest.mock import patch
 
 filenames_HeLa = [
-    os.path.join(os.path.dirname(__file__), "../domaps/referencedata/" + el)
-    for el in pkg_resources.resource_listdir("domaps", "referencedata")
+    el
+    for el in os.listdir(
+        os.path.join(os.path.dirname(__file__), "../domaps/referencedata")
+    )
     if "HeLa" in el
 ]
 
