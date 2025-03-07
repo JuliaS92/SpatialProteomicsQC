@@ -1,5 +1,6 @@
 import natsort
 import numpy as np
+import os
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -17,7 +18,6 @@ from scipy.stats import chi2
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import combine_pvalues
 import statistics
-import pkg_resources
 from scipy.stats import zscore
 import urllib.parse
 import urllib.request
@@ -47,6 +47,8 @@ from domaps.constants import (
 )
 
 from domaps.__init__ import __version__ as version
+
+DOMAPS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def natsort_index_keys(x):
@@ -144,14 +146,10 @@ class SpatialDataSet:
 
         # TODO: Extract this to a method
         self.organism = organism
-        if complexes + ".csv" in pkg_resources.resource_listdir(
-            __name__, "annotations/complexes"
-        ):
+        if complexes + ".csv" in os.listdir(DOMAPS_DIR + "/annotations/complexes"):
             # TODO: Deduplicate this code
             marker_table = pd.read_csv(
-                pkg_resources.resource_stream(
-                    __name__, "annotations/complexes/{}.csv".format(complexes)
-                )
+                f"{DOMAPS_DIR}/annotations/complexes/{complexes}.csv"
             )
         else:
             marker_table = pd.read_csv(StringIO(complexes))
@@ -162,15 +160,12 @@ class SpatialDataSet:
                 marker_table[DataFrameStrings.CLUSTER_MEMBERS],
             )
         }
-        if organelles + ".csv" in pkg_resources.resource_listdir(
-            __name__, "annotations/organellemarkers"
+        if organelles + ".csv" in os.listdir(
+            DOMAPS_DIR + "/annotations/organellemarkers"
         ):
             # TODO: Deduplicate this code
             df_organellarMarkerSet = pd.read_csv(
-                pkg_resources.resource_stream(
-                    __name__,
-                    "annotations/organellemarkers/{}.csv".format(organelles),
-                ),
+                f"{DOMAPS_DIR}/annotations/organellemarkers/{organelles}.csv",
                 usecols=lambda x: bool(
                     re.match(
                         f"{DataFrameStrings.COMPARTMENT}|{DataFrameStrings.COMPARTMENT_PROTEIN_ID}",
@@ -2426,9 +2421,7 @@ class SpatialDataSetComparison:
                 organism = "Homo sapiens - Uniprot"
 
             marker_table = pd.read_csv(
-                pkg_resources.resource_stream(
-                    __name__, "annotations/complexes/{}.csv".format(organism)
-                )
+                f"{DOMAPS_DIR}/annotations/complexes/{organism}.csv"
             )
             self.markerproteins = {
                 k: v.replace(" ", "").split(",")
@@ -5001,12 +4994,8 @@ def parse_reannotation_source(mode, source):
         if "\n" in source:
             idmapping = [el for el in source.split("\n")]
         else:
-            idmapping = [
-                el.decode("UTF-8").strip()
-                for el in pkg_resources.resource_stream(
-                    "domaps", f"annotations/idmapping/{source}.txt"
-                ).readlines()
-            ]
+            with open(f"{DOMAPS_DIR}/annotations/idmapping/{source}.txt") as f:
+                idmapping = [el.strip() for el in f.readlines()]
         reannotation_source["idmapping"] = idmapping
     elif mode == "tsv":
         if "\n" in source:
@@ -5015,9 +5004,7 @@ def parse_reannotation_source(mode, source):
             )
         else:
             idmapping = pd.read_csv(
-                pkg_resources.resource_stream(
-                    "domaps", f"annotations/idmapping/{source}.tab"
-                ),
+                f"{DOMAPS_DIR}/annotations/idmapping/{source}.tab",
                 sep="\t",
                 usecols=["Entry", "Gene names  (primary )"],
             )
