@@ -48,7 +48,7 @@ from domaps.constants import (
 
 from domaps.__init__ import __version__ as version
 
-DOMAPS_DIR = os.path.dirname(os.path.abspath(__file__))
+PACKAGE_ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def natsort_index_keys(x):
@@ -146,10 +146,12 @@ class SpatialDataSet:
 
         # TODO: Extract this to a method
         self.organism = organism
-        if complexes + ".csv" in os.listdir(DOMAPS_DIR + "/annotations/complexes"):
+        if complexes + ".csv" in os.listdir(
+            PACKAGE_ROOT_PATH + "/annotations/complexes"
+        ):
             # TODO: Deduplicate this code
             marker_table = pd.read_csv(
-                f"{DOMAPS_DIR}/annotations/complexes/{complexes}.csv"
+                f"{PACKAGE_ROOT_PATH}/annotations/complexes/{complexes}.csv"
             )
         else:
             marker_table = pd.read_csv(StringIO(complexes))
@@ -161,11 +163,11 @@ class SpatialDataSet:
             )
         }
         if organelles + ".csv" in os.listdir(
-            DOMAPS_DIR + "/annotations/organellemarkers"
+            PACKAGE_ROOT_PATH + "/annotations/organellemarkers"
         ):
             # TODO: Deduplicate this code
             df_organellarMarkerSet = pd.read_csv(
-                f"{DOMAPS_DIR}/annotations/organellemarkers/{organelles}.csv",
+                f"{PACKAGE_ROOT_PATH}/annotations/organellemarkers/{organelles}.csv",
                 usecols=lambda x: bool(
                     re.match(
                         f"{DataFrameStrings.COMPARTMENT}|{DataFrameStrings.COMPARTMENT_PROTEIN_ID}",
@@ -2421,7 +2423,7 @@ class SpatialDataSetComparison:
                 organism = "Homo sapiens - Uniprot"
 
             marker_table = pd.read_csv(
-                f"{DOMAPS_DIR}/annotations/complexes/{organism}.csv"
+                f"{PACKAGE_ROOT_PATH}/annotations/complexes/{organism}.csv"
             )
             self.markerproteins = {
                 k: v.replace(" ", "").split(",")
@@ -4994,7 +4996,7 @@ def parse_reannotation_source(mode, source):
         if "\n" in source:
             idmapping = [el for el in source.split("\n")]
         else:
-            with open(f"{DOMAPS_DIR}/annotations/idmapping/{source}.txt") as f:
+            with open(f"{PACKAGE_ROOT_PATH}/annotations/idmapping/{source}.txt") as f:
                 idmapping = [el.strip() for el in f.readlines()]
         reannotation_source["idmapping"] = idmapping
     elif mode == "tsv":
@@ -5004,7 +5006,7 @@ def parse_reannotation_source(mode, source):
             )
         else:
             idmapping = pd.read_csv(
-                f"{DOMAPS_DIR}/annotations/idmapping/{source}.tab",
+                f"{PACKAGE_ROOT_PATH}/annotations/idmapping/{source}.tab",
                 sep="\t",
                 usecols=["Entry", "Gene names  (primary )"],
             )

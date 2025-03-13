@@ -6,11 +6,11 @@ import pandas as pd
 from unittest.mock import patch
 
 filenames_HeLa = [
-    el
-    for el in os.listdir(
+    reference_dataset
+    for reference_dataset in os.listdir(
         os.path.join(os.path.dirname(__file__), "../domaps/referencedata")
     )
-    if "HeLa" in el
+    if "HeLa" in reference_dataset
 ]
 
 filenames_minimal = [
