@@ -147,7 +147,7 @@ class SpatialDataSet:
         # TODO: Extract this to a method
         self.organism = organism
         if complexes + ".csv" in os.listdir(
-            PACKAGE_ROOT_PATH + "/annotations/complexes"
+            f"{PACKAGE_ROOT_PATH}/annotations/complexes"
         ):
             # TODO: Deduplicate this code
             marker_table = pd.read_csv(
@@ -163,7 +163,7 @@ class SpatialDataSet:
             )
         }
         if organelles + ".csv" in os.listdir(
-            PACKAGE_ROOT_PATH + "/annotations/organellemarkers"
+            f"{PACKAGE_ROOT_PATH}/annotations/organellemarkers"
         ):
             # TODO: Deduplicate this code
             df_organellarMarkerSet = pd.read_csv(
