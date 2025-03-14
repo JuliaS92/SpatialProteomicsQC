@@ -14,7 +14,7 @@ Instructions for uploading data as well as sample data are included in the inter
 There are no special hardware requirements for running the QCtool. The code was tested on Linux and Windows and should also run on Mac.
 
 ### Setting up the environment
-To run the app locally create a new python environment (required version >=3.8, <= 3.10). This can either be done using [anaconda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-with-commands) or a [native virtual environment](https://docs.python.org/3/library/venv.html). Illustration for unix systems:
+To run the app locally create a new python environment (required version >=3.8, <= 3.11, recommended is 3.9). This can either be done using [anaconda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-with-commands) or a [native virtual environment](https://docs.python.org/3/library/venv.html). Illustration for unix systems:
 
 ```
 python3 -m venv path/to/env
