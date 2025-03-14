@@ -2850,9 +2850,14 @@ def coll_runmain(event):
             i_class_comp.json_dict = {k: mem_available_datasets[k] for k in selection}
             set_status_datamanagement("Aligning data ...", append=True)
             i_class_comp.read_jsonFile()
-            set_status_datamanagement("Analysing intra-map scatter ...", append=True)
-            i_class_comp.calc_biological_precision()
-            i_class_comp.get_complex_coverage()
+            try:
+                set_status_datamanagement(
+                    "Analysing intra-map scatter ...", append=True
+                )
+                i_class_comp.calc_biological_precision()
+                i_class_comp.get_complex_coverage()
+            except:
+                pass
             update_multi_choice()
             set_status_datamanagement("Running PCA ...", append=True)
             i_class_comp.perform_pca_comparison()
