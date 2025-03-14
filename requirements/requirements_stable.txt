@@ -1,5 +1,5 @@
 dask==2023.5.0
-matplotlib==3.5.3
+matplotlib==3.6.3
 matplotlib-venn==0.11.6
 numba==0.58.1
 numpy==1.24.4
@@ -62,7 +62,7 @@ nodeenv==1.9.1
 notebook==6.0.0
 openpyxl==3.1.2
 overrides==7.7.0
-pandas==2.0.0
+pandas==2.2.2
 pandocfilters==1.5.1
 partd==1.4.1
 patsy==0.5.6

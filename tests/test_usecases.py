@@ -2,7 +2,6 @@ from pandas import read_csv
 from pandas.testing import assert_frame_equal
 from domaps import SpatialDataSet, SpatialDataSetComparison
 import os
-import pkg_resources
 import json
 
 test_viz = False
@@ -112,8 +111,10 @@ class TestBenchmark:
 
     def test_referencedata_HeLa(self):
         filenames = [
-            os.path.join(os.path.dirname(__file__), "../domaps/referencedata/" + el)
-            for el in pkg_resources.resource_listdir("domaps", "referencedata")
+            os.path.join(os.path.dirname(__file__), "../domaps/referencedata", el)
+            for el in os.listdir(
+                os.path.join(os.path.dirname(__file__), "../domaps/referencedata")
+            )
             if "HeLa" in el
         ]
         self.run_benchmark(filenames, svm=False)

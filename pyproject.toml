@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "domaps"
-requires-python = ">=3.8"
+requires-python = ">=3.8, <3.12"
+# 3.12 is not supported yet, as the stable requirement numba 0.58 is not supported anymore, 0.59 does not support python 3.8 anymore so this needs either a switch in the requirements, or depracating 3.8.
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 authors = [
